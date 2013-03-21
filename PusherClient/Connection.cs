@@ -75,6 +75,8 @@ namespace PusherClient
 
         internal void Send(string message)
         {
+            Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Sending: " + message);
+            Debug.WriteLine("Sending: " + message);
             _websocket.Send(message);
         }
 
@@ -93,6 +95,9 @@ namespace PusherClient
         private void websocket_MessageReceived(object sender, MessageReceivedEventArgs e)
         {
             Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Websocket message received: " + e.Message);
+
+            Debug.WriteLine(e.Message);
+
 
             var template = new { @event = String.Empty, data = String.Empty, channel = String.Empty };
             var message = JsonConvert.DeserializeAnonymousType(e.Message, template);

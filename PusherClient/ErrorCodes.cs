@@ -21,7 +21,7 @@ namespace PusherClient
 
         // Library codes
         ConnectionFailed = 5000, 
-        ChannelAuthEndpointNotSet = 5001,
+        ChannelAuthorizerNotSet = 5001,
         NotConnected = 5002,
         SubscriptionError = 5003
     }

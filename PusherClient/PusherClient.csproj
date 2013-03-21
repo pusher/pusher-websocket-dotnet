@@ -47,11 +47,13 @@
     <Compile Include="Channel.cs" />
     <Compile Include="ChannelTypes.cs" />
     <Compile Include="Connection.cs" />
-    <Compile Include="ConnectionOptions.cs" />
+    <Compile Include="PusherOptions.cs" />
     <Compile Include="ConnectionState.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="ErrorCodes.cs" />
     <Compile Include="EventEmitter.cs" />
+    <Compile Include="HttpAuthorizer.cs" />
+    <Compile Include="IAuthorizer.cs" />
     <Compile Include="PresenceChannel.cs" />
     <Compile Include="PrivateChannel.cs" />
     <Compile Include="Pusher.cs" />
@@ -66,7 +68,6 @@
   <ItemGroup>
     <None Include="app.config" />
     <None Include="packages.config" />
-    <None Include="PusherDotNetClient.1.0.0.nupkg" />
     <None Include="Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>

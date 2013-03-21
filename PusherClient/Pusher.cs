@@ -37,10 +37,9 @@ namespace PusherClient
 
         const int PROTOCOL_NUMBER = 5;
         string _applicationKey = null;
-        ConnectionOptions _options = null;
+        PusherOptions _options = null;
 
         public string Host = "ws.pusherapp.com";
-        public string ChannelAuthEndpoint = null;
         private Connection _connection = null;
  
         public event ConnectedEventHandler Connected;
@@ -66,13 +65,18 @@ namespace PusherClient
 
         #endregion
 
-        // Creates a new connection to Pusher
-        public Pusher(string applicationKey, ConnectionOptions options = null)
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Pusher" /> class.
+        /// </summary>
+        /// <param name="applicationKey">The application key.</param>
+        /// <param name="options">The options.</param>
+        public Pusher(string applicationKey, PusherOptions options = null)
         {
             _applicationKey = applicationKey;
 
             if (options == null)
-                _options = new ConnectionOptions() { Encrypted = false };
+                _options = new PusherOptions() { Encrypted = false };
             else
                 _options = options;
         }
@@ -145,8 +149,6 @@ namespace PusherClient
 
         private Channel SubscribeToChannel(ChannelTypes type, string channelName)
         {
-            
-
             switch (type)
             {
                 case ChannelTypes.Public:
@@ -164,15 +166,12 @@ namespace PusherClient
 
             if (type == ChannelTypes.Presence || type == ChannelTypes.Private)
             {
-                // Get auth details from endpoint
-                using (var webClient = new System.Net.WebClient())
-                {
-                    string data = String.Format("channel_name={0}&socket_id={1}", channelName, _connection.SocketID);
+                string jsonAuth = _options.Authorizer.Authorize(channelName, _connection.SocketID);
 
-                    webClient.Headers[HttpRequestHeader.ContentType] = "application/x-www-form-urlencoded";
-                    webClient.UploadStringCompleted += webClient_UploadStringCompleted;
-                    webClient.UploadStringAsync(new Uri(ChannelAuthEndpoint), null, data, Channels[channelName]);
-                }
+                var template = new { auth = String.Empty, channel_data = String.Empty };
+                var message = JsonConvert.DeserializeAnonymousType(jsonAuth, template);
+
+                _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName, auth = message.auth, channel_data = message.channel_data } }));
             }
             else
             {
@@ -185,8 +184,10 @@ namespace PusherClient
 
         private void AuthEndpointCheck()
         {
-            if (String.IsNullOrWhiteSpace(ChannelAuthEndpoint))
-                throw new PusherException("You must set the ChannelAuthEndpoint property to use private or presence channels", ErrorCodes.ChannelAuthEndpointNotSet);
+            if (_options.Authorizer == null)
+            {
+                throw new PusherException("You must set a ChannelAuthorizer property to use private or presence channels", ErrorCodes.ChannelAuthorizerNotSet);
+            }
         }
 
         public void Send(string eventName, object data, string channel = null)
@@ -222,27 +223,6 @@ namespace PusherClient
         {
             if (this.Connected != null)
                 this.Connected(sender);
-        }
-
-        #endregion
-
-        #region Auth Endpoint Handlers
-
-        void webClient_UploadStringCompleted(object sender, UploadStringCompletedEventArgs e)
-        {
-            if (e.Error == null)
-            {
-                var channel = (Channel)e.UserState;
-
-                var template = new { auth = String.Empty, channel_data = String.Empty };
-                var message = JsonConvert.DeserializeAnonymousType(e.Result, template);
-
-                _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channel.Name, auth = message.auth, channel_data = message.channel_data } }));
-            }
-            else
-            {
-                throw e.Error;
-            }
         }
 
         #endregion
