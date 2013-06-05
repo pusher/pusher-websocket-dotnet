@@ -45,8 +45,9 @@ namespace ExampleApplication
 
         private static void InitPusher()
         {
-            _pusher = new Pusher("527784eba833ff169524");
-            _pusher.ChannelAuthEndpoint = "http://localhost:8888/auth/" + HttpUtility.UrlEncode(_name);
+            _pusher = new Pusher("527784eba833ff169524", new PusherOptions() {
+                Authorizer = new HttpAuthorizer("http://localhost:8888/auth/" + HttpUtility.UrlEncode(_name))
+            });
             _pusher.Connected += pusher_Connected;
             _pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
             _pusher.Connect();
