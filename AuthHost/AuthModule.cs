@@ -4,8 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Nancy;
-using PusherRESTDotNet;
-using PusherRESTDotNet.Authentication;
+using PusherServer;
 using System.Configuration;
 
 namespace AuthHost
@@ -43,25 +42,22 @@ namespace AuthHost
 
         public AuthModule()
         {
-            var provider = new PusherProvider(PusherApplicationID, PusherApplicationKey, PusherApplicationSecret);
+            var provider = new Pusher(PusherApplicationID, PusherApplicationKey, PusherApplicationSecret);
 
             Post["/auth/{username}"] = parameters =>
             {
                 Console.WriteLine(String.Format("Processing auth request for '{0}' channel, for socket ID '{1}'", Request.Form.channel_name, Request.Form.socket_id));
 
                 string channel_name = Request.Form.channel_name;
+                string socket_id = Request.Form.socket_id;
 
                 if (channel_name.StartsWith("presence-"))
                 {
-                    var userInfo = new BasicUserInfo();
-                    userInfo.name = parameters.username;
+                    var channelData = new PresenceChannelData();
+                    channelData.user_id = socket_id;
+                    channelData.user_info = new { name = parameters.name };
 
-                    return provider.Authenticate(Request.Form.channel_name, Request.Form.socket_id,
-                        new PusherRESTDotNet.Authentication.PresenceChannelData()
-                        {
-                            user_id = Request.Form.socket_id,
-                            user_info = userInfo
-                        });
+                    return provider.Authenticate(channel_name, socket_id, channelData).ToJson();
                 }
                 else
                 {
