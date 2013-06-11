@@ -21,7 +21,7 @@ From the `pusher-dotnet-client` directory:
 
 1. Update `pusher-dotnet-client.nuspec` with new version number etc.
 2. Run `package.cmd`
-3. Run `tools/nuget.exe push Download/package/PusherClient.{VERSION}.nupkg'
+3. Run `tools/nuget.exe push Download/PusherClient.{VERSION}.nupkg'
 
 ## License
 
