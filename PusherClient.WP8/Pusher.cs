@@ -116,7 +116,7 @@ namespace PusherClient
         public async Task<ConnectionState> ConnectAsync()
         {
             _tcs = new TaskCompletionSource<ConnectionState>();
-            _connection.Connect();
+            Connect();
             return await _tcs.Task;
         }
 

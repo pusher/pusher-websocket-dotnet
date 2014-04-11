@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>PusherClient.WP8</id>
-    <version>0.1.0-alpha</version>
+    <version>0.1.0-alpha-2</version>
     <authors>{o} Software</authors>
     <owners>{o} Software</owners>
     <licenseUrl>https://github.com/bszypelow/PusherClient.WP8/blob/master/LICENSE.txt</licenseUrl>
