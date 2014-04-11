@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>PusherClient.WP8</id>
+    <version>0.1.0-alpha</version>
+    <authors>{o} Software</authors>
+    <owners>{o} Software</owners>
+    <licenseUrl>https://github.com/bszypelow/PusherClient.WP8/blob/master/LICENSE.txt</licenseUrl>
+    <projectUrl>https://github.com/bszypelow/PusherClient.WP8</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>The WP8 library for interacting with the Pusher WebSocket API.
+Register at http://pusher.com.
+    </description>
+    <releaseNotes>Alpha release.</releaseNotes>
+    <copyright>Copyright 2014</copyright>
+    <tags>Pusher WebSocket</tags>
+    <dependencies>
+      <dependency id="Newtonsoft.Json" version="4.5.11"/>
+      <dependency id="WebSocket4Net" version="0.8" />
+    </dependencies>
+  </metadata>
+</package>

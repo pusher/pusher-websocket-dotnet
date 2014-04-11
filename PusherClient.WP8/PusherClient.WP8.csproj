@@ -103,6 +103,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="PusherClient.WP8.csproj.nuspec" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Newtonsoft.Json">

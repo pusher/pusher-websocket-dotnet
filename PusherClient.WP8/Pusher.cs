@@ -36,11 +36,15 @@ namespace PusherClient
         string _applicationKey = null;
         PusherOptions _options = null;
 
+
         public string Host = "ws.pusherapp.com";
         private Connection _connection = null;
+        private TaskCompletionSource<ConnectionState> _tcs;
  
+
         public event ConnectedEventHandler Connected;
         public event ConnectionStateChangedEventHandler ConnectionStateChanged;
+
         public Dictionary<string, Channel> Channels = new Dictionary<string, Channel>();
 
         #region Properties
@@ -107,6 +111,13 @@ namespace PusherClient
             _connection.ConnectionStateChanged +=_connection_ConnectionStateChanged;
             _connection.Connect();
             
+        }
+
+        public async Task<ConnectionState> ConnectAsync()
+        {
+            _tcs = new TaskCompletionSource<ConnectionState>();
+            _connection.Connect();
+            return await _tcs.Task;
         }
 
         public void Disconnect()
@@ -209,6 +220,8 @@ namespace PusherClient
 
         void _connection_Connected(object sender)
         {
+            _tcs.SetResult(ConnectionState.Connected);
+
             if (this.Connected != null)
                 this.Connected(sender);
         }
