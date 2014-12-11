@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>PusherClient</id>
-    <version>0.1.0-alpha-1</version>
+    <version>0.1.0</version>
     <title>Pusher .NET Client Library</title>
     <authors>Pusher, Phil Leggetter</authors>
     <owners>Pusher</owners>

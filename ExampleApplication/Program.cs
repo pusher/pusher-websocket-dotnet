@@ -45,7 +45,7 @@ namespace ExampleApplication
 
         private static void InitPusher()
         {
-            _pusher = new Pusher("527784eba833ff169524", new PusherOptions() {
+            _pusher = new Pusher("7899dd5cb232af88083d", new PusherOptions(){
                 Authorizer = new HttpAuthorizer("http://localhost:8888/auth/" + HttpUtility.UrlEncode(_name))
             });
             _pusher.Connected += pusher_Connected;
@@ -112,7 +112,7 @@ namespace ExampleApplication
 
             foreach (var mem in _presenceChannel.Members)
             {
-                names.Add((string)mem.Value.name);
+                names.Add((string)mem.Value.name.Value);
             }
 
             Console.WriteLine("[MEMBERS] " + names.Aggregate((i,j) => i + ", " + j ));
