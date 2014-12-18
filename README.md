@@ -14,7 +14,17 @@ More general documentation can be found at <http://pusher.com/docs/>.
 Install-Package PusherClient
 ```
 
-## Publish to NuGet
+## Changelog
+
+### 0.2.0
+
+* Update package dependencies
+  * Newtonsoft.Json 6.0.4
+  * WebSocket4Net 0.10
+
+## Developer Notes
+
+### Publish to NuGet
 
 You should be familiar with [creating an publishing NuGet packages](http://docs.nuget.org/docs/creating-packages/creating-and-publishing-a-package).
 
