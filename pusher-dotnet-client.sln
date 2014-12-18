@@ -1,11 +1,19 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.31101.0
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PusherClient", "PusherClient\PusherClient.csproj", "{9E30E755-C00E-4BF7-B56B-8F2D836FBA60}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExampleApplication", "ExampleApplication\ExampleApplication.csproj", "{D6D38D9A-EF72-4C0D-A4A9-C325775E5CA3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AuthHost", "AuthHost\AuthHost.csproj", "{218EE921-5E27-4E15-9382-42DD2F40857C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Files", "Files", "{2D9F07A0-C627-434A-8C94-CD7CD175720F}"
+	ProjectSection(SolutionItems) = preProject
+		pusher-dotnet-client.nuspec = pusher-dotnet-client.nuspec
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
