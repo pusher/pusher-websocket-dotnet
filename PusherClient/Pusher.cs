@@ -27,6 +27,7 @@ namespace PusherClient
     // TODO: Implement connection fallback strategy
 
     // A delegate type for hooking up change notifications.
+    public delegate void ErrorEventHandler(object sender, PusherException error);
     public delegate void ConnectedEventHandler(object sender);
     public delegate void ConnectionStateChangedEventHandler(object sender, ConnectionState state);
 
@@ -41,7 +42,28 @@ namespace PusherClient
 
         public string Host = "ws.pusherapp.com";
         private Connection _connection = null;
- 
+        private ErrorEventHandler _errorEvent;
+
+        public event ErrorEventHandler Error
+        {
+            add
+            {
+                _errorEvent += value;
+                if (_connection != null)
+                {
+                    _connection.Error += value;
+                }
+            }
+            remove
+            {
+                _errorEvent -= value;
+                if (_connection != null)
+                {
+                    _connection.Error -= value;
+                }
+            }
+        }
+
         public event ConnectedEventHandler Connected;
         public event ConnectionStateChangedEventHandler ConnectionStateChanged;
         public Dictionary<string, Channel> Channels = new Dictionary<string, Channel>();
@@ -98,7 +120,8 @@ namespace PusherClient
                         break;
                     case ConnectionState.Failed:
                         Trace.TraceEvent(TraceEventType.Error, 0, "Cannot attempt re-connection once in 'Failed' state");
-                        throw new PusherException("Cannot attempt re-connection once in 'Failed' state", ErrorCodes.ConnectionFailed);
+                        RaiseError(new PusherException("Cannot attempt re-connection once in 'Failed' state", ErrorCodes.ConnectionFailed));
+                        break;
                 }
             }
 
@@ -116,6 +139,14 @@ namespace PusherClient
             _connection = new Connection(this, url);
             _connection.Connected += _connection_Connected;
             _connection.ConnectionStateChanged +=_connection_ConnectionStateChanged;
+            if (_errorEvent != null)
+            {
+                // subscribe to the connection's error handler
+                foreach (ErrorEventHandler handler in _errorEvent.GetInvocationList())
+                {
+                    _connection.Error += handler;
+                }
+            }
             _connection.Connect();
             
         }
@@ -128,7 +159,11 @@ namespace PusherClient
         public Channel Subscribe(string channelName)
         {
             if (_connection.State != ConnectionState.Connected)
-                throw new PusherException("You must wait for Pusher to connect before you can subscribe to a channel", ErrorCodes.NotConnected);
+            {
+                var pusherException = new PusherException("You must wait for Pusher to connect before you can subscribe to a channel", ErrorCodes.NotConnected);
+                RaiseError(pusherException);
+                throw pusherException;
+            }
 
             if (Channels.ContainsKey(channelName))
             {
@@ -186,7 +221,9 @@ namespace PusherClient
         {
             if (_options.Authorizer == null)
             {
-                throw new PusherException("You must set a ChannelAuthorizer property to use private or presence channels", ErrorCodes.ChannelAuthorizerNotSet);
+                var pusherException = new PusherException("You must set a ChannelAuthorizer property to use private or presence channels", ErrorCodes.ChannelAuthorizerNotSet);
+                RaiseError(pusherException);
+                throw pusherException;
             }
         }
 
@@ -211,7 +248,7 @@ namespace PusherClient
 
         #endregion
 
-        #region Connection Event Handlers
+        #region Event Handlers
 
         private void _connection_ConnectionStateChanged(object sender, ConnectionState state)
         {
@@ -225,7 +262,12 @@ namespace PusherClient
                 this.Connected(sender);
         }
 
-        #endregion
+        private void RaiseError(PusherException error)
+        {
+            var handler = _errorEvent;
+            if (handler != null) handler(this, error);
+        }
 
+        #endregion
     }
 }

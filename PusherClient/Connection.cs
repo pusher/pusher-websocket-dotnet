@@ -19,6 +19,7 @@ namespace PusherClient
         private ConnectionState _state = ConnectionState.Initialized;
         private bool _allowReconnect = true;
 
+        public event ErrorEventHandler Error;
         public event ConnectedEventHandler Connected;
         public event ConnectionStateChangedEventHandler ConnectionStateChanged;
 
@@ -93,6 +94,14 @@ namespace PusherClient
                 ConnectionStateChanged(this, this._state);
         }
 
+        private void RaiseError(PusherException error)
+        {
+            // if a handler is registerd, use it, otherwise throw
+            var handler = Error;
+            if (handler != null) handler(this, error);
+            else throw error;
+        }
+
         private void websocket_MessageReceived(object sender, MessageReceivedEventArgs e)
         {
             Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Websocket message received: " + e.Message);
@@ -144,7 +153,8 @@ namespace PusherClient
 
                     case Constants.CHANNEL_SUBSCRIPTION_ERROR:
 
-                        throw new PusherException("Error received on channel subscriptions: " + e.Message, ErrorCodes.SubscriptionError);
+                        RaiseError(new PusherException("Error received on channel subscriptions: " + e.Message, ErrorCodes.SubscriptionError));
+                        break;
 
                     case Constants.CHANNEL_MEMBER_ADDED:
 
@@ -236,10 +246,9 @@ namespace PusherClient
             if (Enum.IsDefined(typeof(ErrorCodes), parsed.code))
                 error = (ErrorCodes)parsed.code;
 
-            throw new PusherException(parsed.message, error);
+            RaiseError(new PusherException(parsed.message, error));
         }
 
         #endregion
-
     }
 }
