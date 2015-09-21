@@ -190,11 +190,6 @@ namespace PusherClient
             }
         }
 
-        public void Send(string eventName, object data, string channel = null)
-        {
-            _connection.Send(JsonConvert.SerializeObject(new { @event = eventName, channel = channel, data = data }));
-        }
-
         #endregion
 
         #region Internal Methods
