@@ -16,7 +16,9 @@ namespace PusherClient
         {
             if(_eventListeners.ContainsKey(eventName))
             {
-                _eventListeners[eventName].Add(listener);
+                // To avoid triggering the same bind multiple times
+                if (!_eventListeners[eventName].Contains(listener))
+                    _eventListeners[eventName].Add(listener);
             }
             else
             {
