@@ -48,27 +48,36 @@ namespace ExampleApplication
             _pusher = new Pusher("7899dd5cb232af88083d", new PusherOptions(){
                 Authorizer = new HttpAuthorizer("http://localhost:8888/auth/" + HttpUtility.UrlEncode(_name))
             });
-            _pusher.Connected += pusher_Connected;
             _pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
-            _pusher.Connect();
-        }
+            _pusher.Error += _pusher_Error;
 
-        static void _pusher_ConnectionStateChanged(object sender, ConnectionState state)
-        {
-            Console.WriteLine("Connection state: " + state.ToString());
-        }
-
-        static void pusher_Connected(object sender)
-        {
             // Setup private channel
             _chatChannel = _pusher.Subscribe("private-channel");
             _chatChannel.Subscribed += _chatChannel_Subscribed;
+
+            // Inline binding!
+            _chatChannel.Bind("client-my-event", (dynamic data) =>
+            {
+                Console.WriteLine("[" + data.name + "] " + data.message);
+            });
 
             // Setup presence channel
             _presenceChannel = (PresenceChannel)_pusher.Subscribe("presence-channel");
             _presenceChannel.Subscribed += _presenceChannel_Subscribed;
             _presenceChannel.MemberAdded += _presenceChannel_MemberAdded;
             _presenceChannel.MemberRemoved += _presenceChannel_MemberRemoved;
+
+            _pusher.Connect();
+        }
+
+        static void _pusher_Error(object sender, PusherException error)
+        {
+            Console.WriteLine("Pusher Error: " + error.ToString());
+        }
+
+        static void _pusher_ConnectionStateChanged(object sender, ConnectionState state)
+        {
+            Console.WriteLine("Connection state: " + state.ToString());
         }
 
         #endregion
@@ -97,11 +106,6 @@ namespace ExampleApplication
         static void _chatChannel_Subscribed(object sender)
         {
             Console.WriteLine("Hi " + _name + "! Type 'quit' to exit, otherwise type anything to chat!");
-
-            _chatChannel.Bind("client-my-event", (dynamic data) =>
-            {
-                Console.WriteLine("[" + data.name + "] " + data.message);
-            });
         }
 
         #endregion
