@@ -32,6 +32,9 @@ namespace PusherClient
 
         internal virtual void SubscriptionSucceeded(string data)
         {
+            if (_isSubscribed)
+                return;
+
             _isSubscribed = true;
 
             if(Subscribed != null)

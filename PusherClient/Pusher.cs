@@ -130,7 +130,7 @@ namespace PusherClient
             if (_connection.State != ConnectionState.Connected)
                 throw new PusherException("You must wait for Pusher to connect before you can subscribe to a channel", ErrorCodes.NotConnected);
 
-            if (Channels.ContainsKey(channelName))
+            if (AlreadySubscribed(channelName))
             {
                 Trace.TraceEvent(TraceEventType.Warning, 0, "Channel '" + channelName + "' is already subscribed to. Subscription event has been ignored.");
                 return Channels[channelName];
@@ -149,20 +149,8 @@ namespace PusherClient
 
         private Channel SubscribeToChannel(ChannelTypes type, string channelName)
         {
-            switch (type)
-            {
-                case ChannelTypes.Public:
-                    Channels.Add(channelName, new Channel(channelName, this));
-                    break;
-                case ChannelTypes.Private:
-                    AuthEndpointCheck();
-                    Channels.Add(channelName, new PrivateChannel(channelName, this));
-                    break;
-                case ChannelTypes.Presence:
-                    AuthEndpointCheck();
-                    Channels.Add(channelName, new PresenceChannel(channelName, this));
-                    break;
-            }
+            if (!Channels.ContainsKey(channelName))
+                CreateChannel(type, channelName);
 
             if (type == ChannelTypes.Presence || type == ChannelTypes.Private)
             {
@@ -180,6 +168,24 @@ namespace PusherClient
             }
 
             return Channels[channelName];
+        }
+
+        private void CreateChannel(ChannelTypes type, string channelName)
+        {
+            switch (type)
+            {
+                case ChannelTypes.Public:
+                    Channels.Add(channelName, new Channel(channelName, this));
+                    break;
+                case ChannelTypes.Private:
+                    AuthEndpointCheck();
+                    Channels.Add(channelName, new PrivateChannel(channelName, this));
+                    break;
+                case ChannelTypes.Presence:
+                    AuthEndpointCheck();
+                    Channels.Add(channelName, new PresenceChannel(channelName, this));
+                    break;
+            }
         }
 
         private void AuthEndpointCheck()
@@ -206,7 +212,8 @@ namespace PusherClient
 
         internal void Unsubscribe(string channelName)
         {
-            _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_UNSUBSCRIBE, data = new { channel = channelName } }));
+            if (_connection.State == ConnectionState.Connected)
+              _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_UNSUBSCRIBE, data = new { channel = channelName } }));
         }
 
         #endregion
@@ -215,6 +222,16 @@ namespace PusherClient
 
         private void _connection_ConnectionStateChanged(object sender, ConnectionState state)
         {
+            switch (state)
+            {
+                case ConnectionState.Disconnected:
+                    MarkChannelsAsUnsubscribed();
+                    break;
+                case ConnectionState.Connected:
+                    SubscribeExistingChannels();
+                    break;
+            }
+
             if (ConnectionStateChanged != null)
                 ConnectionStateChanged(sender, state);
         }
@@ -226,6 +243,28 @@ namespace PusherClient
         }
 
         #endregion
+
+        private bool AlreadySubscribed(string channelName)
+        {
+            return Channels.ContainsKey(channelName) && Channels[channelName].IsSubscribed;
+        }
+
+        internal void MarkChannelsAsUnsubscribed()
+        {
+            foreach (var channel in Channels)
+            {
+                channel.Value.Unsubscribe();
+            }
+
+        }
+
+        internal void SubscribeExistingChannels()
+        {
+            foreach (var channel in Channels)
+            {
+                Subscribe(channel.Key);
+            }
+        }
 
     }
 }
