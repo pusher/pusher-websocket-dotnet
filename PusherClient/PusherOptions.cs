@@ -10,5 +10,6 @@ namespace PusherClient
     {
         public bool Encrypted = false;
         public IAuthorizer Authorizer = null;
+        public string Host = "ws.pusherapp.com";
     }
 }
