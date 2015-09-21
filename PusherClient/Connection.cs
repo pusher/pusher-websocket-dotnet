@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using WebSocket4Net;
+using System.Threading;
 
 namespace PusherClient
 {
@@ -22,6 +23,11 @@ namespace PusherClient
         public event ErrorEventHandler Error;
         public event ConnectedEventHandler Connected;
         public event ConnectionStateChangedEventHandler ConnectionStateChanged;
+        
+        private int _backOffMillis = 0;
+
+        private static readonly int MAX_BACKOFF_MILLIS = 10000;
+        private static readonly int BACK_OFF_MILLIS_INCREMENT = 1000;
 
         #region Properties
 
@@ -79,9 +85,12 @@ namespace PusherClient
 
         internal void Send(string message)
         {
-            Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Sending: " + message);
-            Debug.WriteLine("Sending: " + message);
-            _websocket.Send(message);
+            if (this.State == ConnectionState.Connected)
+            {
+                Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Sending: " + message);
+                Debug.WriteLine("Sending: " + message);
+                _websocket.Send(message);
+            }
         }
 
         #endregion
@@ -214,9 +223,16 @@ namespace PusherClient
             Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Websocket connection has been closed");
 
             ChangeState(ConnectionState.Disconnected);
+            _websocket = null;
 
-            if(_allowReconnect)
+            if (_allowReconnect)
+            {
+                ChangeState(ConnectionState.WaitingToReconnect);
+                Thread.Sleep(_backOffMillis);
+                _backOffMillis = Math.Min(MAX_BACKOFF_MILLIS, _backOffMillis + BACK_OFF_MILLIS_INCREMENT);
+                ChangeState(ConnectionState.Connecting);
                 Connect();
+            }
         }
 
         private void websocket_Error(object sender, SuperSocket.ClientEngine.ErrorEventArgs e)

@@ -13,6 +13,7 @@ namespace PusherClient
         Connected,
         Unavailable,
         Failed,
-        Disconnected
+        Disconnected,
+        WaitingToReconnect
     }
 }

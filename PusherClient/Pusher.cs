@@ -73,7 +73,7 @@ namespace PusherClient
         public string SocketID {
             get
             {
-                return _connection.SocketID;
+                return (_connection != null? _connection.SocketID: null);
             }
         }
 
@@ -81,7 +81,7 @@ namespace PusherClient
         {
             get
             {
-                return _connection.State;
+                return (_connection != null? _connection.State: ConnectionState.Disconnected);
             }
         }
 
@@ -158,13 +158,6 @@ namespace PusherClient
 
         public Channel Subscribe(string channelName)
         {
-            if (_connection.State != ConnectionState.Connected)
-            {
-                var pusherException = new PusherException("You must wait for Pusher to connect before you can subscribe to a channel", ErrorCodes.NotConnected);
-                RaiseError(pusherException);
-                throw pusherException;
-            }
-
             if (AlreadySubscribed(channelName))
             {
                 Trace.TraceEvent(TraceEventType.Warning, 0, "Channel '" + channelName + "' is already subscribed to. Subscription event has been ignored.");
@@ -187,19 +180,22 @@ namespace PusherClient
             if (!Channels.ContainsKey(channelName))
                 CreateChannel(type, channelName);
 
-            if (type == ChannelTypes.Presence || type == ChannelTypes.Private)
+            if (State == ConnectionState.Connected)
             {
-                string jsonAuth = _options.Authorizer.Authorize(channelName, _connection.SocketID);
+                if (type == ChannelTypes.Presence || type == ChannelTypes.Private)
+                {
+                    string jsonAuth = _options.Authorizer.Authorize(channelName, _connection.SocketID);
 
-                var template = new { auth = String.Empty, channel_data = String.Empty };
-                var message = JsonConvert.DeserializeAnonymousType(jsonAuth, template);
+                    var template = new { auth = String.Empty, channel_data = String.Empty };
+                    var message = JsonConvert.DeserializeAnonymousType(jsonAuth, template);
 
-                _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName, auth = message.auth, channel_data = message.channel_data } }));
-            }
-            else
-            {
-                // No need for auth details. Just send subscribe event
-                _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName } }));
+                    _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName, auth = message.auth, channel_data = message.channel_data } }));
+                }
+                else
+                {
+                    // No need for auth details. Just send subscribe event
+                    _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName } }));
+                }
             }
 
             return Channels[channelName];
