@@ -53,6 +53,8 @@ namespace PusherClient
         {
             // TODO: Handle and test disconnection / errors etc
             // TODO: Add 'connecting_in' event
+            var msg = string.Format("Connecting to: {0}", _url);
+            Pusher.Trace.TraceEvent(TraceEventType.Information, 0, msg);
 
             ChangeState(ConnectionState.Connecting);
             _allowReconnect = true;
