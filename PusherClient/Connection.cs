@@ -240,13 +240,15 @@ namespace PusherClient
 
         private void ParseError(string data)
         {
-            var template = new { message = String.Empty, code = 0 };
+            var template = new { message = String.Empty, code = (int?) null };
             var parsed = JsonConvert.DeserializeAnonymousType(data, template);
 
             ErrorCodes error = ErrorCodes.Unkown;
 
-            if (Enum.IsDefined(typeof(ErrorCodes), parsed.code))
+            if (parsed.code != null && Enum.IsDefined(typeof(ErrorCodes), parsed.code))
+            {
                 error = (ErrorCodes)parsed.code;
+            }
 
             RaiseError(new PusherException(parsed.message, error));
         }
