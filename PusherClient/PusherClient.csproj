@@ -41,7 +41,7 @@
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data" />
     <Reference Include="WebSocket4Net">
-      <HintPath>..\packages\WebSocket4Net.0.10\lib\net40\WebSocket4Net.dll</HintPath>
+      <HintPath>..\packages\WebSocket4Net.0.13.1\lib\net40\WebSocket4Net.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
