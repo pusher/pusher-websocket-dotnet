@@ -94,8 +94,9 @@ namespace ExampleApplication
             ListMembers();
         }
 
-        static void _presenceChannel_MemberAdded(object sender)
+        static void _presenceChannel_MemberAdded(object sender, KeyValuePair<string, dynamic> member)
         {
+            Console.WriteLine((string)member.Value.name.Value + " has joined");
             ListMembers();
         }
 

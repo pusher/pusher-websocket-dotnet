@@ -8,12 +8,12 @@ using System.Threading.Tasks;
 namespace PusherClient
 {
     public delegate void MemberEventHandler(object sender);
-
+    public delegate void MemberAddedEventHandler(object sender, KeyValuePair<string, dynamic> member);
     public class PresenceChannel : PrivateChannel
     {
         public Dictionary<string, dynamic> Members = new Dictionary<string, dynamic>();
 
-        public event MemberEventHandler MemberAdded;
+        public event MemberAddedEventHandler MemberAdded;
         public event MemberEventHandler MemberRemoved;
 
         public PresenceChannel(string channelName, Pusher pusher) : base(channelName, pusher) { }
@@ -36,7 +36,7 @@ namespace PusherClient
                 Members[member.Key] = member.Value;
 
             if (MemberAdded != null)
-                MemberAdded(this);
+                MemberAdded(this, member);
         }
 
         internal void RemoveMember(string data)
