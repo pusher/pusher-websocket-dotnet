@@ -4,6 +4,6 @@
     {
         public bool Encrypted = false;
         public IAuthorizer Authorizer = null;
-        public string Host = "ws.pusherapp.com";
+        public string Host = "ws.pusher.com";
     }
 }
