@@ -40,7 +40,6 @@ namespace PusherClient
         string _applicationKey = null;
         PusherOptions _options = null;
 
-        public string Host = "ws.pusherapp.com";
         private Connection _connection = null;
         private ErrorEventHandler _errorEvent;
 
@@ -132,8 +131,8 @@ namespace PusherClient
 
             // TODO: Fallback to secure?
 
-            string url = String.Format("{0}{1}/app/{2}?protocol={3}&client={4}&version={5}", 
-                scheme, this.Host, _applicationKey, Settings.Default.ProtocolVersion, Settings.Default.ClientName,
+            string url = String.Format("{0}{1}/app/{2}?protocol={3}&client={4}&version={5}",
+                scheme, _options.Host, _applicationKey, Settings.Default.ProtocolVersion, Settings.Default.ClientName,
                 Settings.Default.VersionNumber);
 
             _connection = new Connection(this, url);
@@ -148,7 +147,7 @@ namespace PusherClient
                 }
             }
             _connection.Connect();
-            
+
         }
 
         public void Disconnect()
