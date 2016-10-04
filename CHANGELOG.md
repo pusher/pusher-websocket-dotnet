@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.1 - by Misiu
+
+* [ADDED] `PusherOptions.Cluster` - used to specify which cluster is used by Pusher
+* [REMOVED] `Pusher.Host` property
+* [CHANGED] `PusherOptions.Host` is read only and is internal
+* [CHANGED] Update dependencies
+  * Newtonsoft.Json 9.0.1
+  * WebSocket4Net 0.14.1
+
 ## 0.3.0
 
 * [ADDED] Auto re-subscription
