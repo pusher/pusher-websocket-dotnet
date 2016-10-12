@@ -1,11 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
 using System.Diagnostics;
-using System.Net;
+using Newtonsoft.Json;
 
 namespace PusherClient
 {
@@ -37,11 +33,10 @@ namespace PusherClient
         public static TraceSource Trace = new TraceSource("Pusher");
 
         const int PROTOCOL_NUMBER = 5;
-        string _applicationKey = null;
-        PusherOptions _options = null;
+        private readonly string _applicationKey;
+        private readonly PusherOptions _options;
 
-        public string Host = "ws.pusherapp.com";
-        private Connection _connection = null;
+        private Connection _connection;
         private ErrorEventHandler _errorEvent;
 
         public event ErrorEventHandler Error
@@ -97,10 +92,7 @@ namespace PusherClient
         {
             _applicationKey = applicationKey;
 
-            if (options == null)
-                _options = new PusherOptions() { Encrypted = false };
-            else
-                _options = options;
+            _options = options ?? new PusherOptions { Encrypted = false };
         }
 
         #region Public Methods
@@ -133,7 +125,7 @@ namespace PusherClient
             // TODO: Fallback to secure?
 
             string url = String.Format("{0}{1}/app/{2}?protocol={3}&client={4}&version={5}", 
-                scheme, this.Host, _applicationKey, Settings.Default.ProtocolVersion, Settings.Default.ClientName,
+                scheme, _options.Host, _applicationKey, Settings.Default.ProtocolVersion, Settings.Default.ClientName,
                 Settings.Default.VersionNumber);
 
             _connection = new Connection(this, url);

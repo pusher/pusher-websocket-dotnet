@@ -1,13 +1,10 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
-using WebSocket4Net;
 using System.Threading;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using SuperSocket.ClientEngine;
+using WebSocket4Net;
 
 namespace PusherClient
 {
@@ -235,7 +232,7 @@ namespace PusherClient
             }
         }
 
-        private void websocket_Error(object sender, SuperSocket.ClientEngine.ErrorEventArgs e)
+        private void websocket_Error(object sender, ErrorEventArgs e)
         {
             Pusher.Trace.TraceEvent(TraceEventType.Error, 0, "Error: " + e.Exception);
 

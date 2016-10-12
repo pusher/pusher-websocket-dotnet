@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Net;
 
 namespace PusherClient
@@ -18,7 +15,7 @@ namespace PusherClient
         {
             string authToken = null;
 
-            using (var webClient = new System.Net.WebClient())
+            using (var webClient = new WebClient())
             {
                 string data = String.Format("channel_name={0}&socket_id={1}", channelName, socketId);
                 webClient.Headers[HttpRequestHeader.ContentType] = "application/x-www-form-urlencoded";
