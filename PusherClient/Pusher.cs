@@ -37,10 +37,9 @@ namespace PusherClient
         public static TraceSource Trace = new TraceSource("Pusher");
 
         const int PROTOCOL_NUMBER = 5;
-        string _applicationKey = null;
-        PusherOptions _options = null;
+        private readonly string _applicationKey = null;
+        private readonly PusherOptions _options = null;
 
-        public string Host = "ws.pusherapp.com";
         private Connection _connection = null;
         private ErrorEventHandler _errorEvent;
 
@@ -133,7 +132,7 @@ namespace PusherClient
             // TODO: Fallback to secure?
 
             string url = String.Format("{0}{1}/app/{2}?protocol={3}&client={4}&version={5}", 
-                scheme, this.Host, _applicationKey, Settings.Default.ProtocolVersion, Settings.Default.ClientName,
+                scheme, _options.Host, _applicationKey, Settings.Default.ProtocolVersion, Settings.Default.ClientName,
                 Settings.Default.VersionNumber);
 
             _connection = new Connection(this, url);
