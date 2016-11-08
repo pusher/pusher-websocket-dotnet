@@ -49,6 +49,20 @@ _presenceChannel.MemberRemoved += _presenceChannel_MemberRemoved;
 
 See [the example app](https://github.com/pusher-community/pusher-websocket-dotnet/tree/master/ExampleApplication) for full details.
 
+### Change cluster
+
+Any cluster other than mt1 needs to be specified in the options object like so
+
+```cs
+_pusher = new Pusher(
+    "YOUR_APP_KEY",
+    new PusherOptions(){
+        Authorizer = new HttpAuthorizer("http://localhost:8888/auth/" + HttpUtility.UrlEncode(_name)),
+        Cluster = "eu",
+        Encrypted = true
+    }
+);
+```
 
 ## Developer Notes
 
