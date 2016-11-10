@@ -16,31 +16,77 @@ Install-Package PusherClient
 
 ## Usage
 
+See [the example app](https://github.com/pusher-community/pusher-websocket-dotnet/tree/master/ExampleApplication) for full details.
+
+### Connect
+
 ```cs
-_pusher = new Pusher("7899dd5cb232af88083d", new PusherOptions(){
-    Authorizer = new HttpAuthorizer("http://localhost:8888/auth/" + HttpUtility.UrlEncode(_name))
+_pusher = new Pusher("YOUR_APP_KEY");
+_pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
+_pusher.Error += _pusher_Error;
+```
+
+Or if you have an authentication endpoint for private or presence channels:
+
+```cs
+_pusher = new Pusher("YOUR_APP_KEY", new PusherOptions(){
+    Authorizer = new HttpAuthorizer("YOUR_ENDPOINT")
 });
 _pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
 _pusher.Error += _pusher_Error;
+```
 
-// Setup private channel
-_chatChannel = _pusher.Subscribe("private-channel");
-_chatChannel.Subscribed += _chatChannel_Subscribed;
+Or if you are on a non default cluster (e.g. eu):
 
-// Inline binding!
-_chatChannel.Bind("client-my-event", (dynamic data) =>
+```cs
+_pusher = new Pusher("YOUR_APP_KEY", new PusherOptions(){
+    Cluster = "eu"
+});
+_pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
+_pusher.Error += _pusher_Error;
+```
+
+### Subscribe to a public or private channel
+
+```cs
+_myChannel = _pusher.Subscribe("my-channel");
+_myChannel.Subscribed += _myChannel_Subscribed;
+```
+
+### Bind to an event
+_myChannel.Bind("my-event", (dynamic data) =>
 {
-    Console.WriteLine("[" + data.name + "] " + data.message);
+    Console.WriteLine(data.message);
 });
 
-// Setup presence channel
+### Subscribe to a presence channel
+
+```cs
 _presenceChannel = (PresenceChannel)_pusher.Subscribe("presence-channel");
 _presenceChannel.Subscribed += _presenceChannel_Subscribed;
 _presenceChannel.MemberAdded += _presenceChannel_MemberAdded;
 _presenceChannel.MemberRemoved += _presenceChannel_MemberRemoved;
 ```
 
-See [the example app](https://github.com/pusher-community/pusher-websocket-dotnet/tree/master/ExampleApplication) for full details.
+### Unbind
+
+Remove a specific callback:
+
+```cs
+_myChannel.Unbind("my-event", callback);
+```
+
+Remove all callbacks for a specific event:
+
+```cs
+_myChannel.Unbind("my-event");
+```
+
+Remove all bindings on the channel:
+
+```cs
+_myChannel.UnbindAll();
+```
 
 
 ## Developer Notes
