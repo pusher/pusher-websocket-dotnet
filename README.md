@@ -14,13 +14,6 @@ More general documentation can be found at <http://pusher.com/docs/>.
 Install-Package PusherClient
 ```
 
-### Direct Download
-
-If you can't use NuGet you can download the `.nupkg` file, change the file extension to a `.zip` and unzip it to get the `.dll`. You can download via the following URL:
-https://www.nuget.org/api/v2/package/PusherClient/0.3.0
-
-For versions other than `0.3.0` change the URL appropriately.
-
 ## Usage
 
 ```cs

@@ -12,7 +12,7 @@
     <description>The .NET library for interacting with the Pusher WebSocket API.
 Register at http://pusher.com.</description>
     <releaseNotes></releaseNotes>
-    <copyright>Copyright 2015</copyright>
+    <copyright>Copyright 2016</copyright>
     <tags>pusher realtime websocket</tags>
     <dependencies>
         <dependency id="Newtonsoft.Json" version="9.0.1" />

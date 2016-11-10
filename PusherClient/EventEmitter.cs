@@ -35,11 +35,10 @@ namespace PusherClient
 
         public void Unbind(string eventName, Action<dynamic> listener)
         {
-            if(!_eventListeners.ContainsKey(eventName))
+            if(_eventListeners.ContainsKey(eventName))
             {
-                return;
+                _eventListeners[eventName].Remove(listener);
             }
-            _eventListeners[eventName].Remove(listener);
         }
 
         public void UnbindAll()
