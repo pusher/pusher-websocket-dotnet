@@ -76,10 +76,13 @@ static void _myChannel_Subscribed(object sender)
 ```
 
 ### Bind to an event
+
+```cs
 _myChannel.Bind("my-event", (dynamic data) =>
 {
     Console.WriteLine(data.message);
 });
+```
 
 ### Subscribe to a presence channel
 
