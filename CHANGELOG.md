@@ -1,5 +1,6 @@
 # Changelog
 ## 0.4.0
+* [CHANGED] MemberAdded event handler is now aware of *which* member has been added
 * [ADDED] Unbind methods
 * [ADDED] Ability to change cluster (thanks @Misiu)
 * [CHANGED] Update dependencies
