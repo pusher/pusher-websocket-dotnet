@@ -8,6 +8,7 @@
     <owners>Pusher</owners>
     <licenseUrl>https://github.com/pusher/pusher-dotnet-client/blob/master/LICENSE.txt</licenseUrl>
     <projectUrl>https://github.com/pusher/pusher-dotnet-client</projectUrl>
+    <iconUrl>https://pusher.com/static_logos/64x64.png</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>The .NET library for interacting with the Pusher WebSocket API.
 Register at http://pusher.com.</description>
