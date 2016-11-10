@@ -8,15 +8,16 @@
     <owners>Pusher</owners>
     <licenseUrl>https://github.com/pusher/pusher-dotnet-client/blob/master/LICENSE.txt</licenseUrl>
     <projectUrl>https://github.com/pusher/pusher-dotnet-client</projectUrl>
+    <iconUrl>https://pusher.com/static_logos/64x64.png</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>The .NET library for interacting with the Pusher WebSocket API.
 Register at http://pusher.com.</description>
     <releaseNotes></releaseNotes>
-    <copyright>Copyright 2015</copyright>
+    <copyright>Copyright 2016</copyright>
     <tags>pusher realtime websocket</tags>
     <dependencies>
-        <dependency id="Newtonsoft.Json" version="7.0.1" />
-        <dependency id="WebSocket4Net" version="0.13.1" />
+        <dependency id="Newtonsoft.Json" version="9.0.1" />
+        <dependency id="WebSocket4Net" version="0.14.1" />
     </dependencies>
   </metadata>
   <files>

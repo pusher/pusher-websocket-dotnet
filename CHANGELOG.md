@@ -1,4 +1,11 @@
 # Changelog
+## 0.4.0
+* [CHANGED] MemberAdded event handler is now aware of *which* member has been added
+* [ADDED] Unbind methods
+* [ADDED] Ability to change cluster (thanks @Misiu)
+* [CHANGED] Update dependencies
+  * Newtonsoft.Json 9.0.1
+  * WebSocket4Net 0.14.1
 
 ## 0.3.0
 
