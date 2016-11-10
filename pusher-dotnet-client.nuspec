@@ -15,8 +15,8 @@ Register at http://pusher.com.</description>
     <copyright>Copyright 2015</copyright>
     <tags>pusher realtime websocket</tags>
     <dependencies>
-        <dependency id="Newtonsoft.Json" version="7.0.1" />
-        <dependency id="WebSocket4Net" version="0.13.1" />
+        <dependency id="Newtonsoft.Json" version="9.0.1" />
+        <dependency id="WebSocket4Net" version="0.14.1" />
     </dependencies>
   </metadata>
   <files>
