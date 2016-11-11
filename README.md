@@ -24,6 +24,7 @@ See [the example app](https://github.com/pusher-community/pusher-websocket-dotne
 _pusher = new Pusher("YOUR_APP_KEY");
 _pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
 _pusher.Error += _pusher_Error;
+_pusher.Connect();
 ```
 
 where `_pusher_ConnectionStateChanged` and `_pusher_Error` are custom event handlers such as
@@ -48,6 +49,7 @@ _pusher = new Pusher("YOUR_APP_KEY", new PusherOptions(){
 });
 _pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
 _pusher.Error += _pusher_Error;
+_pusher.Connect();
 ```
 
 Or if you are on a non default cluster (e.g. eu):
@@ -58,6 +60,7 @@ _pusher = new Pusher("YOUR_APP_KEY", new PusherOptions(){
 });
 _pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
 _pusher.Error += _pusher_Error;
+_pusher.Connect();
 ```
 
 ### Subscribe to a public or private channel
