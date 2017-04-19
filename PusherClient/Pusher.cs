@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace PusherClient
 {
@@ -100,20 +101,14 @@ namespace PusherClient
 
         #region Public Methods
 
+        [MethodImpl(MethodImplOptions.Synchronized)]
         public void Connect()
         {
             // Check current connection state
             if (_connection != null)
             {
-                switch (_connection.State)
-                {
-                    case ConnectionState.Connected:
-                        Trace.TraceEvent(TraceEventType.Warning, 0, "Attempt to connect when connection is already in 'Connected' state. New attempt has been ignored.");
-                        break;
-                    case ConnectionState.Connecting:
-                        Trace.TraceEvent(TraceEventType.Warning, 0, "Attempt to connect when connection is already in 'Connecting' state. New attempt has been ignored.");
-                        break;
-                }
+              Trace.TraceEvent(TraceEventType.Warning, 0, "Attempt to connect when another connection has already started. New attempt has been ignored.");
+              return;
             }
 
             var scheme = "ws://";
