@@ -113,10 +113,6 @@ namespace PusherClient
                     case ConnectionState.Connecting:
                         Trace.TraceEvent(TraceEventType.Warning, 0, "Attempt to connect when connection is already in 'Connecting' state. New attempt has been ignored.");
                         break;
-                    case ConnectionState.Failed:
-                        Trace.TraceEvent(TraceEventType.Error, 0, "Cannot attempt re-connection once in 'Failed' state");
-                        RaiseError(new PusherException("Cannot attempt re-connection once in 'Failed' state", ErrorCodes.ConnectionFailed));
-                        break;
                 }
             }
 
@@ -127,7 +123,7 @@ namespace PusherClient
 
             // TODO: Fallback to secure?
 
-            string url = String.Format("{0}{1}/app/{2}?protocol={3}&client={4}&version={5}", 
+            string url = String.Format("{0}{1}/app/{2}?protocol={3}&client={4}&version={5}",
                 scheme, _options.Host, _applicationKey, Settings.Default.ProtocolVersion, Settings.Default.ClientName,
                 Settings.Default.VersionNumber);
 
@@ -143,7 +139,7 @@ namespace PusherClient
                 }
             }
             _connection.Connect();
-            
+
         }
 
         public void Disconnect()

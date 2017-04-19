@@ -6,7 +6,6 @@
         Connecting,
         Connected,
         Unavailable,
-        Failed,
         Disconnected,
         WaitingToReconnect
     }
