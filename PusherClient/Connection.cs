@@ -226,7 +226,6 @@ namespace PusherClient
                 ChangeState(ConnectionState.WaitingToReconnect);
                 Thread.Sleep(_backOffMillis);
                 _backOffMillis = Math.Min(MAX_BACKOFF_MILLIS, _backOffMillis + BACK_OFF_MILLIS_INCREMENT);
-                ChangeState(ConnectionState.Connecting);
                 Connect();
             }
         }
