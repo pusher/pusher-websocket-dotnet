@@ -5,7 +5,6 @@
         Initialized,
         Connecting,
         Connected,
-        Unavailable,
         Disconnected,
         WaitingToReconnect
     }
