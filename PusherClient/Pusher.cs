@@ -131,9 +131,21 @@ namespace PusherClient
                 scheme, _options.Host, _applicationKey, Settings.Default.ProtocolVersion, Settings.Default.ClientName,
                 Settings.Default.VersionNumber);
 
+            UnregisterEventsOnConnection();
+
+            if (_connection != null)
+                _connection.Disconnect();
+
             _connection = new Connection(this, url);
+            RegisterEventsOnConnection();
+            _connection.Connect();
+            
+        }
+
+        private void RegisterEventsOnConnection()
+        {
             _connection.Connected += _connection_Connected;
-            _connection.ConnectionStateChanged +=_connection_ConnectionStateChanged;
+            _connection.ConnectionStateChanged += _connection_ConnectionStateChanged;
             if (_errorEvent != null)
             {
                 // subscribe to the connection's error handler
@@ -142,12 +154,29 @@ namespace PusherClient
                     _connection.Error += handler;
                 }
             }
-            _connection.Connect();
-            
+        }
+
+        private void UnregisterEventsOnConnection()
+        {
+            if (_connection != null)
+            {
+                _connection.Connected -= _connection_Connected;
+                _connection.ConnectionStateChanged -= _connection_ConnectionStateChanged;
+
+                if (_errorEvent != null)
+                {
+                    // subscribe to the connection's error handler
+                    foreach (ErrorEventHandler handler in _errorEvent.GetInvocationList())
+                    {
+                        _connection.Error -= handler;
+                    }
+                }
+            }
         }
 
         public void Disconnect()
         {
+            UnregisterEventsOnConnection();
             _connection.Disconnect();
         }
 
