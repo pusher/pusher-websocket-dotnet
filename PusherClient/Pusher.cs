@@ -133,6 +133,9 @@ namespace PusherClient
 
             UnregisterEventsOnConnection();
 
+            if (_connection != null)
+                _connection.Disconnect();
+
             _connection = new Connection(this, url);
             RegisterEventsOnConnection();
             _connection.Connect();
