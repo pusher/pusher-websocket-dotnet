@@ -100,50 +100,43 @@ namespace PusherClient
 
         #region Public Methods
 
+        [MethodImpl(MethodImplOptions.Synchronized)]
         public void Connect()
         {
-            // Check current connection state
-            if (_connection != null)
+            // Prevent multiple concurrent connections
+            lock(_lockingObject)
             {
-                switch (_connection.State)
+                // Ensure we only ever attempt to connect once
+                if (_connection != null)
                 {
-                    case ConnectionState.Connected:
-                        Trace.TraceEvent(TraceEventType.Warning, 0, "Attempt to connect when connection is already in 'Connected' state. New attempt has been ignored.");
-                        break;
-                    case ConnectionState.Connecting:
-                        Trace.TraceEvent(TraceEventType.Warning, 0, "Attempt to connect when connection is already in 'Connecting' state. New attempt has been ignored.");
-                        break;
-                    case ConnectionState.Failed:
-                        Trace.TraceEvent(TraceEventType.Error, 0, "Cannot attempt re-connection once in 'Failed' state");
-                        RaiseError(new PusherException("Cannot attempt re-connection once in 'Failed' state", ErrorCodes.ConnectionFailed));
-                        break;
+                  Trace.TraceEvent(TraceEventType.Warning, 0, "Attempt to connect when another connection has already started. New attempt has been ignored.");
+                  return;
                 }
-            }
 
-            var scheme = "ws://";
+                var scheme = "ws://";
 
-            if (_options.Encrypted)
-                scheme = "wss://";
+                if (_options.Encrypted)
+                    scheme = "wss://";
 
-            // TODO: Fallback to secure?
+                // TODO: Fallback to secure?
 
-            string url = String.Format("{0}{1}/app/{2}?protocol={3}&client={4}&version={5}", 
-                scheme, _options.Host, _applicationKey, Settings.Default.ProtocolVersion, Settings.Default.ClientName,
-                Settings.Default.VersionNumber);
+                string url = String.Format("{0}{1}/app/{2}?protocol={3}&client={4}&version={5}",
+                    scheme, _options.Host, _applicationKey, Settings.Default.ProtocolVersion, Settings.Default.ClientName,
+                    Settings.Default.VersionNumber);
 
-            _connection = new Connection(this, url);
-            _connection.Connected += _connection_Connected;
-            _connection.ConnectionStateChanged +=_connection_ConnectionStateChanged;
-            if (_errorEvent != null)
-            {
-                // subscribe to the connection's error handler
-                foreach (ErrorEventHandler handler in _errorEvent.GetInvocationList())
+                _connection = new Connection(this, url);
+                _connection.Connected += _connection_Connected;
+                _connection.ConnectionStateChanged +=_connection_ConnectionStateChanged;
+                if (_errorEvent != null)
                 {
-                    _connection.Error += handler;
+                    // subscribe to the connection's error handler
+                    foreach (ErrorEventHandler handler in _errorEvent.GetInvocationList())
+                    {
+                        _connection.Error += handler;
+                    }
                 }
+                _connection.Connect();
             }
-            _connection.Connect();
-            
         }
 
         public void Disconnect()
