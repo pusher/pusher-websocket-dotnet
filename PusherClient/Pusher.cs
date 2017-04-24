@@ -39,6 +39,8 @@ namespace PusherClient
         private Connection _connection = null;
         private ErrorEventHandler _errorEvent;
 
+        private readonly object _lockingObject = new object();
+
         public event ErrorEventHandler Error
         {
             add
@@ -100,7 +102,6 @@ namespace PusherClient
 
         #region Public Methods
 
-        [MethodImpl(MethodImplOptions.Synchronized)]
         public void Connect()
         {
             // Prevent multiple concurrent connections
