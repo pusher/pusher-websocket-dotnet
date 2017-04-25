@@ -126,23 +126,49 @@ namespace PusherClient
                     Settings.Default.VersionNumber);
 
                 _connection = new Connection(this, url);
-                _connection.Connected += _connection_Connected;
-                _connection.ConnectionStateChanged +=_connection_ConnectionStateChanged;
-                if (_errorEvent != null)
-                {
-                    // subscribe to the connection's error handler
-                    foreach (ErrorEventHandler handler in _errorEvent.GetInvocationList())
-                    {
-                        _connection.Error += handler;
-                    }
-                }
+                RegisterEventsOnConnection();
                 _connection.Connect();
+            }
+        }
+
+        private void RegisterEventsOnConnection()
+        {
+            _connection.Connected += _connection_Connected;
+            _connection.ConnectionStateChanged += _connection_ConnectionStateChanged;
+            if (_errorEvent != null)
+            {
+                // subscribe to the connection's error handler
+                foreach (ErrorEventHandler handler in _errorEvent.GetInvocationList())
+                {
+                    _connection.Error += handler;
+                }
             }
         }
 
         public void Disconnect()
         {
+            UnregisterEventsOnDisconnection();
+            MarkChannelsAsUnsubscribed();
             _connection.Disconnect();
+            _connection = null;
+        }
+
+        private void UnregisterEventsOnDisconnection()
+        {
+            if (_connection != null)
+            {
+                _connection.Connected -= _connection_Connected;
+                _connection.ConnectionStateChanged -= _connection_ConnectionStateChanged;
+
+                if (_errorEvent != null)
+                {
+                    // unsubscribe to the connection's error handler
+                    foreach (ErrorEventHandler handler in _errorEvent.GetInvocationList())
+                    {
+                        _connection.Error -= handler;
+                    }
+                }
+            }
         }
 
         public Channel Subscribe(string channelName)

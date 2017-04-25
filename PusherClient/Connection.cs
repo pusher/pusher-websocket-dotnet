@@ -75,7 +75,13 @@ namespace PusherClient
         internal void Disconnect()
         {
             _allowReconnect = false;
+
+            _websocket.Opened -= websocket_Opened;
+            _websocket.Error -= websocket_Error;
+            _websocket.Closed -= websocket_Closed;
+            _websocket.MessageReceived -= websocket_MessageReceived;
             _websocket.Close();
+
             ChangeState(ConnectionState.Disconnected);
         }
 
