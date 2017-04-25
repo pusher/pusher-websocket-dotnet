@@ -1,4 +1,9 @@
 # Changelog
+
+## 0.5.0
+* [CHANGED] After calling Connect(), subsequent calls will no-op unless Disconnect() is called first.
+* [CHANGED] Event listeners are removed from _websocket and _connection on disconnect
+
 ## 0.4.0
 * [CHANGED] MemberAdded event handler is now aware of *which* member has been added
 * [ADDED] Unbind methods
