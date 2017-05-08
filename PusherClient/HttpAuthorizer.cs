@@ -5,7 +5,8 @@ namespace PusherClient
 {
     public class HttpAuthorizer: IAuthorizer
     {
-        private Uri _authEndpoint;
+        private readonly Uri _authEndpoint;
+
         public HttpAuthorizer(string authEndpoint)
         {
             _authEndpoint = new Uri(authEndpoint);
@@ -15,9 +16,9 @@ namespace PusherClient
         {
             string authToken = null;
 
-            using (var webClient = new System.Net.WebClient())
+            using (var webClient = new WebClient())
             {
-                string data = String.Format("channel_name={0}&socket_id={1}", channelName, socketId);
+                string data = string.Format("channel_name={0}&socket_id={1}", channelName, socketId);
                 webClient.Headers[HttpRequestHeader.ContentType] = "application/x-www-form-urlencoded";
                 authToken = webClient.UploadString(_authEndpoint, "POST", data);
             }

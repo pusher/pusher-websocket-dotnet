@@ -13,5 +13,10 @@
         public const string CHANNEL_MEMBER_ADDED = "pusher_internal:member_added";
         public const string CHANNEL_MEMBER_REMOVED = "pusher_internal:member_removed";
 
+        public const string InsecureSchema = "ws://";
+        public const string SecureSchema = "wss://";
+
+        public const string PrivateChannel = "private-";
+        public const string PresenceChannel = "presence-";
     }
 }

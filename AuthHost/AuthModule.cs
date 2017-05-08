@@ -1,18 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Configuration;
 using Nancy;
 using PusherServer;
-using System.Configuration;
 
 namespace AuthHost
 {
     public class AuthModule : NancyModule
     {
-
-        #region Properties
 
         public string PusherApplicationKey 
         {
@@ -38,15 +32,13 @@ namespace AuthHost
             }
         }
 
-        #endregion
-
         public AuthModule()
         {
             var provider = new Pusher(PusherApplicationID, PusherApplicationKey, PusherApplicationSecret);
 
             Post["/auth/{username}", (ctx) => ctx.Request.Form.channel_name && ctx.Request.Form.socket_id] = _ => 
             {
-                Console.WriteLine(String.Format("Processing auth request for '{0}' channel, for socket ID '{1}'", Request.Form.channel_name, Request.Form.socket_id));
+                Console.WriteLine(string.Format("Processing auth request for '{0}' channel, for socket ID '{1}'", Request.Form.channel_name, Request.Form.socket_id));
 
                 string channel_name = Request.Form.channel_name;
                 string socket_id = Request.Form.socket_id;

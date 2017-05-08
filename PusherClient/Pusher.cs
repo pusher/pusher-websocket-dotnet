@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using Newtonsoft.Json;
 using System.Diagnostics;
+using Newtonsoft.Json;
 
 namespace PusherClient
 {
@@ -29,10 +29,12 @@ namespace PusherClient
 
     public class Pusher : EventEmitter
     {
-        // create single TraceSource instance to be used for logging
-        public static TraceSource Trace = new TraceSource("Pusher");
+        public event ConnectedEventHandler Connected;
+        public event ConnectionStateChangedEventHandler ConnectionStateChanged;
 
-        const int PROTOCOL_NUMBER = 5;
+        // create single TraceSource instance to be used for logging
+        public static TraceSource Trace = new TraceSource(nameof(Pusher));
+
         private readonly string _applicationKey = null;
         private readonly PusherOptions _options = null;
 
@@ -40,6 +42,7 @@ namespace PusherClient
         private ErrorEventHandler _errorEvent;
 
         private readonly object _lockingObject = new object();
+        private ConcurrentDictionary<string, Channel> _channels = new ConcurrentDictionary<string, Channel>();
 
         public event ErrorEventHandler Error
         {
@@ -61,12 +64,6 @@ namespace PusherClient
             }
         }
 
-        public event ConnectedEventHandler Connected;
-        public event ConnectionStateChangedEventHandler ConnectionStateChanged;
-        public ConcurrentDictionary<string, Channel> Channels = new ConcurrentDictionary<string, Channel>();
-
-        #region Properties
-
         public string SocketID {
             get
             {
@@ -82,8 +79,16 @@ namespace PusherClient
             }
         }
 
-        #endregion
+        public Dictionary<string, Channel> Channels
+        {
+            get { return _channels; }
+            set { _channels = value; }
+        }
 
+        internal PusherOptions Options
+        {
+            get { return _options; }
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Pusher" /> class.
@@ -92,15 +97,13 @@ namespace PusherClient
         /// <param name="options">The options.</param>
         public Pusher(string applicationKey, PusherOptions options = null)
         {
+            if (string.IsNullOrWhiteSpace(applicationKey))
+                throw new ArgumentException("The application key cannot be null or whitespace");
+
             _applicationKey = applicationKey;
 
-            if (options == null)
-                _options = new PusherOptions() { Encrypted = false };
-            else
-                _options = options;
+            _options = options ?? new PusherOptions { Encrypted = false };
         }
-
-        #region Public Methods
 
         public void Connect()
         {
@@ -110,19 +113,23 @@ namespace PusherClient
                 // Ensure we only ever attempt to connect once
                 if (_connection != null)
                 {
-                  Trace.TraceEvent(TraceEventType.Warning, 0, "Attempt to connect when another connection has already started. New attempt has been ignored.");
-                  return;
+                    Trace.TraceEvent(TraceEventType.Warning, 0, "Attempt to connect when another connection has already started. New attempt has been ignored.");
+                    return;
                 }
 
-                var scheme = "ws://";
+                var scheme = Constants.InsecureSchema;
 
                 if (_options.Encrypted)
-                    scheme = "wss://";
+                    scheme = Constants.SecureSchema;
 
                 // TODO: Fallback to secure?
 
-                string url = String.Format("{0}{1}/app/{2}?protocol={3}&client={4}&version={5}",
-                    scheme, _options.Host, _applicationKey, Settings.Default.ProtocolVersion, Settings.Default.ClientName,
+                string url = string.Format("{0}{1}/app/{2}?protocol={3}&client={4}&version={5}",
+                    scheme,
+                    _options.Host,
+                    _applicationKey,
+                    Settings.Default.ProtocolVersion,
+                    Settings.Default.ClientName,
                     Settings.Default.VersionNumber);
 
                 _connection = new Connection(this, url);
@@ -135,6 +142,7 @@ namespace PusherClient
         {
             _connection.Connected += _connection_Connected;
             _connection.ConnectionStateChanged += _connection_ConnectionStateChanged;
+
             if (_errorEvent != null)
             {
                 // subscribe to the connection's error handler
@@ -176,32 +184,36 @@ namespace PusherClient
             if (AlreadySubscribed(channelName))
             {
                 Trace.TraceEvent(TraceEventType.Warning, 0, "Channel '" + channelName + "' is already subscribed to. Subscription event has been ignored.");
-                return Channels[channelName];
+                return _channels[channelName];
             }
 
             // If private or presence channel, check that auth endpoint has been set
             var chanType = ChannelTypes.Public;
 
-            if (channelName.ToLower().StartsWith("private-"))
+            if (channelName.ToLowerInvariant().StartsWith(Constants.PrivateChannel))
+            {
                 chanType = ChannelTypes.Private;
-            else if (channelName.ToLower().StartsWith("presence-"))
+            }
+            else if (channelName.ToLowerInvariant().StartsWith(Constants.PresenceChannel))
+            {
                 chanType = ChannelTypes.Presence;
+            }
 
             return SubscribeToChannel(chanType, channelName);
         }
 
         private Channel SubscribeToChannel(ChannelTypes type, string channelName)
         {
-            if (!Channels.ContainsKey(channelName))
+            if (!_channels.ContainsKey(channelName))
                 CreateChannel(type, channelName);
 
             if (State == ConnectionState.Connected)
             {
                 if (type == ChannelTypes.Presence || type == ChannelTypes.Private)
                 {
-                    string jsonAuth = _options.Authorizer.Authorize(channelName, _connection.SocketID);
+                    var jsonAuth = _options.Authorizer.Authorize(channelName, _connection.SocketID);
 
-                    var template = new { auth = String.Empty, channel_data = String.Empty };
+                    var template = new { auth = string.Empty, channel_data = string.Empty };
                     var message = JsonConvert.DeserializeAnonymousType(jsonAuth, template);
 
                     _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName, auth = message.auth, channel_data = message.channel_data } }));
@@ -213,7 +225,7 @@ namespace PusherClient
                 }
             }
 
-            return Channels[channelName];
+            return _channels[channelName];
         }
 
         private void CreateChannel(ChannelTypes type, string channelName)
@@ -244,10 +256,6 @@ namespace PusherClient
             }
         }
 
-        #endregion
-
-        #region Internal Methods
-
         internal void Trigger(string channelName, string eventName, object obj)
         {
             _connection.Send(JsonConvert.SerializeObject(new { @event = eventName, channel = channelName, data = obj }));
@@ -258,10 +266,6 @@ namespace PusherClient
             if (_connection.State == ConnectionState.Connected)
               _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_UNSUBSCRIBE, data = new { channel = channelName } }));
         }
-
-        #endregion
-
-        #region Event Handlers
 
         private void _connection_ConnectionStateChanged(object sender, ConnectionState state)
         {
@@ -279,41 +283,39 @@ namespace PusherClient
                 ConnectionStateChanged(sender, state);
         }
 
-        void _connection_Connected(object sender)
+        private void _connection_Connected(object sender)
         {
-            if (this.Connected != null)
-                this.Connected(sender);
+            if (Connected != null)
+                Connected(sender);
         }
 
         private void RaiseError(PusherException error)
         {
             var handler = _errorEvent;
-            if (handler != null) handler(this, error);
-        }
 
-        #endregion
+            if (handler != null)
+                handler(this, error);
+        }
 
         private bool AlreadySubscribed(string channelName)
         {
-            return Channels.ContainsKey(channelName) && Channels[channelName].IsSubscribed;
+            return _channels.ContainsKey(channelName) && _channels[channelName].IsSubscribed;
         }
 
-        internal void MarkChannelsAsUnsubscribed()
+        private void MarkChannelsAsUnsubscribed()
         {
-            foreach (var channel in Channels)
+            foreach (var channel in _channels)
             {
                 channel.Value.Unsubscribe();
             }
-
         }
 
-        internal void SubscribeExistingChannels()
+        private void SubscribeExistingChannels()
         {
-            foreach (var channel in Channels)
+            foreach (var channel in _channels)
             {
                 Subscribe(channel.Key);
             }
         }
-
     }
 }

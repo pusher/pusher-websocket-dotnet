@@ -1,13 +1,13 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace PusherClient
 {
     public class EventEmitter
     {
-        private Dictionary<string, List<Action<dynamic>>> _eventListeners = new Dictionary<string, List<Action<dynamic>>>();
-        private List<Action<string, dynamic>> _generalListeners = new List<Action<string, dynamic>>();
+        private readonly Dictionary<string, List<Action<dynamic>>> _eventListeners = new Dictionary<string, List<Action<dynamic>>>();
+        private readonly List<Action<string, dynamic>> _generalListeners = new List<Action<string, dynamic>>();
 
         public void Bind(string eventName, Action<dynamic> listener)
         {
@@ -43,8 +43,8 @@ namespace PusherClient
 
         public void UnbindAll()
         {
-          _eventListeners.Clear();
-          _generalListeners.Clear();
+            _eventListeners.Clear();
+            _generalListeners.Clear();
         }
 
         internal void EmitEvent(string eventName, string data)
@@ -64,7 +64,6 @@ namespace PusherClient
                     action(obj);
                 }
             }
-
         }
     }
 }

@@ -1,9 +1,9 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Diagnostics;
+using System.Threading;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using WebSocket4Net;
-using System.Threading;
 
 namespace PusherClient
 {
@@ -11,8 +11,8 @@ namespace PusherClient
     {
         private WebSocket _websocket = null;
         private string _socketId = null;
-        private string _url = null;
-        private Pusher _pusher = null;
+        private readonly string _url = null;
+        private readonly Pusher _pusher = null;
         private ConnectionState _state = ConnectionState.Initialized;
         private bool _allowReconnect = true;
 
@@ -24,8 +24,6 @@ namespace PusherClient
 
         private static readonly int MAX_BACKOFF_MILLIS = 10000;
         private static readonly int BACK_OFF_MILLIS_INCREMENT = 1000;
-
-        #region Properties
 
         internal string SocketID
         {
@@ -42,15 +40,11 @@ namespace PusherClient
             }
         }
 
-        #endregion
-
         public Connection(Pusher pusher, string url)
         {
-            this._url = url;
-            this._pusher = pusher;
+            _url = url;
+            _pusher = pusher;
         }
-
-        #region Internal Methods
 
         internal void Connect()
         {
@@ -87,7 +81,7 @@ namespace PusherClient
 
         internal void Send(string message)
         {
-            if (this.State == ConnectionState.Connected)
+            if (State == ConnectionState.Connected)
             {
                 Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Sending: " + message);
                 Debug.WriteLine("Sending: " + message);
@@ -95,16 +89,12 @@ namespace PusherClient
             }
         }
 
-        #endregion
-
-        #region Private Methods
-
         private void ChangeState(ConnectionState state)
         {
-            this._state = state;
+            _state = state;
 
             if (ConnectionStateChanged != null)
-                ConnectionStateChanged(this, this._state);
+                ConnectionStateChanged(this, _state);
         }
 
         private void RaiseError(PusherException error)
@@ -217,8 +207,6 @@ namespace PusherClient
                 if (_pusher.Channels.ContainsKey(message.channel))
                     _pusher.Channels[message.channel].EmitEvent(message.@event, message.data);
             }
-
-            
         }
 
         private void websocket_Opened(object sender, EventArgs e)
@@ -275,7 +263,5 @@ namespace PusherClient
 
             RaiseError(new PusherException(parsed.message, error));
         }
-
-        #endregion
     }
 }

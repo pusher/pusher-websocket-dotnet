@@ -11,6 +11,5 @@ namespace PusherClient
         {
             PusherCode = code;
         }
-
     }
 }

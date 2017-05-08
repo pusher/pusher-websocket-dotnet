@@ -1,10 +1,11 @@
-﻿using Newtonsoft.Json;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace PusherClient
 {
     public delegate void MemberEventHandler(object sender);
     public delegate void MemberAddedEventHandler(object sender, KeyValuePair<string, dynamic> member);
+
     public class PresenceChannel : PrivateChannel
     {
         public Dictionary<string, dynamic> Members = new Dictionary<string, dynamic>();
@@ -13,8 +14,6 @@ namespace PusherClient
         public event MemberEventHandler MemberRemoved;
 
         public PresenceChannel(string channelName, Pusher pusher) : base(channelName, pusher) { }
-
-        #region Internal Methods
 
         internal override void SubscriptionSucceeded(string data)
         {
@@ -48,10 +47,6 @@ namespace PusherClient
             }
         }
 
-        #endregion
-
-        #region Private Methods
-
         private Dictionary<string, dynamic> ParseMembersList(string data)
         {
             Dictionary<string, dynamic> members = new Dictionary<string, dynamic>();
@@ -77,8 +72,5 @@ namespace PusherClient
 
             return new KeyValuePair<string, dynamic>(id, val);
         }
-
-        #endregion
-
     }
 }

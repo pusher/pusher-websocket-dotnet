@@ -4,7 +4,7 @@
 
     public class Channel : EventEmitter
     {
-        private Pusher _pusher = null;
+        private readonly Pusher _pusher = null;
         private bool _isSubscribed = false;
 
         public event SubscriptionEventHandler Subscribed;
@@ -21,7 +21,7 @@
         public Channel(string channelName, Pusher pusher)
         {
             _pusher = pusher;
-            this.Name = channelName;
+            Name = channelName;
         }
 
         internal virtual void SubscriptionSucceeded(string data)
@@ -38,13 +38,12 @@
         public void Unsubscribe()
         {
             _isSubscribed = false;
-            _pusher.Unsubscribe(this.Name);
+            _pusher.Unsubscribe(Name);
         }
 
         public void Trigger(string eventName, object obj)
         {
-            _pusher.Trigger(this.Name, eventName, obj);
+            _pusher.Trigger(Name, eventName, obj);
         }
-
     }
 }

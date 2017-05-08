@@ -1,19 +1,17 @@
-﻿using PusherClient;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Web;
+using PusherClient;
 
 namespace ExampleApplication
 {
-
     class Program
     {
-        static Pusher _pusher = null;
-        static Channel _chatChannel = null;
-        static PresenceChannel _presenceChannel = null;
-        static string _name;
+        private static Pusher _pusher = null;
+        private static Channel _chatChannel = null;
+        private static PresenceChannel _presenceChannel = null;
+        private static string _name;
             
         static void Main(string[] args)
         {
@@ -31,17 +29,32 @@ namespace ExampleApplication
                 line = Console.ReadLine();
 
                 if (line == "quit")
+                {
                     break;
+                }
                 else
-                    _chatChannel.Trigger("client-my-event", new { message = line, name = _name });            
+                {
+                    _chatChannel.Trigger("client-my-event", new {message = line, name = _name});
+                }
 
             } while (line != null);
 
             _pusher.Disconnect();
-
         }
 
-        #region Pusher Initiation / Connection
+        static void ListMembers()
+        {
+            List<string> names = new List<string>();
+
+            foreach (var mem in _presenceChannel.Members)
+            {
+                names.Add((string)mem.Value.name.Value);
+            }
+
+            Console.WriteLine("[MEMBERS] " + names.Aggregate((i, j) => i + ", " + j));
+        }
+
+        // Pusher Initiation / Connection
 
         private static void InitPusher()
         {
@@ -53,7 +66,7 @@ namespace ExampleApplication
 
             // Setup private channel
             _chatChannel = _pusher.Subscribe("private-channel");
-            _chatChannel.Subscribed += _chatChannel_Subscribed;
+            _chatChannel.Subscribed += ChatChannel_Subscribed;
 
             // Inline binding!
             _chatChannel.Bind("client-my-event", (dynamic data) =>
@@ -63,66 +76,46 @@ namespace ExampleApplication
 
             // Setup presence channel
             _presenceChannel = (PresenceChannel)_pusher.Subscribe("presence-channel");
-            _presenceChannel.Subscribed += _presenceChannel_Subscribed;
-            _presenceChannel.MemberAdded += _presenceChannel_MemberAdded;
-            _presenceChannel.MemberRemoved += _presenceChannel_MemberRemoved;
+            _presenceChannel.Subscribed += PresenceChannel_Subscribed;
+            _presenceChannel.MemberAdded += PresenceChannel_MemberAdded;
+            _presenceChannel.MemberRemoved += PresenceChannel_MemberRemoved;
 
             _pusher.Connect();
         }
 
         static void _pusher_Error(object sender, PusherException error)
         {
-            Console.WriteLine("Pusher Error: " + error.ToString());
+            Console.WriteLine("Pusher Error: " + error);
         }
 
         static void _pusher_ConnectionStateChanged(object sender, ConnectionState state)
         {
-            Console.WriteLine("Connection state: " + state.ToString());
+            Console.WriteLine("Connection state: " + state);
         }
 
-        #endregion
+        // Presence Channel Events
 
-        #region Presence Channel Events
-
-        static void _presenceChannel_Subscribed(object sender)
+        static void PresenceChannel_Subscribed(object sender)
         {
             ListMembers();
         }
 
-        static void _presenceChannel_MemberRemoved(object sender)
+        static void PresenceChannel_MemberRemoved(object sender)
         {
             ListMembers();
         }
 
-        static void _presenceChannel_MemberAdded(object sender, KeyValuePair<string, dynamic> member)
+        static void PresenceChannel_MemberAdded(object sender, KeyValuePair<string, dynamic> member)
         {
             Console.WriteLine((string)member.Value.name.Value + " has joined");
             ListMembers();
         }
 
-        #endregion
+        // Chat Channel Events
 
-        #region Chat Channel Events
-
-        static void _chatChannel_Subscribed(object sender)
+        static void ChatChannel_Subscribed(object sender)
         {
             Console.WriteLine("Hi " + _name + "! Type 'quit' to exit, otherwise type anything to chat!");
         }
-
-        #endregion
-
-        static void ListMembers()
-        {
-            List<string> names = new List<string>();
-
-            foreach (var mem in _presenceChannel.Members)
-            {
-                names.Add((string)mem.Value.name.Value);
-            }
-
-            Console.WriteLine("[MEMBERS] " + names.Aggregate((i,j) => i + ", " + j ));
-        }
-        
     }
-
 }
