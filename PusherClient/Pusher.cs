@@ -30,6 +30,7 @@ namespace PusherClient
     public class Pusher : EventEmitter
     {
         public event ConnectedEventHandler Connected;
+        public event ConnectedEventHandler Disconnected;
         public event ConnectionStateChangedEventHandler ConnectionStateChanged;
 
         // create single TraceSource instance to be used for logging
@@ -98,7 +99,7 @@ namespace PusherClient
         public Pusher(string applicationKey, PusherOptions options = null)
         {
             if (string.IsNullOrWhiteSpace(applicationKey))
-                throw new ArgumentException("The application key cannot be null or whitespace");
+                throw new ArgumentException("The application key cannot be null or whitespace", nameof(applicationKey));
 
             _applicationKey = applicationKey;
 
@@ -155,32 +156,46 @@ namespace PusherClient
 
         public void Disconnect()
         {
-            UnregisterEventsOnDisconnection();
-            MarkChannelsAsUnsubscribed();
-            _connection.Disconnect();
-            _connection = null;
+            if (_connection != null)
+            {
+                if (Disconnected != null)
+                    Disconnected(this);
+
+                UnregisterEventsOnDisconnection();
+                MarkChannelsAsUnsubscribed();
+                _connection.Disconnect();
+                _connection = null;
+            }
         }
 
         private void UnregisterEventsOnDisconnection()
         {
-            if (_connection != null)
-            {
-                _connection.Connected -= _connection_Connected;
-                _connection.ConnectionStateChanged -= _connection_ConnectionStateChanged;
+            _connection.Connected -= _connection_Connected;
+            _connection.ConnectionStateChanged -= _connection_ConnectionStateChanged;
 
-                if (_errorEvent != null)
+            if (_errorEvent != null)
+            {
+                // unsubscribe to the connection's error handler
+                foreach (ErrorEventHandler handler in _errorEvent.GetInvocationList())
                 {
-                    // unsubscribe to the connection's error handler
-                    foreach (ErrorEventHandler handler in _errorEvent.GetInvocationList())
-                    {
-                        _connection.Error -= handler;
-                    }
+                    _connection.Error -= handler;
                 }
             }
         }
 
         public Channel Subscribe(string channelName)
         {
+            if (string.IsNullOrWhiteSpace(channelName))
+            {
+                throw new ArgumentException("The channel name cannot be null or whitespace", nameof(channelName));
+            }
+
+            if (_connection == null || _connection.State != ConnectionState.Connected)
+            {
+                Trace.TraceEvent(TraceEventType.Warning, 0, "Attempt to subscribe when no connection is active. Subscription event attempt has been ignored.");
+                return null;
+            }
+
             if (AlreadySubscribed(channelName))
             {
                 Trace.TraceEvent(TraceEventType.Warning, 0, "Channel '" + channelName + "' is already subscribed to. Subscription event has been ignored.");
@@ -206,6 +221,8 @@ namespace PusherClient
         {
             if (!_channels.ContainsKey(channelName))
                 CreateChannel(type, channelName);
+
+            // this needs to handle a second subscription request whilstthe firsat one is pending
 
             if (State == ConnectionState.Connected)
             {
@@ -299,6 +316,8 @@ namespace PusherClient
 
         private bool AlreadySubscribed(string channelName)
         {
+            // BUG
+            // There is a period of time where we are subscribing and this will be false. So will try subscribing again
             return _channels.ContainsKey(channelName) && _channels[channelName].IsSubscribed;
         }
 

@@ -19,6 +19,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Files", "Files", "{2D9F07A0
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PusherClient.Tests", "PusherClient.Tests\PusherClient.Tests.csproj", "{F016BFD6-1BD2-4E30-A2C2-1A02A85C0478}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PusherClient.Tests.Utilities", "PusherClient.Tests.Utilities\PusherClient.Tests.Utilities.csproj", "{00F1F3BE-1210-4D06-89CA-F1E17898384C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +43,10 @@ Global
 		{F016BFD6-1BD2-4E30-A2C2-1A02A85C0478}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F016BFD6-1BD2-4E30-A2C2-1A02A85C0478}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F016BFD6-1BD2-4E30-A2C2-1A02A85C0478}.Release|Any CPU.Build.0 = Release|Any CPU
+		{00F1F3BE-1210-4D06-89CA-F1E17898384C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{00F1F3BE-1210-4D06-89CA-F1E17898384C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00F1F3BE-1210-4D06-89CA-F1E17898384C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00F1F3BE-1210-4D06-89CA-F1E17898384C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

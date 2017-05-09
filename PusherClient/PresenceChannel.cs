@@ -52,7 +52,7 @@ namespace PusherClient
             Dictionary<string, dynamic> members = new Dictionary<string, dynamic>();
 
             var dataAsObj = JsonConvert.DeserializeObject<dynamic>(data);
-            
+
             for (int i = 0; i < (int)dataAsObj.presence.count; i++)
             {
                 var id = (string)dataAsObj.presence.ids[i];

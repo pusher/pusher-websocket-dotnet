@@ -102,5 +102,27 @@ namespace PusherClient.Tests.UnitTests
             //Assert
             Assert.IsNotNull(pusher.Options);
         }
+
+        [Test]
+        public void PusherShouldThrowAnExceptionWhenSubscribeIsCalledWithAnEmptyStringForAChannelName()
+        {
+            // Arrange
+            ArgumentException caughtException = null;
+
+            // Act
+            try
+            {
+                var pusher = new Pusher("FakeAppKey");
+                pusher.Subscribe(string.Empty);
+            }
+            catch (ArgumentException ex)
+            {
+                caughtException = ex;
+            }
+
+            // Assert
+            Assert.IsNotNull(caughtException);
+            StringAssert.Contains("The channel name cannot be null or whitespace", caughtException.Message);
+        }
     }
 }
