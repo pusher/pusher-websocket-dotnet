@@ -6,7 +6,7 @@ using PusherClient.Tests.Utilities;
 namespace PusherClient.Tests.AcceptanceTests
 {
     [TestFixture]
-    public class PusherIntegrationTests
+    public class Connection
     {
         [Test]
         public void PusherShouldSuccessfulyConnectWhenGivenAValidAppKey()
@@ -117,6 +117,7 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         // TODO - Multi threading tests around connection
+        //http://blog.jerometerry.com/2014/06/multi-threaded-nunit-tests.html
 
         // TODO - Error handling in connection, prove with unit tests?
     }

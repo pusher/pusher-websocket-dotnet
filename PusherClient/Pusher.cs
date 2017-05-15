@@ -190,12 +190,6 @@ namespace PusherClient
                 throw new ArgumentException("The channel name cannot be null or whitespace", nameof(channelName));
             }
 
-            if (_connection == null || _connection.State != ConnectionState.Connected)
-            {
-                Trace.TraceEvent(TraceEventType.Warning, 0, "Attempt to subscribe when no connection is active. Subscription event attempt has been ignored.");
-                return null;
-            }
-
             if (AlreadySubscribed(channelName))
             {
                 Trace.TraceEvent(TraceEventType.Warning, 0, "Channel '" + channelName + "' is already subscribed to. Subscription event has been ignored.");

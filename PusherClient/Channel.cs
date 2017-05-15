@@ -8,6 +8,8 @@
         private bool _isSubscribed = false;
 
         public event SubscriptionEventHandler Subscribed;
+        public event SubscriptionEventHandler Unsubscribed;
+
         public string Name = null;
 
         public bool IsSubscribed
