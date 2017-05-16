@@ -8,7 +8,6 @@
         private bool _isSubscribed;
 
         public event SubscriptionEventHandler Subscribed;
-        public event SubscriptionEventHandler Unsubscribed;
 
         public string Name;
 
@@ -33,11 +32,8 @@
 
         public void Unsubscribe()
         {
-            _isSubscribed = false;
             _pusher.Unsubscribe(Name);
-
-            if (Unsubscribed != null)
-                Unsubscribed(this);
+            _isSubscribed = false;
         }
 
         public void Trigger(string eventName, object obj)

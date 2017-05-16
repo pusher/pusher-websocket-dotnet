@@ -174,26 +174,35 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             // Arrange
             var pusher = PusherFactory.GetPusher();
-            AutoResetEvent reset = new AutoResetEvent(false);
+            var connectedEvent = new AutoResetEvent(false);
 
             pusher.Connected += sender =>
             {
-                reset.Set();
+                connectedEvent.Set();
             };
+            
 
             pusher.Connect();
-            reset.WaitOne(TimeSpan.FromSeconds(5));
-            reset.Reset();
+
+            connectedEvent.WaitOne(TimeSpan.FromSeconds(5));
+            connectedEvent.Reset();
 
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName();
 
-            // Act
+            var subscribedEvent = new AutoResetEvent(false);
+
             var firstChannel = pusher.Subscribe(mockChannelName);
+            firstChannel.Subscribed += sender =>
+            {
+                subscribedEvent.Set();
+            };
+
+            // Act
             var secondChannel = pusher.Subscribe(mockChannelName);
+            subscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             // Assert
             Assert.AreEqual(firstChannel, secondChannel);
-            Assert.IsTrue(false);
         }
 
         [Test]
@@ -237,37 +246,30 @@ namespace PusherClient.Tests.AcceptanceTests
             // Arrange
             var pusher = PusherFactory.GetPusher();
 
-            var subscribedEvent = new AutoResetEvent(false);
-            var unsubscribedEvent = new AutoResetEvent(false);
-
-            subscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
-            unsubscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
+            var connectedEvent = new AutoResetEvent(false);
 
             pusher.Connected += sender =>
             {
-                unsubscribedEvent.Set();
+                connectedEvent.Set();
             };
 
-            pusher.Connect();
-
-            subscribedEvent.Reset();
-
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName();
+
+            var subscribedEvent = new AutoResetEvent(false);
 
             var channel = pusher.Subscribe(mockChannelName);
             channel.Subscribed += sender =>
             {
                 subscribedEvent.Set();
             };
-            channel.Unsubscribed += sender =>
-            {
-                unsubscribedEvent.Set();
-            };
 
-            unsubscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
+            pusher.Connect();
+
+            connectedEvent.WaitOne(TimeSpan.FromSeconds(5));
+            subscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             // Act
-            pusher.Unsubscribe(mockChannelName);
+            channel.Unsubscribe();
 
             // Assert
             Assert.IsNotNull(channel);
@@ -276,7 +278,7 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         [Test]
-        public void PusherShouldUnsubscribeAllTheSubscribedChannelsWhenTheConnectionIsDiconnected()
+        public void PusherShouldUnsubscribeAllTheSubscribedChannelsWhenTheConnectionIsDisconnected()
         {
             // Arrange
             var pusher = PusherFactory.GetPusher();
@@ -292,34 +294,23 @@ namespace PusherClient.Tests.AcceptanceTests
             connectedEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             var subscribedEvent1 = new AutoResetEvent(false);
-            var unsubscribedEvent1 = new AutoResetEvent(false);
             var subscribedEvent2 = new AutoResetEvent(false);
-            var unsubscribedEvent2 = new AutoResetEvent(false);
             var subscribedEvent3 = new AutoResetEvent(false);
-            var unsubscribedEvent3 = new AutoResetEvent(false);
 
             var mockChannelName1 = ChannelNameFactory.CreateUniqueChannelName(channelNamePostfix : "1");
             var mockChannelName2 = ChannelNameFactory.CreateUniqueChannelName(channelNamePostfix: "2");
             var mockChannelName3 = ChannelNameFactory.CreateUniqueChannelName(channelNamePostfix: "3");
 
-            var channel1 = SubscribeToChannel(pusher, mockChannelName1, subscribedEvent1, unsubscribedEvent1);
-            var channel2 = SubscribeToChannel(pusher, mockChannelName2, subscribedEvent2, unsubscribedEvent2);
-            var channel3 = SubscribeToChannel(pusher, mockChannelName3, subscribedEvent3, unsubscribedEvent3);
+            var channel1 = SubscribeToChannel(pusher, mockChannelName1, subscribedEvent1);
+            var channel2 = SubscribeToChannel(pusher, mockChannelName2, subscribedEvent2);
+            var channel3 = SubscribeToChannel(pusher, mockChannelName3, subscribedEvent3);
 
-            unsubscribedEvent1.WaitOne(TimeSpan.FromSeconds(5));
-            unsubscribedEvent2.WaitOne(TimeSpan.FromSeconds(5));
-            unsubscribedEvent3.WaitOne(TimeSpan.FromSeconds(5));
+            subscribedEvent1.WaitOne(TimeSpan.FromSeconds(5));
+            subscribedEvent2.WaitOne(TimeSpan.FromSeconds(5));
+            subscribedEvent3.WaitOne(TimeSpan.FromSeconds(5));
 
             // Act
             pusher.Disconnect();
-
-            // TODO Wire in the unsubscribe event
-            subscribedEvent1.WaitOne(TimeSpan.FromSeconds(5));
-            unsubscribedEvent1.WaitOne(TimeSpan.FromSeconds(5));
-            subscribedEvent2.WaitOne(TimeSpan.FromSeconds(5));
-            unsubscribedEvent2.WaitOne(TimeSpan.FromSeconds(5));
-            subscribedEvent3.WaitOne(TimeSpan.FromSeconds(5));
-            unsubscribedEvent3.WaitOne(TimeSpan.FromSeconds(5));
 
             // Assert
             Assert.IsNotNull(channel1);
@@ -342,19 +333,16 @@ namespace PusherClient.Tests.AcceptanceTests
             var pusher = PusherFactory.GetPusher();
 
             var subscribedEvent1 = new AutoResetEvent(false);
-            var unsubscribedEvent1 = new AutoResetEvent(false);
             var subscribedEvent2 = new AutoResetEvent(false);
-            var unsubscribedEvent2 = new AutoResetEvent(false);
             var subscribedEvent3 = new AutoResetEvent(false);
-            var unsubscribedEvent3 = new AutoResetEvent(false);
 
             var mockChannelName1 = ChannelNameFactory.CreateUniqueChannelName(channelNamePostfix: "1");
             var mockChannelName2 = ChannelNameFactory.CreateUniqueChannelName(channelNamePostfix: "2");
             var mockChannelName3 = ChannelNameFactory.CreateUniqueChannelName(channelNamePostfix: "3");
 
-            var channel1 = SubscribeToChannel(pusher, mockChannelName1, subscribedEvent1, unsubscribedEvent1);
-            var channel2 = SubscribeToChannel(pusher, mockChannelName2, subscribedEvent2, unsubscribedEvent2);
-            var channel3 = SubscribeToChannel(pusher, mockChannelName3, subscribedEvent3, unsubscribedEvent3);
+            var channel1 = SubscribeToChannel(pusher, mockChannelName1, subscribedEvent1);
+            var channel2 = SubscribeToChannel(pusher, mockChannelName2, subscribedEvent2);
+            var channel3 = SubscribeToChannel(pusher, mockChannelName3, subscribedEvent3);
 
             var connectedEvent = new AutoResetEvent(false);
 
@@ -402,44 +390,33 @@ namespace PusherClient.Tests.AcceptanceTests
             connectedEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             var subscribedEvent1 = new AutoResetEvent(false);
-            var unsubscribedEvent1 = new AutoResetEvent(false);
             var subscribedEvent2 = new AutoResetEvent(false);
-            var unsubscribedEvent2 = new AutoResetEvent(false);
             var subscribedEvent3 = new AutoResetEvent(false);
-            var unsubscribedEvent3 = new AutoResetEvent(false);
 
             var mockChannelName1 = ChannelNameFactory.CreateUniqueChannelName(channelNamePostfix: "1");
             var mockChannelName2 = ChannelNameFactory.CreateUniqueChannelName(channelNamePostfix: "2");
             var mockChannelName3 = ChannelNameFactory.CreateUniqueChannelName(channelNamePostfix: "3");
 
-            var channel1 = SubscribeToChannel(pusher, mockChannelName1, subscribedEvent1, unsubscribedEvent1);
-            var channel2 = SubscribeToChannel(pusher, mockChannelName2, subscribedEvent2, unsubscribedEvent2);
-            var channel3 = SubscribeToChannel(pusher, mockChannelName3, subscribedEvent3, unsubscribedEvent3);
+            var channel1 = SubscribeToChannel(pusher, mockChannelName1, subscribedEvent1);
+            var channel2 = SubscribeToChannel(pusher, mockChannelName2, subscribedEvent2);
+            var channel3 = SubscribeToChannel(pusher, mockChannelName3, subscribedEvent3);
 
-            unsubscribedEvent1.WaitOne(TimeSpan.FromSeconds(5));
-            unsubscribedEvent2.WaitOne(TimeSpan.FromSeconds(5));
-            unsubscribedEvent3.WaitOne(TimeSpan.FromSeconds(5));
+            subscribedEvent1.WaitOne(TimeSpan.FromSeconds(5));
+            subscribedEvent2.WaitOne(TimeSpan.FromSeconds(5));
+            subscribedEvent3.WaitOne(TimeSpan.FromSeconds(5));
 
             pusher.Disconnect();
-
-            // TODO Wire in the unsubscribe event
-            subscribedEvent1.WaitOne(TimeSpan.FromSeconds(5));
-            unsubscribedEvent1.WaitOne(TimeSpan.FromSeconds(5));
-            subscribedEvent2.WaitOne(TimeSpan.FromSeconds(5));
-            unsubscribedEvent2.WaitOne(TimeSpan.FromSeconds(5));
-            subscribedEvent3.WaitOne(TimeSpan.FromSeconds(5));
-            unsubscribedEvent3.WaitOne(TimeSpan.FromSeconds(5));
 
             subscribedEvent1.Reset();
             subscribedEvent2.Reset();
             subscribedEvent3.Reset();
 
+            // Act
+            pusher.Connect();
+
             subscribedEvent1.WaitOne(TimeSpan.FromSeconds(5));
             subscribedEvent2.WaitOne(TimeSpan.FromSeconds(5));
             subscribedEvent3.WaitOne(TimeSpan.FromSeconds(5));
-
-            // Act
-            pusher.Connect();
 
             // Assert
             Assert.IsNotNull(channel1);
@@ -455,12 +432,11 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.IsTrue(channel3.IsSubscribed);
         }
 
-        private static Channel SubscribeToChannel(Pusher pusher, string mockChannelName1, AutoResetEvent subscribedEvent, AutoResetEvent unsubscribedEvent = null)
+        private static Channel SubscribeToChannel(Pusher pusher, string mockChannelName, AutoResetEvent subscribedEvent)
         {
-            var channel1 = pusher.Subscribe(mockChannelName1);
-            channel1.Subscribed += sender => { subscribedEvent.Set(); };
-            channel1.Unsubscribed += sender => { unsubscribedEvent.Set(); };
-            return channel1;
+            var channel = pusher.Subscribe(mockChannelName);
+            channel.Subscribed += sender => { subscribedEvent.Set(); };
+            return channel;
         }
     }
 }

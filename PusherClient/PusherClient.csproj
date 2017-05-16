@@ -53,6 +53,7 @@
     <Compile Include="ChannelTypes.cs" />
     <Compile Include="Connection.cs" />
     <Compile Include="ErrorConstants.cs" />
+    <Compile Include="IPusher.cs" />
     <Compile Include="PusherOptions.cs" />
     <Compile Include="ConnectionState.cs" />
     <Compile Include="Constants.cs" />

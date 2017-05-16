@@ -11,58 +11,63 @@ namespace PusherClient
     {
         private WebSocket _websocket;
         private string _socketId;
-        private readonly string _url;
-        private readonly Pusher _pusher;
-        private ConnectionState _state = ConnectionState.Initialized;
-        private bool _allowReconnect = true;
 
-        public event ErrorEventHandler Error;
-        public event ConnectedEventHandler Connected;
-        public event ConnectionStateChangedEventHandler ConnectionStateChanged;
+        private readonly string _url;
+        private readonly IPusher _pusher;
+        private ConnectionState _state = ConnectionState.Uninitialized;
+        private bool _allowReconnect = true;
         
-        private int _backOffMillis = 0;
+        private int _backOffMillis;
 
         private static readonly int MAX_BACKOFF_MILLIS = 10000;
         private static readonly int BACK_OFF_MILLIS_INCREMENT = 1000;
 
-        internal string SocketID => _socketId;
+        internal string SocketId => _socketId;
 
         internal ConnectionState State => _state;
+        internal bool IsConnected => State == ConnectionState.Connected;
 
-        public Connection(Pusher pusher, string url)
+        public Connection(IPusher pusher, string url)
         {
-            _url = url;
             _pusher = pusher;
+            _url = url;
         }
 
         internal void Connect()
         {
-            // TODO: Handle and test disconnection / errors etc
             // TODO: Add 'connecting_in' event
             var msg = $"Connecting to: {_url}";
             Pusher.Trace.TraceEvent(TraceEventType.Information, 0, msg);
 
-            ChangeState(ConnectionState.Connecting);
+            ChangeState(ConnectionState.Initialized);
             _allowReconnect = true;
 
-            _websocket = new WebSocket(_url);
-            _websocket.EnableAutoSendPing = true;
-            _websocket.AutoSendPingInterval = 1;
+            _websocket = new WebSocket(_url)
+            {
+                EnableAutoSendPing = true,
+                AutoSendPingInterval = 1
+            };
             _websocket.Opened += websocket_Opened;
             _websocket.Error += websocket_Error;
             _websocket.Closed += websocket_Closed;
             _websocket.MessageReceived += websocket_MessageReceived;
+
+            ChangeState(ConnectionState.Connecting);
+
             _websocket.Open();
         }
 
         internal void Disconnect()
         {
+            ChangeState(ConnectionState.Disconnecting);
+
             _allowReconnect = false;
 
             _websocket.Opened -= websocket_Opened;
             _websocket.Error -= websocket_Error;
             _websocket.Closed -= websocket_Closed;
             _websocket.MessageReceived -= websocket_MessageReceived;
+
             _websocket.Close();
 
             ChangeState(ConnectionState.Disconnected);
@@ -70,33 +75,11 @@ namespace PusherClient
 
         internal void Send(string message)
         {
-            if (State == ConnectionState.Connected)
+            if (IsConnected)
             {
                 Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Sending: " + message);
                 Debug.WriteLine("Sending: " + message);
                 _websocket.Send(message);
-            }
-        }
-
-        private void ChangeState(ConnectionState state)
-        {
-            _state = state;
-
-            if (ConnectionStateChanged != null)
-                ConnectionStateChanged(this, _state);
-        }
-
-        private void RaiseError(PusherException error)
-        {
-            // if a handler is registerd, use it, otherwise just trace. No code can catch exception here if thrown.
-            var handler = Error;
-            if (handler != null)
-            {
-                handler(this, error);
-            }
-            else
-            {
-                Pusher.Trace.TraceEvent(TraceEventType.Error, 0, error.ToString());
             }
         }
 
@@ -118,18 +101,20 @@ namespace PusherClient
             if (jObject["data"] != null && jObject["data"].Type != JTokenType.String)
                 jObject["data"] = jObject["data"].ToString(Formatting.None);
 
-            string jsonMessage = jObject.ToString(Formatting.None);
-            var template = new { @event = String.Empty, data = String.Empty, channel = String.Empty };
+            var jsonMessage = jObject.ToString(Formatting.None);
+            var template = new { @event = string.Empty, data = string.Empty, channel = string.Empty };
 
             var message = JsonConvert.DeserializeAnonymousType(jsonMessage, template);
 
-            _pusher.EmitEvent(message.@event, message.data);
+            _pusher.EmitPusherEvent(message.@event, message.data);
 
             if (message.@event.StartsWith(Constants.PUSHER_MESSAGE_PREFIX))
             {
                 // Assume Pusher event
                 switch (message.@event)
                 {
+                    // TODO - Need to handle Error on subscribing to a channel
+
                     case Constants.ERROR:
                         ParseError(message.data);
                         break;
@@ -139,61 +124,29 @@ namespace PusherClient
                         break;
 
                     case Constants.CHANNEL_SUBSCRIPTION_SUCCEEDED:
-
-                        if (_pusher.Channels.ContainsKey(message.channel))
-                        {
-                            var channel = _pusher.Channels[message.channel];
-                            channel.SubscriptionSucceeded(message.data);
-                        }
-
+                        _pusher.SubscriptionSuceeded(message.channel, message.data);
                         break;
 
                     case Constants.CHANNEL_SUBSCRIPTION_ERROR:
-
                         RaiseError(new PusherException("Error received on channel subscriptions: " + e.Message, ErrorCodes.SubscriptionError));
                         break;
 
                     case Constants.CHANNEL_MEMBER_ADDED:
-
-                        // Assume channel event
-                        if (_pusher.Channels.ContainsKey(message.channel))
-                        {
-                            var channel = _pusher.Channels[message.channel];
-
-                            if (channel is PresenceChannel)
-                            {
-                                ((PresenceChannel)channel).AddMember(message.data);
-                                break;
-                            }
-                        }
+                        _pusher.AddMember(message.channel, message.data);
 
                         Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Received a presence event on channel '" + message.channel + "', however there is no presence channel which matches.");
                         break;
 
                     case Constants.CHANNEL_MEMBER_REMOVED:
-
-                        // Assume channel event
-                        if (_pusher.Channels.ContainsKey(message.channel))
-                        {
-                            var channel = _pusher.Channels[message.channel];
-
-                            if (channel is PresenceChannel)
-                            {
-                                ((PresenceChannel)channel).RemoveMember(message.data);
-                                break;
-                            }
-                        }
+                        _pusher.RemoveMember(message.channel, message.data);
 
                         Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Received a presence event on channel '" + message.channel + "', however there is no presence channel which matches.");
                         break;
-
                 }
             }
-            else
+            else // Assume channel event
             {
-                // Assume channel event
-                if (_pusher.Channels.ContainsKey(message.channel))
-                    _pusher.Channels[message.channel].EmitEvent(message.@event, message.data);
+                _pusher.EmitChannelEvent(message.channel, message.@event, message.data);
             }
         }
 
@@ -227,19 +180,16 @@ namespace PusherClient
 
         private void ParseConnectionEstablished(string data)
         {
-            var template = new { socket_id = String.Empty };
+            var template = new { socket_id = string.Empty };
             var message = JsonConvert.DeserializeAnonymousType(data, template);
             _socketId = message.socket_id;
 
             ChangeState(ConnectionState.Connected);
-
-            if (Connected != null)
-                Connected(this);
         }
 
         private void ParseError(string data)
         {
-            var template = new { message = String.Empty, code = (int?) null };
+            var template = new { message = string.Empty, code = (int?) null };
             var parsed = JsonConvert.DeserializeAnonymousType(data, template);
 
             ErrorCodes error = ErrorCodes.Unkown;
@@ -250,6 +200,17 @@ namespace PusherClient
             }
 
             RaiseError(new PusherException(parsed.message, error));
+        }
+
+        private void ChangeState(ConnectionState state)
+        {
+            _state = state;
+            _pusher.ConnectionStateChanged(state);
+        }
+
+        private void RaiseError(PusherException error)
+        {
+            _pusher.ErrorOccured(error);
         }
     }
 }

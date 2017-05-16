@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Linq;
 using Newtonsoft.Json;
 
 namespace PusherClient
 {
-
     /* TODO: Write tests
      * - Websocket disconnect
         - Connection lost, not cleanly closed
@@ -27,7 +27,7 @@ namespace PusherClient
     public delegate void ConnectedEventHandler(object sender);
     public delegate void ConnectionStateChangedEventHandler(object sender, ConnectionState state);
 
-    public class Pusher : EventEmitter
+    public class Pusher : EventEmitter, IPusher
     {
         public event ConnectedEventHandler Connected;
         public event ConnectedEventHandler Disconnected;
@@ -40,31 +40,14 @@ namespace PusherClient
         private readonly PusherOptions _options;
 
         private Connection _connection;
-        private ErrorEventHandler _errorEvent;
 
         private readonly object _lockingObject = new object();
 
-        public event ErrorEventHandler Error
-        {
-            add
-            {
-                _errorEvent += value;
-                if (_connection != null)
-                {
-                    _connection.Error += value;
-                }
-            }
-            remove
-            {
-                _errorEvent -= value;
-                if (_connection != null)
-                {
-                    _connection.Error -= value;
-                }
-            }
-        }
+        private List<string> _pendingChannelSubscriptions = new List<string>();
 
-        public string SocketID => _connection?.SocketID;
+        public event ErrorEventHandler Error;
+
+        public string SocketID => _connection?.SocketId;
 
         public ConnectionState State => _connection?.State ?? ConnectionState.Disconnected;
 
@@ -88,6 +71,81 @@ namespace PusherClient
             _options = options ?? new PusherOptions { Encrypted = false };
         }
 
+
+
+        void IPusher.ConnectionStateChanged(ConnectionState state)
+        {
+            if (state == ConnectionState.Connected)
+            {
+                SubscribeExistingChannels();
+
+                if (Connected != null)
+                    Connected(this);
+            }
+            else if (state == ConnectionState.Disconnected)
+            {
+                MarkChannelsAsUnsubscribed();
+
+                if (Disconnected != null)
+                    Disconnected(this);
+
+                if (ConnectionStateChanged != null)
+                    ConnectionStateChanged(this, state);
+            }
+            else
+            {
+                if (ConnectionStateChanged != null)
+                    ConnectionStateChanged(this, state);
+            }
+        }
+
+        void IPusher.ErrorOccured(PusherException pusherException)
+        {
+            RaiseError(pusherException);
+        }
+
+        void IPusher.EmitPusherEvent(string eventName, string data)
+        {
+            EmitEvent(eventName, data);
+        }
+
+        void IPusher.EmitChannelEvent(string channelName, string eventName, string data)
+        {
+            if (Channels.ContainsKey(channelName))
+            {
+                Channels[channelName].EmitEvent(eventName, data);
+            }
+        }
+
+        void IPusher.AddMember(string channelName, string member)
+        {
+            if (Channels.Keys.Contains(channelName) && Channels[channelName] is PresenceChannel)
+            {
+                ((PresenceChannel)Channels[channelName]).AddMember(member);
+            }
+        }
+
+        void IPusher.RemoveMember(string channelName, string member)
+        {
+            if (Channels.Keys.Contains(channelName) && Channels[channelName] is PresenceChannel)
+            {
+                ((PresenceChannel)Channels[channelName]).RemoveMember(member);
+            }
+        }
+
+        void IPusher.SubscriptionSuceeded(string channelName, string data)
+        {
+            if (_pendingChannelSubscriptions.Contains(channelName))
+                _pendingChannelSubscriptions.Remove(channelName);
+
+            if (Channels.Keys.Contains(channelName))
+            {
+                Channels[channelName].SubscriptionSucceeded(data);
+            }
+        }
+
+
+
         public void Connect()
         {
             // Prevent multiple concurrent connections
@@ -104,26 +162,10 @@ namespace PusherClient
 
                 // TODO: Fallback to secure?
 
-                string url = $"{scheme}{_options.Host}/app/{_applicationKey}?protocol={Settings.Default.ProtocolVersion}&client={Settings.Default.ClientName}&version={Settings.Default.VersionNumber}";
+                var url = $"{scheme}{_options.Host}/app/{_applicationKey}?protocol={Settings.Default.ProtocolVersion}&client={Settings.Default.ClientName}&version={Settings.Default.VersionNumber}";
 
                 _connection = new Connection(this, url);
-                RegisterEventsOnConnection();
                 _connection.Connect();
-            }
-        }
-
-        private void RegisterEventsOnConnection()
-        {
-            _connection.Connected += _connection_Connected;
-            _connection.ConnectionStateChanged += _connection_ConnectionStateChanged;
-
-            if (_errorEvent != null)
-            {
-                // subscribe to the connection's error handler
-                foreach (ErrorEventHandler handler in _errorEvent.GetInvocationList())
-                {
-                    _connection.Error += handler;
-                }
             }
         }
 
@@ -131,28 +173,9 @@ namespace PusherClient
         {
             if (_connection != null)
             {
-                if (Disconnected != null)
-                    Disconnected(this);
-
-                UnregisterEventsOnDisconnection();
                 MarkChannelsAsUnsubscribed();
                 _connection.Disconnect();
                 _connection = null;
-            }
-        }
-
-        private void UnregisterEventsOnDisconnection()
-        {
-            _connection.Connected -= _connection_Connected;
-            _connection.ConnectionStateChanged -= _connection_ConnectionStateChanged;
-
-            if (_errorEvent != null)
-            {
-                // unsubscribe to the connection's error handler
-                foreach (ErrorEventHandler handler in _errorEvent.GetInvocationList())
-                {
-                    _connection.Error -= handler;
-                }
             }
         }
 
@@ -168,34 +191,26 @@ namespace PusherClient
                 Trace.TraceEvent(TraceEventType.Warning, 0, "Channel '" + channelName + "' is already subscribed to. Subscription event has been ignored.");
                 return Channels[channelName];
             }
+            
+            _pendingChannelSubscriptions.Add(channelName);
 
-            // If private or presence channel, check that auth endpoint has been set
-            var chanType = ChannelTypes.Public;
-
-            if (channelName.ToLowerInvariant().StartsWith(Constants.PRIVATE_CHANNEL))
-            {
-                chanType = ChannelTypes.Private;
-            }
-            else if (channelName.ToLowerInvariant().StartsWith(Constants.PRESENCE_CHANNEL))
-            {
-                chanType = ChannelTypes.Presence;
-            }
-
-            return SubscribeToChannel(chanType, channelName);
+            return SubscribeToChannel(channelName);
         }
 
-        private Channel SubscribeToChannel(ChannelTypes type, string channelName)
-        {
-            if (!Channels.ContainsKey(channelName))
-                CreateChannel(type, channelName);
 
-            // this needs to handle a second subscription request whilstthe firsat one is pending
+
+        private Channel SubscribeToChannel(string channelName)
+        {
+            var channelType = GetChannelType(channelName);
+
+            if (!Channels.ContainsKey(channelName))
+                CreateChannel(channelType, channelName);
 
             if (State == ConnectionState.Connected)
             {
-                if (type == ChannelTypes.Presence || type == ChannelTypes.Private)
+                if (channelType == ChannelTypes.Presence || channelType == ChannelTypes.Private)
                 {
-                    var jsonAuth = _options.Authorizer.Authorize(channelName, _connection.SocketID);
+                    var jsonAuth = _options.Authorizer.Authorize(channelName, _connection.SocketId);
 
                     var template = new { auth = string.Empty, channel_data = string.Empty };
                     var message = JsonConvert.DeserializeAnonymousType(jsonAuth, template);
@@ -210,6 +225,22 @@ namespace PusherClient
             }
 
             return Channels[channelName];
+        }
+
+        private static ChannelTypes GetChannelType(string channelName)
+        {
+            // If private or presence channel, check that auth endpoint has been set
+            var channelType = ChannelTypes.Public;
+
+            if (channelName.ToLowerInvariant().StartsWith(Constants.PRIVATE_CHANNEL))
+            {
+                channelType = ChannelTypes.Private;
+            }
+            else if (channelName.ToLowerInvariant().StartsWith(Constants.PRESENCE_CHANNEL))
+            {
+                channelType = ChannelTypes.Presence;
+            }
+            return channelType;
         }
 
         private void CreateChannel(ChannelTypes type, string channelName)
@@ -247,35 +278,14 @@ namespace PusherClient
 
         internal void Unsubscribe(string channelName)
         {
-            if (_connection.State == ConnectionState.Connected)
+            if (_connection.IsConnected)
+
               _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_UNSUBSCRIBE, data = new { channel = channelName } }));
-        }
-
-        private void _connection_ConnectionStateChanged(object sender, ConnectionState state)
-        {
-            switch (state)
-            {
-                case ConnectionState.Disconnected:
-                    MarkChannelsAsUnsubscribed();
-                    break;
-                case ConnectionState.Connected:
-                    SubscribeExistingChannels();
-                    break;
-            }
-
-            if (ConnectionStateChanged != null)
-                ConnectionStateChanged(sender, state);
-        }
-
-        private void _connection_Connected(object sender)
-        {
-            if (Connected != null)
-                Connected(sender);
         }
 
         private void RaiseError(PusherException error)
         {
-            var handler = _errorEvent;
+            var handler = Error;
 
             if (handler != null)
                 handler(this, error);
@@ -283,9 +293,7 @@ namespace PusherClient
 
         private bool AlreadySubscribed(string channelName)
         {
-            // BUG
-            // There is a period of time where we are subscribing and this will be false. So will try subscribing again
-            return Channels.ContainsKey(channelName) && Channels[channelName].IsSubscribed;
+            return _pendingChannelSubscriptions.Contains(channelName) || (Channels.ContainsKey(channelName) && Channels[channelName].IsSubscribed);
         }
 
         private void MarkChannelsAsUnsubscribed()
@@ -300,7 +308,7 @@ namespace PusherClient
         {
             foreach (var channel in Channels)
             {
-                Subscribe(channel.Key);
+                SubscribeToChannel(channel.Key);
             }
         }
     }
