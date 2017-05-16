@@ -36,14 +36,13 @@ namespace PusherClient
         // create single TraceSource instance to be used for logging
         public static TraceSource Trace = new TraceSource(nameof(Pusher));
 
-        private readonly string _applicationKey = null;
-        private readonly PusherOptions _options = null;
+        private readonly string _applicationKey;
+        private readonly PusherOptions _options;
 
-        private Connection _connection = null;
+        private Connection _connection;
         private ErrorEventHandler _errorEvent;
 
         private readonly object _lockingObject = new object();
-        private ConcurrentDictionary<string, Channel> _channels = new ConcurrentDictionary<string, Channel>();
 
         public event ErrorEventHandler Error
         {
@@ -65,31 +64,13 @@ namespace PusherClient
             }
         }
 
-        public string SocketID {
-            get
-            {
-                return (_connection != null? _connection.SocketID: null);
-            }
-        }
+        public string SocketID => _connection?.SocketID;
 
-        public ConnectionState State
-        {
-            get
-            {
-                return (_connection != null? _connection.State: ConnectionState.Disconnected);
-            }
-        }
+        public ConnectionState State => _connection?.State ?? ConnectionState.Disconnected;
 
-        public Dictionary<string, Channel> Channels
-        {
-            get { return _channels; }
-            set { _channels = value; }
-        }
+        public ConcurrentDictionary<string, Channel> Channels { get; set; } = new ConcurrentDictionary<string, Channel>();
 
-        internal PusherOptions Options
-        {
-            get { return _options; }
-        }
+        internal PusherOptions Options => _options;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Pusher" /> class.
@@ -99,9 +80,10 @@ namespace PusherClient
         public Pusher(string applicationKey, PusherOptions options = null)
         {
             if (string.IsNullOrWhiteSpace(applicationKey))
-                throw new ArgumentException("The application key cannot be null or whitespace", nameof(applicationKey));
+                throw new ArgumentException(ErrorConstants.ApplicationKeyNotSet, nameof(applicationKey));
 
             _applicationKey = applicationKey;
+            _options = null;
 
             _options = options ?? new PusherOptions { Encrypted = false };
         }
@@ -114,24 +96,15 @@ namespace PusherClient
                 // Ensure we only ever attempt to connect once
                 if (_connection != null)
                 {
-                    Trace.TraceEvent(TraceEventType.Warning, 0, "Attempt to connect when another connection has already started. New attempt has been ignored.");
+                    Trace.TraceEvent(TraceEventType.Warning, 0, ErrorConstants.ConnectionAlreadyConnected);
                     return;
                 }
 
-                var scheme = Constants.InsecureSchema;
-
-                if (_options.Encrypted)
-                    scheme = Constants.SecureSchema;
+                var scheme = _options.Encrypted ? Constants.SECURE_SCHEMA : Constants.INSECURE_SCHEMA;
 
                 // TODO: Fallback to secure?
 
-                string url = string.Format("{0}{1}/app/{2}?protocol={3}&client={4}&version={5}",
-                    scheme,
-                    _options.Host,
-                    _applicationKey,
-                    Settings.Default.ProtocolVersion,
-                    Settings.Default.ClientName,
-                    Settings.Default.VersionNumber);
+                string url = $"{scheme}{_options.Host}/app/{_applicationKey}?protocol={Settings.Default.ProtocolVersion}&client={Settings.Default.ClientName}&version={Settings.Default.VersionNumber}";
 
                 _connection = new Connection(this, url);
                 RegisterEventsOnConnection();
@@ -193,17 +166,17 @@ namespace PusherClient
             if (AlreadySubscribed(channelName))
             {
                 Trace.TraceEvent(TraceEventType.Warning, 0, "Channel '" + channelName + "' is already subscribed to. Subscription event has been ignored.");
-                return _channels[channelName];
+                return Channels[channelName];
             }
 
             // If private or presence channel, check that auth endpoint has been set
             var chanType = ChannelTypes.Public;
 
-            if (channelName.ToLowerInvariant().StartsWith(Constants.PrivateChannel))
+            if (channelName.ToLowerInvariant().StartsWith(Constants.PRIVATE_CHANNEL))
             {
                 chanType = ChannelTypes.Private;
             }
-            else if (channelName.ToLowerInvariant().StartsWith(Constants.PresenceChannel))
+            else if (channelName.ToLowerInvariant().StartsWith(Constants.PRESENCE_CHANNEL))
             {
                 chanType = ChannelTypes.Presence;
             }
@@ -213,7 +186,7 @@ namespace PusherClient
 
         private Channel SubscribeToChannel(ChannelTypes type, string channelName)
         {
-            if (!_channels.ContainsKey(channelName))
+            if (!Channels.ContainsKey(channelName))
                 CreateChannel(type, channelName);
 
             // this needs to handle a second subscription request whilstthe firsat one is pending
@@ -236,7 +209,7 @@ namespace PusherClient
                 }
             }
 
-            return _channels[channelName];
+            return Channels[channelName];
         }
 
         private void CreateChannel(ChannelTypes type, string channelName)
@@ -312,12 +285,12 @@ namespace PusherClient
         {
             // BUG
             // There is a period of time where we are subscribing and this will be false. So will try subscribing again
-            return _channels.ContainsKey(channelName) && _channels[channelName].IsSubscribed;
+            return Channels.ContainsKey(channelName) && Channels[channelName].IsSubscribed;
         }
 
         private void MarkChannelsAsUnsubscribed()
         {
-            foreach (var channel in _channels)
+            foreach (var channel in Channels)
             {
                 channel.Value.Unsubscribe();
             }
@@ -325,7 +298,7 @@ namespace PusherClient
 
         private void SubscribeExistingChannels()
         {
-            foreach (var channel in _channels)
+            foreach (var channel in Channels)
             {
                 Subscribe(channel.Key);
             }

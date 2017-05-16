@@ -18,7 +18,7 @@ namespace PusherClient
 
             using (var webClient = new WebClient())
             {
-                string data = string.Format("channel_name={0}&socket_id={1}", channelName, socketId);
+                var data = $"channel_name={channelName}&socket_id={socketId}";
                 webClient.Headers[HttpRequestHeader.ContentType] = "application/x-www-form-urlencoded";
                 authToken = webClient.UploadString(_authEndpoint, "POST", data);
             }

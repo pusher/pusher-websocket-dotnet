@@ -9,10 +9,10 @@ namespace PusherClient
 {
     internal class Connection
     {
-        private WebSocket _websocket = null;
-        private string _socketId = null;
-        private readonly string _url = null;
-        private readonly Pusher _pusher = null;
+        private WebSocket _websocket;
+        private string _socketId;
+        private readonly string _url;
+        private readonly Pusher _pusher;
         private ConnectionState _state = ConnectionState.Initialized;
         private bool _allowReconnect = true;
 
@@ -25,20 +25,9 @@ namespace PusherClient
         private static readonly int MAX_BACKOFF_MILLIS = 10000;
         private static readonly int BACK_OFF_MILLIS_INCREMENT = 1000;
 
-        internal string SocketID
-        {
-            get
-            {
-                return _socketId;
-            }
-        }
-        internal ConnectionState State
-        {
-            get
-            {
-                return _state;
-            }
-        }
+        internal string SocketID => _socketId;
+
+        internal ConnectionState State => _state;
 
         public Connection(Pusher pusher, string url)
         {
@@ -50,7 +39,7 @@ namespace PusherClient
         {
             // TODO: Handle and test disconnection / errors etc
             // TODO: Add 'connecting_in' event
-            var msg = string.Format("Connecting to: {0}", _url);
+            var msg = $"Connecting to: {_url}";
             Pusher.Trace.TraceEvent(TraceEventType.Information, 0, msg);
 
             ChangeState(ConnectionState.Connecting);
@@ -132,12 +121,11 @@ namespace PusherClient
             string jsonMessage = jObject.ToString(Formatting.None);
             var template = new { @event = String.Empty, data = String.Empty, channel = String.Empty };
 
-            //var message = JsonConvert.DeserializeAnonymousType(e.Message, template);
             var message = JsonConvert.DeserializeAnonymousType(jsonMessage, template);
 
             _pusher.EmitEvent(message.@event, message.data);
 
-            if (message.@event.StartsWith("pusher"))
+            if (message.@event.StartsWith(Constants.PUSHER_MESSAGE_PREFIX))
             {
                 // Assume Pusher event
                 switch (message.@event)

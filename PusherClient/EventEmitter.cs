@@ -17,8 +17,7 @@ namespace PusherClient
             }
             else
             {
-                List<Action<dynamic>> listeners = new List<Action<dynamic>>();
-                listeners.Add(listener);
+                var listeners = new List<Action<dynamic>> {listener};
                 _eventListeners.Add(eventName, listeners);
             }
         }

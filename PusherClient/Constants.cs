@@ -2,6 +2,7 @@
 {
     class Constants
     {
+        public const string PUSHER_MESSAGE_PREFIX = "pusher";
         public const string ERROR = "pusher:error";
 
         public const string CONNECTION_ESTABLISHED = "pusher:connection_established";
@@ -13,10 +14,10 @@
         public const string CHANNEL_MEMBER_ADDED = "pusher_internal:member_added";
         public const string CHANNEL_MEMBER_REMOVED = "pusher_internal:member_removed";
 
-        public const string InsecureSchema = "ws://";
-        public const string SecureSchema = "wss://";
+        public const string INSECURE_SCHEMA = "ws://";
+        public const string SECURE_SCHEMA = "wss://";
 
-        public const string PrivateChannel = "private-";
-        public const string PresenceChannel = "presence-";
+        public const string PRIVATE_CHANNEL = "private-";
+        public const string PRESENCE_CHANNEL = "presence-";
     }
 }

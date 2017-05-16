@@ -6,9 +6,6 @@
         public IAuthorizer Authorizer = null;
         public string Cluster = "mt1";
 
-        internal string Host
-        {
-            get { return string.Format("ws-{0}.pusher.com", this.Cluster); }
-        }
+        internal string Host => $"ws-{this.Cluster}.pusher.com";
     }
 }

@@ -4,21 +4,15 @@
 
     public class Channel : EventEmitter
     {
-        private readonly Pusher _pusher = null;
-        private bool _isSubscribed = false;
+        private readonly Pusher _pusher;
+        private bool _isSubscribed;
 
         public event SubscriptionEventHandler Subscribed;
         public event SubscriptionEventHandler Unsubscribed;
 
-        public string Name = null;
+        public string Name;
 
-        public bool IsSubscribed
-        {
-            get
-            {
-                return _isSubscribed;
-            }
-        }
+        public bool IsSubscribed => _isSubscribed;
 
         public Channel(string channelName, Pusher pusher)
         {
