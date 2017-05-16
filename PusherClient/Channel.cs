@@ -41,6 +41,9 @@
         {
             _isSubscribed = false;
             _pusher.Unsubscribe(Name);
+
+            if (Unsubscribed != null)
+                Unsubscribed(this);
         }
 
         public void Trigger(string eventName, object obj)

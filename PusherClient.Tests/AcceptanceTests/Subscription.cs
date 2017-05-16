@@ -148,11 +148,13 @@ namespace PusherClient.Tests.AcceptanceTests
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName();
 
             var channelSubscribed = false;
+            var numberOfCalls = 0;
 
             var firstChannel = pusher.Subscribe(mockChannelName);
             firstChannel.Subscribed += sender =>
             {
                 channelSubscribed = true;
+                numberOfCalls++;
                 reset.Set();
             };
 
@@ -163,6 +165,8 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             Assert.AreEqual(firstChannel, secondChannel);
+            Assert.IsTrue(channelSubscribed);
+            Assert.AreEqual(1, numberOfCalls);
         }
 
         [Test]
