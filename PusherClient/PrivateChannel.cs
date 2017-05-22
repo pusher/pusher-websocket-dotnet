@@ -1,7 +1,10 @@
 ﻿namespace PusherClient
 {
+    /// <summary>
+    /// Represents a Pusher Private Channel
+    /// </summary>
     public class PrivateChannel : Channel
     {
-        public PrivateChannel(string channelName, Pusher pusher) : base(channelName, pusher) { }
+        internal PrivateChannel(string channelName, ITriggerChannels pusher) : base(channelName, pusher) { }
     }
 }

@@ -17,23 +17,36 @@ namespace PusherClient
         - Client over rate limie
         - Conditions for client event triggering
      */
-    // TODO: NUGET Package
-    // TODO: Ping & pong, are these handled by the Webscoket library out of the box?
-    // TODO: Add assembly info file?
     // TODO: Implement connection fallback strategy
 
-    // A delegate type for hooking up change notifications.
-    public delegate void ErrorEventHandler(object sender, PusherException error);
-    public delegate void ConnectedEventHandler(object sender);
-    public delegate void ConnectionStateChangedEventHandler(object sender, ConnectionState state);
-
-    public class Pusher : EventEmitter, IPusher
+    /// <summary>
+    /// The Pusher Client object
+    /// </summary>
+    public class Pusher : EventEmitter, IPusher, ITriggerChannels
     {
+        /// <summary>
+        /// Fires when a connection has been established with the Pusher Server
+        /// </summary>
         public event ConnectedEventHandler Connected;
+
+        /// <summary>
+        /// Fires when the connection is disconnection from the Pusher Server
+        /// </summary>
         public event ConnectedEventHandler Disconnected;
+
+        /// <summary>
+        /// Fires when the connection state changes
+        /// </summary>
         public event ConnectionStateChangedEventHandler ConnectionStateChanged;
 
-        // create single TraceSource instance to be used for logging
+        /// <summary>
+        /// Fire when an error occurs
+        /// </summary>
+        public event ErrorEventHandler Error;
+
+        /// <summary>
+        /// The TraceSource instance to be used for logging
+        /// </summary>
         public static TraceSource Trace = new TraceSource(nameof(Pusher));
 
         private readonly string _applicationKey;
@@ -43,16 +56,26 @@ namespace PusherClient
 
         private readonly object _lockingObject = new object();
 
-        private List<string> _pendingChannelSubscriptions = new List<string>();
+        private readonly List<string> _pendingChannelSubscriptions = new List<string>();
 
-        public event ErrorEventHandler Error;
-
+        /// <summary>
+        /// Gets the Socket ID
+        /// </summary>
         public string SocketID => _connection?.SocketId;
 
+        /// <summary>
+        /// Gets the current connection state
+        /// </summary>
         public ConnectionState State => _connection?.State ?? ConnectionState.Disconnected;
 
-        public ConcurrentDictionary<string, Channel> Channels { get; set; } = new ConcurrentDictionary<string, Channel>();
+        /// <summary>
+        /// Gets the channels in use by the Client
+        /// </summary>
+        public ConcurrentDictionary<string, Channel> Channels { get; private set; } = new ConcurrentDictionary<string, Channel>();
 
+        /// <summary>
+        /// Gets the Options in use by the Client
+        /// </summary>
         internal PusherOptions Options => _options;
 
         /// <summary>
@@ -70,8 +93,6 @@ namespace PusherClient
 
             _options = options ?? new PusherOptions { Encrypted = false };
         }
-
-
 
         void IPusher.ConnectionStateChanged(ConnectionState state)
         {
@@ -144,8 +165,9 @@ namespace PusherClient
             }
         }
 
-
-
+        /// <summary>
+        /// Start the connection to the Pusher Server.  When completed, the <see cref="Connected"/> event will fire.
+        /// </summary>
         public void Connect()
         {
             // Prevent multiple concurrent connections
@@ -169,6 +191,9 @@ namespace PusherClient
             }
         }
 
+        /// <summary>
+        /// Start the disconnection from the Pusher Server.  When completed, the <see cref="Disconnected"/> event will fire.
+        /// </summary>
         public void Disconnect()
         {
             if (_connection != null)
@@ -179,6 +204,11 @@ namespace PusherClient
             }
         }
 
+        /// <summary>
+        /// Subscribes to the given channel, unless the channel already exists, in which case the xisting channel will be returned.
+        /// </summary>
+        /// <param name="channelName">The name of the Channel to subsribe to</param>
+        /// <returns>The Channel that is being subscribed to</returns>
         public Channel Subscribe(string channelName)
         {
             if (string.IsNullOrWhiteSpace(channelName))
@@ -196,8 +226,6 @@ namespace PusherClient
 
             return SubscribeToChannel(channelName);
         }
-
-
 
         private Channel SubscribeToChannel(string channelName)
         {
@@ -271,12 +299,12 @@ namespace PusherClient
             }
         }
 
-        internal void Trigger(string channelName, string eventName, object obj)
+        void ITriggerChannels.Trigger(string channelName, string eventName, object obj)
         {
             _connection.Send(JsonConvert.SerializeObject(new { @event = eventName, channel = channelName, data = obj }));
         }
 
-        internal void Unsubscribe(string channelName)
+        void ITriggerChannels.Unsubscribe(string channelName)
         {
             if (_connection.IsConnected)
 

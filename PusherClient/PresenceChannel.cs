@@ -3,17 +3,27 @@ using Newtonsoft.Json;
 
 namespace PusherClient
 {
-    public delegate void MemberEventHandler(object sender);
-    public delegate void MemberAddedEventHandler(object sender, KeyValuePair<string, dynamic> member);
-
+    /// <summary>
+    /// Represents a Pusher Presence Channel that can be subscribed to
+    /// </summary>
     public class PresenceChannel : PrivateChannel
     {
-        public Dictionary<string, dynamic> Members = new Dictionary<string, dynamic>();
-
+        /// <summary>
+        /// Fires when a Member is Added
+        /// </summary>
         public event MemberAddedEventHandler MemberAdded;
-        public event MemberEventHandler MemberRemoved;
 
-        public PresenceChannel(string channelName, Pusher pusher) : base(channelName, pusher) { }
+        /// <summary>
+        /// Fires when a Member is Removed
+        /// </summary>
+        public event MemberRemovedEventHandler MemberRemoved;
+
+        internal PresenceChannel(string channelName, ITriggerChannels pusher) : base(channelName, pusher) { }
+
+        /// <summary>
+        /// Gets the Members of the channel
+        /// </summary>
+        public Dictionary<string, dynamic> Members { get; private set; } = new Dictionary<string, dynamic>();
 
         internal override void SubscriptionSucceeded(string data)
         {

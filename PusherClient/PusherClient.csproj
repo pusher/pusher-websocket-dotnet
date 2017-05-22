@@ -51,9 +51,15 @@
   <ItemGroup>
     <Compile Include="Channel.cs" />
     <Compile Include="ChannelTypes.cs" />
+    <Compile Include="ConnectedEventHandler.cs" />
     <Compile Include="Connection.cs" />
+    <Compile Include="ConnectionStateChangedEventHandler.cs" />
     <Compile Include="ErrorConstants.cs" />
+    <Compile Include="ErrorEventHandler.cs" />
     <Compile Include="IPusher.cs" />
+    <Compile Include="ITriggerChannels.cs" />
+    <Compile Include="MemberAddedEventHandler.cs" />
+    <Compile Include="MemberRemovedEventHandler.cs" />
     <Compile Include="PusherOptions.cs" />
     <Compile Include="ConnectionState.cs" />
     <Compile Include="Constants.cs" />
@@ -71,6 +77,7 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
+    <Compile Include="SubscriptionEventHandler.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
