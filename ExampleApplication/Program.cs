@@ -8,9 +8,9 @@ namespace ExampleApplication
 {
     class Program
     {
-        private static Pusher _pusher = null;
-        private static Channel _chatChannel = null;
-        private static PresenceChannel _presenceChannel = null;
+        private static Pusher _pusher;
+        private static Channel _chatChannel;
+        private static PresenceChannel _presenceChannel;
         private static string _name;
             
         static void Main(string[] args)
@@ -32,11 +32,8 @@ namespace ExampleApplication
                 {
                     break;
                 }
-                else
-                {
-                    _chatChannel.Trigger("client-my-event", new {message = line, name = _name});
-                }
 
+                _chatChannel.Trigger("client-my-event", new {message = line, name = _name});
             } while (line != null);
 
             _pusher.Disconnect();
@@ -44,7 +41,7 @@ namespace ExampleApplication
 
         static void ListMembers()
         {
-            List<string> names = new List<string>();
+            var names = new List<string>();
 
             foreach (var mem in _presenceChannel.Members)
             {
@@ -55,10 +52,10 @@ namespace ExampleApplication
         }
 
         // Pusher Initiation / Connection
-
         private static void InitPusher()
         {
-            _pusher = new Pusher("7899dd5cb232af88083d", new PusherOptions(){
+            _pusher = new Pusher(Config.AppKey, new PusherOptions
+            {
                 Authorizer = new HttpAuthorizer("http://localhost:8888/auth/" + HttpUtility.UrlEncode(_name))
             });
             _pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
@@ -94,7 +91,6 @@ namespace ExampleApplication
         }
 
         // Presence Channel Events
-
         static void PresenceChannel_Subscribed(object sender)
         {
             ListMembers();
@@ -112,7 +108,6 @@ namespace ExampleApplication
         }
 
         // Chat Channel Events
-
         static void ChatChannel_Subscribed(object sender)
         {
             Console.WriteLine("Hi " + _name + "! Type 'quit' to exit, otherwise type anything to chat!");

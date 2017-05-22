@@ -36,6 +36,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Web" />
     <Reference Include="System.Xml.Linq" />
@@ -50,6 +51,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ChatMessage.cs" />
+    <Compile Include="Config.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -58,9 +60,6 @@
       <SubType>Designer</SubType>
     </None>
     <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <WCFMetadata Include="Service References\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\PusherClient.Tests.Utilities\PusherClient.Tests.Utilities.csproj">
