@@ -31,6 +31,19 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         [Test]
+        public void PusherAsyncShouldSuccessfulyConnectWhenGivenAValidAppKey()
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusherAsync();
+
+            // Act
+            var connectionState = pusher.Connect().Result;
+
+            // Assert
+            Assert.AreEqual(PusherAsync.AsyncConnectionState.Connected, connectionState);
+        }
+
+        [Test]
         public void PusherShouldNotSuccessfulyConnectWhenGivenAnInvalidAppKey()
         {
             // Arrange
@@ -50,6 +63,19 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             Assert.IsFalse(connected);
+        }
+
+        [Test]
+        public void PusherAsyncShouldNotSuccessfulyConnectWhenGivenAnInvalidAppKey()
+        {
+            // Arrange
+            var pusher = new PusherAsync("Invalid");
+
+            // Act
+            var connectionState = pusher.Connect().Result;
+
+            // Assert
+            Assert.AreEqual(PusherAsync.AsyncConnectionState.ConnectionFailed, connectionState);
         }
 
         [Test]
@@ -87,6 +113,21 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         [Test]
+        public void PusherAsyncShouldSuccessfulyDisconnectWhenItIsConnectedAndDIsconnectIsRequested()
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusherAsync();
+            var connectionResult = pusher.Connect().Result;
+
+            // Act
+            var disconnectionResult = pusher.Disconnect().Result;
+            
+            // Assert
+            Assert.AreEqual(PusherAsync.AsyncConnectionState.Connected, connectionResult);
+            Assert.AreEqual(PusherAsync.AsyncConnectionState.Disconnected, disconnectionResult);
+        }
+
+        [Test]
         public void PusherShouldNotSuccessfulyDisconnectWhenItIsNotDisconnected()
         {
             // Arrange
@@ -114,6 +155,19 @@ namespace PusherClient.Tests.AcceptanceTests
             // Assert
             Assert.IsFalse(connected);
             Assert.IsFalse(disconnected);
+        }
+
+        [Test]
+        public void PusherAsyncShouldNotSuccessfulyDisconnectWhenItIsNotDisconnected()
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusherAsync();
+
+            // Act
+            var disconnectionResult = pusher.Disconnect().Result;
+
+            // Assert
+            Assert.AreEqual(PusherAsync.AsyncConnectionState.NotConnected, disconnectionResult);
         }
 
         // TODO - Multi threading tests around connection

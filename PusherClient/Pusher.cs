@@ -89,7 +89,6 @@ namespace PusherClient
                 throw new ArgumentException(ErrorConstants.ApplicationKeyNotSet, nameof(applicationKey));
 
             _applicationKey = applicationKey;
-            _options = null;
 
             _options = options ?? new PusherOptions { Encrypted = false };
         }

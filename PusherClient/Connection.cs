@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Threading;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using WebSocket4Net;
@@ -36,8 +37,7 @@ namespace PusherClient
         internal void Connect()
         {
             // TODO: Add 'connecting_in' event
-            var msg = $"Connecting to: {_url}";
-            Pusher.Trace.TraceEvent(TraceEventType.Information, 0, msg);
+            Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Connecting to: {_url}");
 
             ChangeState(ConnectionState.Initialized);
             _allowReconnect = true;
