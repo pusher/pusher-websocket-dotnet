@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using Newtonsoft.Json;
 using System.Diagnostics;
 
@@ -63,7 +63,7 @@ namespace PusherClient
 
         public event ConnectedEventHandler Connected;
         public event ConnectionStateChangedEventHandler ConnectionStateChanged;
-        public Dictionary<string, Channel> Channels = new Dictionary<string, Channel>();
+        public ConcurrentDictionary<string, Channel> Channels = new ConcurrentDictionary<string, Channel>();
 
         #region Properties
 
@@ -221,15 +221,15 @@ namespace PusherClient
             switch (type)
             {
                 case ChannelTypes.Public:
-                    Channels.Add(channelName, new Channel(channelName, this));
+                    Channels[channelName] = new Channel(channelName, this);
                     break;
                 case ChannelTypes.Private:
                     AuthEndpointCheck();
-                    Channels.Add(channelName, new PrivateChannel(channelName, this));
+                    Channels[channelName] = new PrivateChannel(channelName, this);
                     break;
                 case ChannelTypes.Presence:
                     AuthEndpointCheck();
-                    Channels.Add(channelName, new PresenceChannel(channelName, this));
+                    Channels[channelName] = new PresenceChannel(channelName, this);
                     break;
             }
         }
