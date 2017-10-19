@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1
+* [FIXED] Potential crash when a channel is added while a connection state change is being handled.
+* [CHANGED] Log an error rather than throw an exception if an error occurs on a connection.
+
 ## 0.5.0
 * [CHANGED] After calling Connect(), subsequent calls will no-op unless Disconnect() is called first.
 * [CHANGED] Event listeners are removed from _websocket and _connection on disconnect
