@@ -109,10 +109,16 @@ namespace PusherClient
 
         private void RaiseError(PusherException error)
         {
-            // if a handler is registerd, use it, otherwise throw
+            // if a handler is registerd, use it, otherwise just trace. No code can catch exception here if thrown.
             var handler = Error;
-            if (handler != null) handler(this, error);
-            else throw error;
+            if (handler != null)
+            {
+                handler(this, error);
+            }
+            else
+            {
+                Pusher.Trace.TraceEvent(TraceEventType.Error, 0, error.ToString());
+            }
         }
 
         private void websocket_MessageReceived(object sender, MessageReceivedEventArgs e)
