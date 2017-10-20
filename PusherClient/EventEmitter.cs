@@ -47,7 +47,7 @@ namespace PusherClient
           _generalListeners.Clear();
         }
 
-        internal void EmitEvent(string eventName, string data, string channel)
+        internal void EmitEvent(string eventName, string channel, string data)
         {
             // Channel is not always present when a message is received.
             channel = channel ?? "";
