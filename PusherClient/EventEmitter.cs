@@ -49,6 +49,9 @@ namespace PusherClient
 
         internal void EmitEvent(string eventName, string data, string channel)
         {
+            // Channel is not always present when a message is received.
+            channel = channel ?? "";
+            
             var obj = JsonConvert.DeserializeObject<dynamic>(data);
 
             // Emit to general listeners regardless of event type
