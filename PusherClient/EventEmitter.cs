@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 
@@ -6,10 +6,10 @@ namespace PusherClient
 {
     public class EventEmitter
     {
-        private Dictionary<string, List<Action<dynamic>>> _eventListeners = new Dictionary<string, List<Action<dynamic>>>();
-        private List<Action<string, dynamic>> _generalListeners = new List<Action<string, dynamic>>();
+        private Dictionary<string, List<Action<string, dynamic>>> _eventListeners = new Dictionary<string, List<Action<string, dynamic>>>();
+        private List<Action<string, string, dynamic>> _generalListeners = new List<Action<string, string, dynamic>>();
 
-        public void Bind(string eventName, Action<dynamic> listener)
+        public void Bind(string eventName, Action<string, dynamic> listener)
         {
             if(_eventListeners.ContainsKey(eventName))
             {
@@ -17,13 +17,13 @@ namespace PusherClient
             }
             else
             {
-                List<Action<dynamic>> listeners = new List<Action<dynamic>>();
+                List<Action<string, dynamic>> listeners = new List<Action<string, dynamic>>();
                 listeners.Add(listener);
                 _eventListeners.Add(eventName, listeners);
             }
         }
 
-        public void BindAll(Action<string, dynamic> listener)
+        public void BindAll(Action<string, string, dynamic> listener)
         {
             _generalListeners.Add(listener);
         }
@@ -33,7 +33,7 @@ namespace PusherClient
             _eventListeners.Remove(eventName);
         }
 
-        public void Unbind(string eventName, Action<dynamic> listener)
+        public void Unbind(string eventName, Action<string, dynamic> listener)
         {
             if(_eventListeners.ContainsKey(eventName))
             {
@@ -47,21 +47,21 @@ namespace PusherClient
           _generalListeners.Clear();
         }
 
-        internal void EmitEvent(string eventName, string data)
+        internal void EmitEvent(string eventName, string data, string channel)
         {
             var obj = JsonConvert.DeserializeObject<dynamic>(data);
 
             // Emit to general listeners regardless of event type
             foreach (var action in _generalListeners)
             {
-                action(eventName, obj);
+                action(eventName, channel, obj);
             }
 
             if (_eventListeners.ContainsKey(eventName))
             {
                 foreach (var action in _eventListeners[eventName])
                 {
-                    action(obj);
+                    action(channel, obj);
                 }
             }
 

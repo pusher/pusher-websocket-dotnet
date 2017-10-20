@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Diagnostics;
 using Newtonsoft.Json.Linq;
@@ -145,7 +145,7 @@ namespace PusherClient
             //var message = JsonConvert.DeserializeAnonymousType(e.Message, template);
             var message = JsonConvert.DeserializeAnonymousType(jsonMessage, template);
 
-            _pusher.EmitEvent(message.@event, message.data);
+            _pusher.EmitEvent(message.@event, message.channel, message.data);
 
             if (message.@event.StartsWith("pusher"))
             {
@@ -215,7 +215,7 @@ namespace PusherClient
             {
                 // Assume channel event
                 if (_pusher.Channels.ContainsKey(message.channel))
-                    _pusher.Channels[message.channel].EmitEvent(message.@event, message.data);
+                    _pusher.Channels[message.channel].EmitEvent(message.@event, message.channel, message.data);
             }
 
             
