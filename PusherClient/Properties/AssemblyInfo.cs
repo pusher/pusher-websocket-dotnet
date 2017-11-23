@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("PusherDotNetClient")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("The .NET library for interacting with the Pusher WebSocket API. Register at http://pusher.com.")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Microsoft")]
+[assembly: AssemblyCompany("Pusher")]
 [assembly: AssemblyProduct("PusherDotNetClient")]
-[assembly: AssemblyCopyright("Copyright © Microsoft 2012")]
+[assembly: AssemblyCopyright("Copyright © Pusher 2017")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

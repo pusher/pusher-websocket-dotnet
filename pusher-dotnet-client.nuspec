@@ -10,8 +10,7 @@
     <projectUrl>https://github.com/pusher/pusher-dotnet-client</projectUrl>
     <iconUrl>https://pusher.com/static_logos/64x64.png</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>The .NET library for interacting with the Pusher WebSocket API.
-Register at http://pusher.com.</description>
+    <description>$description$</description>
     <releaseNotes></releaseNotes>
     <copyright>Copyright 2017</copyright>
     <tags>pusher realtime websocket</tags>
