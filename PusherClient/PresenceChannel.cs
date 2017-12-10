@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 
 namespace PusherClient
@@ -7,7 +8,7 @@ namespace PusherClient
     public delegate void MemberAddedEventHandler(object sender, KeyValuePair<string, dynamic> member);
     public class PresenceChannel : PrivateChannel
     {
-        public Dictionary<string, dynamic> Members = new Dictionary<string, dynamic>();
+        public ConcurrentDictionary<string, dynamic> Members = new ConcurrentDictionary<string, dynamic>();
 
         public event MemberAddedEventHandler MemberAdded;
         public event MemberEventHandler MemberRemoved;
@@ -26,10 +27,7 @@ namespace PusherClient
         {
             var member = ParseMember(data);
 
-            if (!Members.ContainsKey(member.Key))
-                Members.Add(member.Key, member.Value);
-            else
-                Members[member.Key] = member.Value;
+            Members[member.Key] = member.Value;
 
             if (MemberAdded != null)
                 MemberAdded(this, member);
@@ -41,10 +39,12 @@ namespace PusherClient
 
             if (Members.ContainsKey(member.Key))
             {
-                Members.Remove(member.Key);
-
-                if (MemberRemoved != null)
-                    MemberRemoved(this);
+                dynamic removed;
+                if (Members.TryRemove(member.Key, out removed))
+                {
+                    if (MemberRemoved != null)
+                        MemberRemoved(this);
+                }
             }
         }
 
@@ -52,9 +52,9 @@ namespace PusherClient
 
         #region Private Methods
 
-        private Dictionary<string, dynamic> ParseMembersList(string data)
+        private ConcurrentDictionary<string, dynamic> ParseMembersList(string data)
         {
-            Dictionary<string, dynamic> members = new Dictionary<string, dynamic>();
+            ConcurrentDictionary<string, dynamic> members = new ConcurrentDictionary<string, dynamic>();
 
             var dataAsObj = JsonConvert.DeserializeObject<dynamic>(data);
             
@@ -62,7 +62,7 @@ namespace PusherClient
             {
                 var id = (string)dataAsObj.presence.ids[i];
                 var val = (dynamic)dataAsObj.presence.hash[id];
-                members.Add(id, val);
+                members[id] = val;
             }
 
             return members;
