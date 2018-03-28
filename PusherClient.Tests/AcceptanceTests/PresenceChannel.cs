@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using Nito.AsyncEx;
 using NUnit.Framework;
 using PusherClient.Tests.Utilities;
 
@@ -34,7 +35,7 @@ namespace PusherClient.Tests.AcceptanceTests
             var channelSubscribed = false;
 
             // Act
-            var channel = pusher.Subscribe(mockChannelName);
+            var channel = AsyncContext.Run(() => pusher.Subscribe(mockChannelName));
             channel.Subscribed += sender =>
             {
                 channelSubscribed = true;

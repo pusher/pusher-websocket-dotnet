@@ -2,7 +2,9 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Nito.AsyncEx;
 
 namespace PusherClient
 {
@@ -54,9 +56,9 @@ namespace PusherClient
 
         private Connection _connection;
 
-        private readonly object _lockingObject = new object();
-
         private readonly List<string> _pendingChannelSubscriptions = new List<string>();
+
+        private readonly AsyncLock _mutex = new AsyncLock();
 
         /// <summary>
         /// Gets the Socket ID
@@ -66,7 +68,7 @@ namespace PusherClient
         /// <summary>
         /// Gets the current connection state
         /// </summary>
-        public ConnectionState State => _connection?.State ?? ConnectionState.Disconnected;
+        public ConnectionState State => _connection?.State ?? ConnectionState.NotConnected;
 
         /// <summary>
         /// Gets the channels in use by the Client
@@ -167,40 +169,102 @@ namespace PusherClient
         /// <summary>
         /// Start the connection to the Pusher Server.  When completed, the <see cref="Connected"/> event will fire.
         /// </summary>
-        public void Connect()
+        public ConnectionState Connect()
         {
+            if (_connection != null)
+            {
+                Trace.TraceEvent(TraceEventType.Warning, 0, ErrorConstants.ConnectionAlreadyConnected);
+                return ConnectionState.AlreadyConnected;
+            }
+
             // Prevent multiple concurrent connections
-            lock(_lockingObject)
+            var connectionResult = ConnectionState.NotConnected;
+
+            using (_mutex.Lock())
             {
                 // Ensure we only ever attempt to connect once
                 if (_connection != null)
                 {
                     Trace.TraceEvent(TraceEventType.Warning, 0, ErrorConstants.ConnectionAlreadyConnected);
-                    return;
+                    return ConnectionState.AlreadyConnected;
                 }
-
-                var scheme = _options.Encrypted ? Constants.SECURE_SCHEMA : Constants.INSECURE_SCHEMA;
 
                 // TODO: Fallback to secure?
 
-                var url = $"{scheme}{_options.Host}/app/{_applicationKey}?protocol={Settings.Default.ProtocolVersion}&client={Settings.Default.ClientName}&version={Settings.Default.VersionNumber}";
+                var url = ConstructUrl();
 
                 _connection = new Connection(this, url);
-                _connection.Connect();
+                connectionResult = AsyncContext.Run(() => _connection.Connect());
             }
+
+            return connectionResult;
+        }
+
+        public async Task<ConnectionState> ConnectAsync()
+        {
+            if (_connection != null)
+            {
+                Trace.TraceEvent(TraceEventType.Warning, 0, ErrorConstants.ConnectionAlreadyConnected);
+                return ConnectionState.AlreadyConnected;
+            }
+
+            // Prevent multiple concurrent connections
+            var connectionResult = ConnectionState.Connecting;
+
+            using (await _mutex.LockAsync())
+            {
+                // Ensure we only ever attempt to connect once
+                if (_connection != null)
+                {
+                    Trace.TraceEvent(TraceEventType.Warning, 0, ErrorConstants.ConnectionAlreadyConnected);
+                    return ConnectionState.AlreadyConnected;
+                }
+
+                // TODO: Fallback to secure?
+
+                var url = ConstructUrl();
+
+                _connection = new Connection(this, url);
+                connectionResult = await _connection.Connect();
+            }
+
+            return connectionResult;
+        }
+
+        private string ConstructUrl()
+        {
+            var scheme = _options.Encrypted ? Constants.SECURE_SCHEMA : Constants.INSECURE_SCHEMA;
+
+            return $"{scheme}{_options.Host}/app/{_applicationKey}?protocol={Settings.Default.ProtocolVersion}&client={Settings.Default.ClientName}&version={Settings.Default.VersionNumber}";
         }
 
         /// <summary>
         /// Start the disconnection from the Pusher Server.  When completed, the <see cref="Disconnected"/> event will fire.
         /// </summary>
-        public void Disconnect()
+        public ConnectionState Disconnect()
         {
+            return AsyncContext.Run(DisconnectAsync);
+        }
+
+        /// <summary>
+        /// Start the disconnection from the Pusher Server.  When completed, the <see cref="Disconnected"/> event will fire.
+        /// </summary>
+        public async Task<ConnectionState> DisconnectAsync()
+        {
+            ConnectionState connectionResult = ConnectionState.Disconnecting;
+
             if (_connection != null)
             {
                 MarkChannelsAsUnsubscribed();
-                _connection.Disconnect();
+                connectionResult = await _connection.Disconnect();
                 _connection = null;
             }
+            else
+            {
+                connectionResult = ConnectionState.Disconnected;
+            }
+
+            return connectionResult;
         }
 
         /// <summary>
@@ -208,7 +272,7 @@ namespace PusherClient
         /// </summary>
         /// <param name="channelName">The name of the Channel to subsribe to</param>
         /// <returns>The Channel that is being subscribed to</returns>
-        public Channel Subscribe(string channelName)
+        public async Task<Channel> Subscribe(string channelName)
         {
             if (string.IsNullOrWhiteSpace(channelName))
             {
@@ -223,10 +287,10 @@ namespace PusherClient
             
             _pendingChannelSubscriptions.Add(channelName);
 
-            return SubscribeToChannel(channelName);
+            return await SubscribeToChannel(channelName);
         }
 
-        private Channel SubscribeToChannel(string channelName)
+        private async Task<Channel> SubscribeToChannel(string channelName)
         {
             var channelType = GetChannelType(channelName);
 
@@ -242,12 +306,12 @@ namespace PusherClient
                     var template = new { auth = string.Empty, channel_data = string.Empty };
                     var message = JsonConvert.DeserializeAnonymousType(jsonAuth, template);
 
-                    _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName, auth = message.auth, channel_data = message.channel_data } }));
+                    await _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName, auth = message.auth, channel_data = message.channel_data } }));
                 }
                 else
                 {
                     // No need for auth details. Just send subscribe event
-                    _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName } }));
+                    await _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName } }));
                 }
             }
 
@@ -300,14 +364,13 @@ namespace PusherClient
 
         void ITriggerChannels.Trigger(string channelName, string eventName, object obj)
         {
-            _connection.Send(JsonConvert.SerializeObject(new { @event = eventName, channel = channelName, data = obj }));
+            AsyncContext.Run(() => _connection.Send(JsonConvert.SerializeObject(new { @event = eventName, channel = channelName, data = obj })));
         }
 
         void ITriggerChannels.Unsubscribe(string channelName)
         {
             if (_connection.IsConnected)
-
-              _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_UNSUBSCRIBE, data = new { channel = channelName } }));
+                AsyncContext.Run(() => _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_UNSUBSCRIBE, data = new { channel = channelName } })));
         }
 
         private void RaiseError(PusherException error)
@@ -335,7 +398,7 @@ namespace PusherClient
         {
             foreach (var channel in Channels)
             {
-                SubscribeToChannel(channel.Key);
+                AsyncContext.Run(() => SubscribeToChannel(channel.Key));
             }
         }
     }

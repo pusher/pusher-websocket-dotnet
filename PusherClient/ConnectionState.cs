@@ -30,8 +30,24 @@
         /// </summary>
         Disconnected,
         /// <summary>
-        /// The state when a connectionr etry is in process
+        /// The state when a connection retry is in process
         /// </summary>
-        WaitingToReconnect
+        WaitingToReconnect,
+        /// <summary>
+        /// The state when a connection is not currently connected
+        /// </summary>
+        NotConnected,
+        /// <summary>
+        /// The state when a connector is already connected
+        /// </summary>
+        AlreadyConnected,
+        /// <summary>
+        /// The state when a connector failed to connect
+        /// </summary>
+        ConnectionFailed,
+        /// <summary>
+        /// The state when a connector failed to disconnect
+        /// </summary>
+        DisconnectionFailed
     }
 }

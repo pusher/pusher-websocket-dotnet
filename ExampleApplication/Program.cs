@@ -52,7 +52,7 @@ namespace ExampleApplication
         }
 
         // Pusher Initiation / Connection
-        private static void InitPusher()
+        private async static void InitPusher()
         {
             _pusher = new Pusher(Config.AppKey, new PusherOptions
             {
@@ -62,7 +62,7 @@ namespace ExampleApplication
             _pusher.Error += _pusher_Error;
 
             // Setup private channel
-            _chatChannel = _pusher.Subscribe("private-channel");
+            _chatChannel = await _pusher.Subscribe("private-channel");
             _chatChannel.Subscribed += ChatChannel_Subscribed;
 
             // Inline binding!
@@ -72,7 +72,7 @@ namespace ExampleApplication
             });
 
             // Setup presence channel
-            _presenceChannel = (PresenceChannel)_pusher.Subscribe("presence-channel");
+            _presenceChannel = (PresenceChannel)await _pusher.Subscribe("presence-channel");
             _presenceChannel.Subscribed += PresenceChannel_Subscribed;
             _presenceChannel.MemberAdded += PresenceChannel_MemberAdded;
             _presenceChannel.MemberRemoved += PresenceChannel_MemberRemoved;

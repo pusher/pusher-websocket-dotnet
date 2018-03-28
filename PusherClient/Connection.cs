@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Nito.AsyncEx;
 using WebSocket4Net;
 
 namespace PusherClient
@@ -11,11 +12,9 @@ namespace PusherClient
     internal class Connection
     {
         private WebSocket _websocket;
-        private string _socketId;
 
         private readonly string _url;
         private readonly IPusher _pusher;
-        private ConnectionState _state = ConnectionState.Uninitialized;
         private bool _allowReconnect = true;
         
         private int _backOffMillis;
@@ -23,9 +22,10 @@ namespace PusherClient
         private static readonly int MAX_BACKOFF_MILLIS = 10000;
         private static readonly int BACK_OFF_MILLIS_INCREMENT = 1000;
 
-        internal string SocketId => _socketId;
+        internal string SocketId { get; private set; }
 
-        internal ConnectionState State => _state;
+        internal ConnectionState State { get; private set; } = ConnectionState.Uninitialized;
+
         internal bool IsConnected => State == ConnectionState.Connected;
 
         public Connection(IPusher pusher, string url)
@@ -34,7 +34,7 @@ namespace PusherClient
             _url = url;
         }
 
-        internal void Connect()
+        internal async Task<ConnectionState> Connect()
         {
             // TODO: Add 'connecting_in' event
             Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Connecting to: {_url}");
@@ -55,11 +55,16 @@ namespace PusherClient
             ChangeState(ConnectionState.Connecting);
 
             _websocket.Open();
+
+            ChangeState(ConnectionState.Connected);
+
+            return ConnectionState.Connected;
         }
 
-        internal void Disconnect()
+        internal async Task<ConnectionState> Disconnect()
         {
             ChangeState(ConnectionState.Disconnecting);
+            Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Disconnecting from: {_url}");
 
             _allowReconnect = false;
 
@@ -71,16 +76,22 @@ namespace PusherClient
             _websocket.Close();
 
             ChangeState(ConnectionState.Disconnected);
+
+            return ConnectionState.Disconnected;
         }
 
-        internal void Send(string message)
+        internal async Task<bool> Send(string message)
         {
             if (IsConnected)
             {
                 Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Sending: " + message);
                 Debug.WriteLine("Sending: " + message);
                 _websocket.Send(message);
+
+                return true;
             }
+
+            return false;
         }
 
         private void websocket_MessageReceived(object sender, MessageReceivedEventArgs e)
@@ -167,7 +178,7 @@ namespace PusherClient
                 ChangeState(ConnectionState.WaitingToReconnect);
                 Thread.Sleep(_backOffMillis);
                 _backOffMillis = Math.Min(MAX_BACKOFF_MILLIS, _backOffMillis + BACK_OFF_MILLIS_INCREMENT);
-                Connect();
+                AsyncContext.Run(Connect);
             }
         }
 
@@ -182,7 +193,7 @@ namespace PusherClient
         {
             var template = new { socket_id = string.Empty };
             var message = JsonConvert.DeserializeAnonymousType(data, template);
-            _socketId = message.socket_id;
+            SocketId = message.socket_id;
 
             ChangeState(ConnectionState.Connected);
         }
@@ -204,7 +215,7 @@ namespace PusherClient
 
         private void ChangeState(ConnectionState state)
         {
-            _state = state;
+            State = state;
             _pusher.ConnectionStateChanged(state);
         }
 
