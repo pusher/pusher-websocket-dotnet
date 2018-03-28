@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
+using System.Collections.Generic;
 using Newtonsoft.Json;
 
 namespace PusherClient
@@ -23,7 +24,7 @@ namespace PusherClient
         /// <summary>
         /// Gets the Members of the channel
         /// </summary>
-        public Dictionary<string, dynamic> Members { get; private set; } = new Dictionary<string, dynamic>();
+        public ConcurrentDictionary<string, dynamic> Members { get; private set; } = new ConcurrentDictionary<string, dynamic>();
 
         internal override void SubscriptionSucceeded(string data)
         {
@@ -35,10 +36,7 @@ namespace PusherClient
         {
             var member = ParseMember(data);
 
-            if (!Members.ContainsKey(member.Key))
-                Members.Add(member.Key, member.Value);
-            else
-                Members[member.Key] = member.Value;
+            Members[member.Key] = member.Value;
 
             if (MemberAdded != null)
                 MemberAdded(this, member);
@@ -50,16 +48,18 @@ namespace PusherClient
 
             if (Members.ContainsKey(member.Key))
             {
-                Members.Remove(member.Key);
-
-                if (MemberRemoved != null)
-                    MemberRemoved(this);
+                dynamic removed;
+                if (Members.TryRemove(member.Key, out removed))
+                {
+                    if (MemberRemoved != null)
+                        MemberRemoved(this);
+                }
             }
         }
 
-        private Dictionary<string, dynamic> ParseMembersList(string data)
+        private ConcurrentDictionary<string, dynamic> ParseMembersList(string data)
         {
-            Dictionary<string, dynamic> members = new Dictionary<string, dynamic>();
+            ConcurrentDictionary<string, dynamic> members = new ConcurrentDictionary<string, dynamic>();
 
             var dataAsObj = JsonConvert.DeserializeObject<dynamic>(data);
 
@@ -67,7 +67,7 @@ namespace PusherClient
             {
                 var id = (string)dataAsObj.presence.ids[i];
                 var val = (dynamic)dataAsObj.presence.hash[id];
-                members.Add(id, val);
+                members[id](val);
             }
 
             return members;
