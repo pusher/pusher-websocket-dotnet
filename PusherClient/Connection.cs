@@ -185,7 +185,12 @@ namespace PusherClient
             _websocket.Closed -= websocket_Closed;
             _websocket.MessageReceived -= websocket_MessageReceived;
 
-            _websocket = null;
+            if (_websocket != null)
+            {
+                _websocket.Dispose();
+                _websocket = null;
+            }
+
             ChangeState(ConnectionState.Disconnected);
 
             if (_allowReconnect)
