@@ -18,7 +18,7 @@
         /// </summary>
         Connecting,
         /// <summary>
-        /// The state when the connection process has cimpleted successfully
+        /// The state when the connection process has completed successfully
         /// </summary>
         Connected,
         /// <summary>

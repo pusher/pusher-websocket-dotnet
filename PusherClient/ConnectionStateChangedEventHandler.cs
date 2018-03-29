@@ -1,7 +1,7 @@
 ﻿namespace PusherClient
 {
     /// <summary>
-    /// The Event Handler for the Connection State Channged Event on the <see cref="Pusher"/>
+    /// The Event Handler for the Connection State Changed Event on the <see cref="Pusher"/> object
     /// </summary>
     /// <param name="sender">The object that subscribed</param>
     /// <param name="state">The new state</param>
