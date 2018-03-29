@@ -16,10 +16,11 @@ Install-Package PusherClient
 
 ## Usage
 
-See [the example app](https://github.com/pusher-community/pusher-websocket-dotnet/tree/master/ExampleApplication) for full details.
+See [the example app](https://github.com/pusher/pusher-websocket-dotnet/tree/master/ExampleApplication) for full details.
 
 ### Connect
 
+#### Event based
 ```cs
 _pusher = new Pusher("YOUR_APP_KEY");
 _pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
@@ -41,8 +42,20 @@ static void _pusher_Error(object sender, PusherException error)
 }
 ```
 
-Or if you have an authentication endpoint for private or presence channels:
+#### Asynchronous
+```cs
+_pusher = new Pusher("YOUR_APP_KEY");
+_pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
+_pusher.Error += _pusher_Error;
+ConnectionState connectionState = await _pusher.ConnectAsync();
+```
 
+In the case of the async version, state and error changes will continue to be published via events, but the initial connection state will be returned from the `ConnectAsync()` method.
+
+### Authenticated Connect
+If you have an authentication endpoint for private or presence channels:
+
+#### Event based
 ```cs
 _pusher = new Pusher("YOUR_APP_KEY", new PusherOptions(){
     Authorizer = new HttpAuthorizer("YOUR_ENDPOINT")
@@ -52,8 +65,21 @@ _pusher.Error += _pusher_Error;
 _pusher.Connect();
 ```
 
-Or if you are on a non default cluster (e.g. eu):
+#### Asynchronous
 
+```cs
+_pusher = new Pusher("YOUR_APP_KEY", new PusherOptions(){
+    Authorizer = new HttpAuthorizer("YOUR_ENDPOINT")
+});
+_pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
+_pusher.Error += _pusher_Error;
+ConnectionState connectionState = await _pusher.ConnectAsync();
+```
+
+### Non Default Cluster
+If you are on a non default cluster (e.g. eu):
+
+#### Event based
 ```cs
 _pusher = new Pusher("YOUR_APP_KEY", new PusherOptions(){
     Cluster = "eu"
@@ -63,8 +89,19 @@ _pusher.Error += _pusher_Error;
 _pusher.Connect();
 ```
 
+#### Asynchonous
+```cs
+_pusher = new Pusher("YOUR_APP_KEY", new PusherOptions(){
+    Cluster = "eu"
+});
+_pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
+_pusher.Error += _pusher_Error;
+ConnectionState connectionState = _pusher.ConnectAsync();
+```
+
 ### Subscribe to a public or private channel
 
+####Event based
 ```cs
 _myChannel = _pusher.Subscribe("my-channel");
 _myChannel.Subscribed += _myChannel_Subscribed;
@@ -78,6 +115,11 @@ static void _myChannel_Subscribed(object sender)
 }
 ```
 
+#### Asynchronous
+```cs
+Channel _myChannel = await _pusher.SubscribeAsync("my-channel");
+```
+
 ### Bind to an event
 
 ```cs
@@ -89,6 +131,7 @@ _myChannel.Bind("my-event", (dynamic data) =>
 
 ### Subscribe to a presence channel
 
+#### Event based
 ```cs
 _presenceChannel = (PresenceChannel)_pusher.Subscribe("presence-channel");
 _presenceChannel.Subscribed += _presenceChannel_Subscribed;
@@ -109,6 +152,13 @@ static void _presenceChannel_MemberRemoved(object sender)
 {
     ListMembers();
 }
+```
+
+#### Asynchronous
+_presenceChannel = await (PresenceChannel)_pusher.SubscribeAsync("presence-channel");
+_presenceChannel.Subscribed += _presenceChannel_Subscribed;
+_presenceChannel.MemberAdded += _presenceChannel_MemberAdded;
+_presenceChannel.MemberRemoved += _presenceChannel_MemberRemoved;
 ```
 
 ### Unbind
