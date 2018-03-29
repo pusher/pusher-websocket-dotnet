@@ -364,6 +364,8 @@ namespace PusherClient
 
             if (handler != null)
                 handler(this, error);
+            else
+                Pusher.Trace.TraceEvent(TraceEventType.Error, 0, error.ToString());
         }
 
         private bool AlreadySubscribed(string channelName)
