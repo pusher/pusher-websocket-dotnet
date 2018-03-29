@@ -1,27 +1,37 @@
 ﻿namespace PusherClient
 {
-    public delegate void SubscriptionEventHandler(object sender);
-
+    /// <summary>
+    /// Represents a Pusher channel that can be subscribed to
+    /// </summary>
     public class Channel : EventEmitter
     {
-        private Pusher _pusher = null;
-        private bool _isSubscribed = false;
+        private readonly ITriggerChannels _pusher;
+        private bool _isSubscribed;
 
+        /// <summary>
+        /// Fired when the Channel has successfully been subscribed to
+        /// </summary>
         public event SubscriptionEventHandler Subscribed;
-        public string Name = null;
 
-        public bool IsSubscribed
-        {
-            get
-            {
-                return _isSubscribed;
-            }
-        }
+        /// <summary>
+        /// Gets whether the Channel is currently Subscribed
+        /// </summary>
+        public bool IsSubscribed => _isSubscribed;
 
-        public Channel(string channelName, Pusher pusher)
+        /// <summary>
+        /// Gets the name of the Channel
+        /// </summary>
+        public string Name { get; }
+
+        /// <summary>
+        /// Ctor
+        /// </summary>
+        /// <param name="channelName">The name of the Channel</param>
+        /// <param name="pusher">The parent Pusher object</param>
+        internal Channel(string channelName, ITriggerChannels pusher)
         {
             _pusher = pusher;
-            this.Name = channelName;
+            Name = channelName;
         }
 
         internal virtual void SubscriptionSucceeded(string data)
@@ -35,16 +45,23 @@
                 Subscribed(this);
         }
 
+        /// <summary>
+        /// Unsubscribe from the Channel named channel, if currently subscribed
+        /// </summary>
         public void Unsubscribe()
         {
+            _pusher.Unsubscribe(Name);
             _isSubscribed = false;
-            _pusher.Unsubscribe(this.Name);
         }
 
+        /// <summary>
+        /// Trigger this channel with the provided information
+        /// </summary>
+        /// <param name="eventName">The name of the event to trigger</param>
+        /// <param name="obj">The object to send as the payload on the event</param>
         public void Trigger(string eventName, object obj)
         {
-            _pusher.Trigger(this.Name, eventName, obj);
+            _pusher.Trigger(Name, eventName, obj);
         }
-
     }
 }
