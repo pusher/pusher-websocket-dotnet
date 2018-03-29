@@ -53,12 +53,10 @@ namespace PusherClient
 
         private readonly string _applicationKey;
         private readonly PusherOptions _options;
+        private readonly List<string> _pendingChannelSubscriptions = new List<string>();
+        private readonly AsyncLock _mutex = new AsyncLock();
 
         private Connection _connection;
-
-        private readonly List<string> _pendingChannelSubscriptions = new List<string>();
-
-        private readonly AsyncLock _mutex = new AsyncLock();
 
         /// <summary>
         /// Gets the Socket ID
@@ -171,35 +169,12 @@ namespace PusherClient
         /// </summary>
         public ConnectionState Connect()
         {
-            if (_connection != null)
-            {
-                Trace.TraceEvent(TraceEventType.Warning, 0, ErrorConstants.ConnectionAlreadyConnected);
-                return ConnectionState.AlreadyConnected;
-            }
-
-            // Prevent multiple concurrent connections
-            var connectionResult = ConnectionState.NotConnected;
-
-            using (_mutex.Lock())
-            {
-                // Ensure we only ever attempt to connect once
-                if (_connection != null)
-                {
-                    Trace.TraceEvent(TraceEventType.Warning, 0, ErrorConstants.ConnectionAlreadyConnected);
-                    return ConnectionState.AlreadyConnected;
-                }
-
-                // TODO: Fallback to secure?
-
-                var url = ConstructUrl();
-
-                _connection = new Connection(this, url);
-                connectionResult = AsyncContext.Run(() => _connection.Connect());
-            }
-
-            return connectionResult;
+            return AsyncContext.Run(ConnectAsync);
         }
 
+        /// <summary>
+        /// Start the connection to the Pusher Server asynchronously.  When completed, the <see cref="Connected"/> event will fire.
+        /// </summary>
         public async Task<ConnectionState> ConnectAsync()
         {
             if (_connection != null)
@@ -247,7 +222,7 @@ namespace PusherClient
         }
 
         /// <summary>
-        /// Start the disconnection from the Pusher Server.  When completed, the <see cref="Disconnected"/> event will fire.
+        /// Start the disconnection from the Pusher Server asynchronously.  When completed, the <see cref="Disconnected"/> event will fire.
         /// </summary>
         public async Task<ConnectionState> DisconnectAsync()
         {
@@ -272,7 +247,17 @@ namespace PusherClient
         /// </summary>
         /// <param name="channelName">The name of the Channel to subsribe to</param>
         /// <returns>The Channel that is being subscribed to</returns>
-        public async Task<Channel> Subscribe(string channelName)
+        public Channel Subscribe(string channelName)
+        {
+            return AsyncContext.Run(() => SubscribeAsync(channelName));
+        }
+
+        /// <summary>
+        /// Subscribes to the given channel asynchronously, unless the channel already exists, in which case the xisting channel will be returned.
+        /// </summary>
+        /// <param name="channelName">The name of the Channel to subsribe to</param>
+        /// <returns>The Channel that is being subscribed to</returns>
+        public async Task<Channel> SubscribeAsync(string channelName)
         {
             if (string.IsNullOrWhiteSpace(channelName))
             {
@@ -284,7 +269,7 @@ namespace PusherClient
                 Trace.TraceEvent(TraceEventType.Warning, 0, "Channel '" + channelName + "' is already subscribed to. Subscription event has been ignored.");
                 return Channels[channelName];
             }
-            
+
             _pendingChannelSubscriptions.Add(channelName);
 
             return await SubscribeToChannel(channelName);

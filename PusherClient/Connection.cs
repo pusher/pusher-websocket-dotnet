@@ -28,14 +28,22 @@ namespace PusherClient
 
         internal bool IsConnected => State == ConnectionState.Connected;
 
+        private TaskCompletionSource<ConnectionState> _connectionTaskComplete = null;
+        private TaskCompletionSource<ConnectionState> _disconnectionTaskComplete = null;
+
         public Connection(IPusher pusher, string url)
         {
             _pusher = pusher;
             _url = url;
         }
 
-        internal async Task<ConnectionState> Connect()
+        internal Task<ConnectionState> Connect()
         {
+            if (_connectionTaskComplete != null)
+                return _connectionTaskComplete.Task;
+
+            _connectionTaskComplete = new TaskCompletionSource<ConnectionState>();
+
             // TODO: Add 'connecting_in' event
             Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Connecting to: {_url}");
 
@@ -47,37 +55,32 @@ namespace PusherClient
                 EnableAutoSendPing = true,
                 AutoSendPingInterval = 1
             };
+
             _websocket.Opened += websocket_Opened;
             _websocket.Error += websocket_Error;
             _websocket.Closed += websocket_Closed;
             _websocket.MessageReceived += websocket_MessageReceived;
 
-            ChangeState(ConnectionState.Connecting);
-
             _websocket.Open();
 
-            ChangeState(ConnectionState.Connected);
-
-            return ConnectionState.Connected;
+            return _connectionTaskComplete.Task;
         }
 
-        internal async Task<ConnectionState> Disconnect()
+        internal Task<ConnectionState> Disconnect()
         {
-            ChangeState(ConnectionState.Disconnecting);
+            if (_disconnectionTaskComplete != null)
+                return _disconnectionTaskComplete.Task;
+
+            _disconnectionTaskComplete = new TaskCompletionSource<ConnectionState>();
+
             Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Disconnecting from: {_url}");
 
+            ChangeState(ConnectionState.Disconnecting);
+
             _allowReconnect = false;
-
-            _websocket.Opened -= websocket_Opened;
-            _websocket.Error -= websocket_Error;
-            _websocket.Closed -= websocket_Closed;
-            _websocket.MessageReceived -= websocket_MessageReceived;
-
             _websocket.Close();
 
-            ChangeState(ConnectionState.Disconnected);
-
-            return ConnectionState.Disconnected;
+            return _disconnectionTaskComplete.Task;
         }
 
         internal async Task<bool> Send(string message)
@@ -86,10 +89,15 @@ namespace PusherClient
             {
                 Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Sending: " + message);
                 Debug.WriteLine("Sending: " + message);
-                _websocket.Send(message);
+
+                var sendTask = Task.Run(() => _websocket.Send(message));
+                await sendTask;
 
                 return true;
             }
+
+            Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Did not send: " + message + ", as there is not active connection.");
+            Debug.WriteLine("Did not send: " + message + ", as there is not active connection.");
 
             return false;
         }
@@ -164,21 +172,35 @@ namespace PusherClient
         private void websocket_Opened(object sender, EventArgs e)
         {
             Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Websocket opened OK.");
+            _connectionTaskComplete.SetResult(ConnectionState.Connected);
+            _connectionTaskComplete = null;
         }
 
         private void websocket_Closed(object sender, EventArgs e)
         {
             Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Websocket connection has been closed");
 
-            ChangeState(ConnectionState.Disconnected);
+            _websocket.Opened -= websocket_Opened;
+            _websocket.Error -= websocket_Error;
+            _websocket.Closed -= websocket_Closed;
+            _websocket.MessageReceived -= websocket_MessageReceived;
+
             _websocket = null;
+            ChangeState(ConnectionState.Disconnected);
 
             if (_allowReconnect)
             {
+                Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Attempting websocket reconnection");
+
                 ChangeState(ConnectionState.WaitingToReconnect);
                 Thread.Sleep(_backOffMillis);
                 _backOffMillis = Math.Min(MAX_BACKOFF_MILLIS, _backOffMillis + BACK_OFF_MILLIS_INCREMENT);
                 AsyncContext.Run(Connect);
+            }
+            else
+            {
+                _disconnectionTaskComplete.SetResult(ConnectionState.Disconnected);
+                _disconnectionTaskComplete = null;
             }
         }
 
@@ -186,7 +208,15 @@ namespace PusherClient
         {
             Pusher.Trace.TraceEvent(TraceEventType.Error, 0, "Error: " + e.Exception);
 
-            // TODO: What happens here? Do I need to re-connect, or do I just log the issue?
+            if (_connectionTaskComplete != null)
+            {
+                _connectionTaskComplete.TrySetException(e.Exception);
+            }
+
+            if (_disconnectionTaskComplete != null)
+            {
+                _disconnectionTaskComplete.TrySetException(e.Exception);
+            }
         }
 
         private void ParseConnectionEstablished(string data)

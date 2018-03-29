@@ -1,4 +1,5 @@
 ﻿using System;
+using Nito.AsyncEx;
 using NUnit.Framework;
 
 namespace PusherClient.Tests.UnitTests
@@ -113,7 +114,73 @@ namespace PusherClient.Tests.UnitTests
             try
             {
                 var pusher = new Pusher("FakeAppKey");
-                pusher.Subscribe(string.Empty);
+                var channel = pusher.Subscribe(string.Empty);
+            }
+            catch (ArgumentException ex)
+            {
+                caughtException = ex;
+            }
+
+            // Assert
+            Assert.IsNotNull(caughtException);
+            StringAssert.Contains("The channel name cannot be null or whitespace", caughtException.Message);
+        }
+
+        [Test]
+        public void PusherShouldThrowAnExceptionWhenSubscribeIsCalledWithAnEmptyStringForAChannelNameAsync()
+        {
+            // Arrange
+            ArgumentException caughtException = null;
+
+            // Act
+            try
+            {
+                var pusher = new Pusher("FakeAppKey");
+                var channel = AsyncContext.Run(() => pusher.SubscribeAsync(string.Empty));
+            }
+            catch (ArgumentException ex)
+            {
+                caughtException = ex;
+            }
+
+            // Assert
+            Assert.IsNotNull(caughtException);
+            StringAssert.Contains("The channel name cannot be null or whitespace", caughtException.Message);
+        }
+
+        [Test]
+        public void PusherShouldThrowAnExceptionWhenSubscribeIsCalledWithANullStringForAChannelName()
+        {
+            // Arrange
+            ArgumentException caughtException = null;
+
+            // Act
+            try
+            {
+                var pusher = new Pusher("FakeAppKey");
+                var channel = pusher.Subscribe(null);
+            }
+            catch (ArgumentException ex)
+            {
+                caughtException = ex;
+            }
+
+            // Assert
+            Assert.IsNotNull(caughtException);
+            StringAssert.Contains("The channel name cannot be null or whitespace", caughtException.Message);
+        }
+
+        [Test]
+        public void PusherShouldThrowAnExceptionWhenSubscribeIsCalledWithANullStringForAChannelNameAsync()
+        {
+            // Arrange
+            ArgumentException caughtException = null;
+
+            // Act
+            try
+            {
+                var pusher = new Pusher("FakeAppKey");
+                var channel = AsyncContext.Run(() => pusher.SubscribeAsync(null));
             }
             catch (ArgumentException ex)
             {
