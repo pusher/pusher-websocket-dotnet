@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("ExampleApplication")]
 [assembly: AssemblyDescription("An Example App for user with Pusher Client")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("Pusher")]
 [assembly: AssemblyProduct("ExampleApplication")]
 [assembly: AssemblyCopyright("Copyright © Pusher 2018")]
 [assembly: AssemblyTrademark("")]

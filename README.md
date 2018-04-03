@@ -101,7 +101,7 @@ ConnectionState connectionState = _pusher.ConnectAsync();
 
 ### Subscribe to a public or private channel
 
-####Event based
+#### Event based
 ```cs
 _myChannel = _pusher.Subscribe("my-channel");
 _myChannel.Subscribed += _myChannel_Subscribed;
