@@ -4,19 +4,20 @@
     <id>PusherClient</id>
     <version>$version$</version>
     <title>Pusher .NET Client Library</title>
-    <authors>Pusher, Phil Leggetter</authors>
+    <authors>Pusher, Phil Leggetter, John McLoughlin</authors>
     <owners>Pusher</owners>
-    <licenseUrl>https://github.com/pusher/pusher-dotnet-client/blob/master/LICENSE.txt</licenseUrl>
-    <projectUrl>https://github.com/pusher/pusher-dotnet-client</projectUrl>
+    <licenseUrl>https://github.com/pusher/pusher-websocket-dotnet/blob/master/LICENSE.txt</licenseUrl>
+    <projectUrl>https://github.com/pusher/pusher-websocket-dotnet</projectUrl>
     <iconUrl>https://pusher.com/static_logos/64x64.png</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>$description$</description>
     <releaseNotes></releaseNotes>
-    <copyright>Copyright 2017</copyright>
+    <copyright>Copyright © Pusher 2017</copyright>
     <tags>pusher realtime websocket</tags>
     <dependencies>
-        <dependency id="Newtonsoft.Json" version="9.0.1" />
-        <dependency id="WebSocket4Net" version="0.14.1" />
+        <dependency id="Newtonsoft.Json" version="11.0.2" />
+        <dependency id="WebSocket4Net" version="0.15.2" />
+        <dependency id="Nito.AsyncEx" version="4.0.1" />
     </dependencies>
   </metadata>
   <files>

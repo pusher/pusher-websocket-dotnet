@@ -1,20 +1,29 @@
-﻿using Newtonsoft.Json;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace PusherClient
 {
-    public delegate void MemberEventHandler(object sender);
-    public delegate void MemberAddedEventHandler(object sender, KeyValuePair<string, dynamic> member);
+    /// <summary>
+    /// Represents a Pusher Presence Channel that can be subscribed to
+    /// </summary>
     public class PresenceChannel : PrivateChannel
     {
-        public Dictionary<string, dynamic> Members = new Dictionary<string, dynamic>();
-
+        /// <summary>
+        /// Fires when a Member is Added
+        /// </summary>
         public event MemberAddedEventHandler MemberAdded;
-        public event MemberEventHandler MemberRemoved;
 
-        public PresenceChannel(string channelName, Pusher pusher) : base(channelName, pusher) { }
+        /// <summary>
+        /// Fires when a Member is Removed
+        /// </summary>
+        public event MemberRemovedEventHandler MemberRemoved;
 
-        #region Internal Methods
+        internal PresenceChannel(string channelName, ITriggerChannels pusher) : base(channelName, pusher) { }
+
+        /// <summary>
+        /// Gets the Members of the channel
+        /// </summary>
+        public Dictionary<string, dynamic> Members { get; private set; } = new Dictionary<string, dynamic>();
 
         internal override void SubscriptionSucceeded(string data)
         {
@@ -48,16 +57,12 @@ namespace PusherClient
             }
         }
 
-        #endregion
-
-        #region Private Methods
-
         private Dictionary<string, dynamic> ParseMembersList(string data)
         {
             Dictionary<string, dynamic> members = new Dictionary<string, dynamic>();
 
             var dataAsObj = JsonConvert.DeserializeObject<dynamic>(data);
-            
+
             for (int i = 0; i < (int)dataAsObj.presence.count; i++)
             {
                 var id = (string)dataAsObj.presence.ids[i];
@@ -77,8 +82,5 @@ namespace PusherClient
 
             return new KeyValuePair<string, dynamic>(id, val);
         }
-
-        #endregion
-
     }
 }

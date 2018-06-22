@@ -1,10 +1,6 @@
-﻿using Nancy.Hosting.Self;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Configuration;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Nancy.Hosting.Self;
 
 namespace AuthHost
 {
@@ -15,7 +11,7 @@ namespace AuthHost
             var hostUrl = "http://localhost:" + ConfigurationManager.AppSettings["Port"];
             HostConfiguration hostConfigs = new HostConfiguration();
             hostConfigs.UrlReservations.CreateAutomatically = true;
-            var nancyHost = new Nancy.Hosting.Self.NancyHost(hostConfigs, new Uri( hostUrl ) );
+            var nancyHost = new NancyHost(hostConfigs, new Uri( hostUrl ) );
             nancyHost.Start();
 
             Console.WriteLine("Nancy host listening on " + hostUrl);
