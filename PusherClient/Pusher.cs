@@ -233,7 +233,6 @@ namespace PusherClient
             {
                 MarkChannelsAsUnsubscribed();
                 connectionResult = await _connection.Disconnect();
-                _connection = null;
             }
             else
             {
