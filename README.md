@@ -155,6 +155,8 @@ static void _presenceChannel_MemberRemoved(object sender)
 ```
 
 #### Asynchronous
+
+```cs
 _presenceChannel = await (PresenceChannel)_pusher.SubscribeAsync("presence-channel");
 _presenceChannel.Subscribed += _presenceChannel_Subscribed;
 _presenceChannel.MemberAdded += _presenceChannel_MemberAdded;
