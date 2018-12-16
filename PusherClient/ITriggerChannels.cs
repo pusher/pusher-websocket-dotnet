@@ -1,9 +1,11 @@
-﻿namespace PusherClient
+﻿using System.Threading.Tasks;
+
+namespace PusherClient
 {
     internal interface ITriggerChannels
     {
-        void Trigger(string channelName, string eventName, object obj);
+        Task Trigger(string channelName, string eventName, object obj);
 
-        void Unsubscribe(string channelName);
+        Task Unsubscribe(string channelName);
     }
 }
