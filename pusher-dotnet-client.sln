@@ -11,7 +11,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Files", "Files", "{2D9F07A0
 	ProjectSection(SolutionItems) = preProject
 		CHANGELOG.md = CHANGELOG.md
 		package.cmd = package.cmd
-		pusher-dotnet-client.nuspec = pusher-dotnet-client.nuspec
 		README.md = README.md
 	EndProjectSection
 EndProject
@@ -19,7 +18,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PusherClient.Tests", "Pushe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PusherClient.Tests.Utilities", "PusherClient.Tests.Utilities\PusherClient.Tests.Utilities.csproj", "{00F1F3BE-1210-4D06-89CA-F1E17898384C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PusherClient", "PusherClient\PusherClient.csproj", "{A325BB9F-6476-4422-AEF4-C22FA53890DD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PusherClient", "PusherClient\PusherClient.csproj", "{A325BB9F-6476-4422-AEF4-C22FA53890DD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
