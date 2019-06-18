@@ -38,7 +38,7 @@ static void _pusher_ConnectionStateChanged(object sender, ConnectionState state)
 
 static void _pusher_Error(object sender, PusherException error)
 {
-    Console.WriteLine("Channels Error: " + error.ToString());
+    Console.WriteLine("Pusher Channels Error: " + error.ToString());
 }
 ```
 
