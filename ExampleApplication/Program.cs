@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Web;
 using PusherClient;
 
@@ -19,7 +20,8 @@ namespace ExampleApplication
             Console.WriteLine("What is your name?");
             _name = Console.ReadLine();
 
-            InitPusher();
+            var connectResult = Task.Run(() => InitPusher());
+            Task.WaitAll(connectResult);
 
             // Read input in loop
             string line;
@@ -36,7 +38,8 @@ namespace ExampleApplication
                 _chatChannel.Trigger("client-my-event", new {message = line, name = _name});
             } while (line != null);
 
-            _pusher.Disconnect();
+            var disconnectResult = Task.Run(() => _pusher.DisconnectAsync());
+            Task.WaitAll(disconnectResult);
         }
 
         static void ListMembers()
@@ -52,7 +55,7 @@ namespace ExampleApplication
         }
 
         // Pusher Initiation / Connection
-        private static void InitPusher()
+        private static async Task InitPusher()
         {
             _pusher = new Pusher(Config.AppKey, new PusherOptions
             {
@@ -62,7 +65,7 @@ namespace ExampleApplication
             _pusher.Error += _pusher_Error;
 
             // Setup private channel
-            _chatChannel = _pusher.Subscribe("private-channel");
+            _chatChannel = _pusher.SubscribeAsync("private-channel").Result;
             _chatChannel.Subscribed += ChatChannel_Subscribed;
 
             // Inline binding!
@@ -72,12 +75,12 @@ namespace ExampleApplication
             });
 
             // Setup presence channel
-            _presenceChannel = (PresenceChannel)_pusher.Subscribe("presence-channel");
+            _presenceChannel = (PresenceChannel)_pusher.SubscribeAsync("presence-channel").Result;
             _presenceChannel.Subscribed += PresenceChannel_Subscribed;
             _presenceChannel.MemberAdded += PresenceChannel_MemberAdded;
             _presenceChannel.MemberRemoved += PresenceChannel_MemberRemoved;
 
-            _pusher.Connect();
+            await _pusher.ConnectAsync();
         }
 
         static void _pusher_Error(object sender, PusherException error)

@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ExampleApplication</RootNamespace>
     <AssemblyName>ExampleApplication</AssemblyName>
-    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
     <NuGetPackageImportStamp>
@@ -131,7 +131,7 @@
       <Name>PusherClient.Tests.Utilities</Name>
     </ProjectReference>
     <ProjectReference Include="..\PusherClient\PusherClient.csproj">
-      <Project>{9E30E755-C00E-4BF7-B56B-8F2D836FBA60}</Project>
+      <Project>{a325bb9f-6476-4422-aef4-c22fa53890dd}</Project>
       <Name>PusherClient</Name>
     </ProjectReference>
   </ItemGroup>

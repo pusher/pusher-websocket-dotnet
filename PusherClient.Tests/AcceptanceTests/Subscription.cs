@@ -21,7 +21,7 @@ namespace PusherClient.Tests.AcceptanceTests
                 reset.Set();
             };
 
-            pusher.Connect();
+            AsyncContext.Run(() => pusher.ConnectAsync());
             reset.WaitOne(TimeSpan.FromSeconds(5));
             reset.Reset();
 
@@ -30,7 +30,7 @@ namespace PusherClient.Tests.AcceptanceTests
             var channelSubscribed = false;
 
             // Act
-            var channel = AsyncContext.Run(() => pusher.Subscribe(mockChannelName));
+            var channel = AsyncContext.Run(() => pusher.SubscribeAsync(mockChannelName));
             channel.Subscribed += sender =>
             {
                 channelSubscribed = true;
@@ -63,7 +63,7 @@ namespace PusherClient.Tests.AcceptanceTests
                 reset.Set();
             };
 
-            pusher.Connect();
+            AsyncContext.Run(() => pusher.ConnectAsync());
             reset.WaitOne(TimeSpan.FromSeconds(5));
             reset.Reset();
 
@@ -72,7 +72,7 @@ namespace PusherClient.Tests.AcceptanceTests
             var channelSubscribed = false;
 
             // Act
-            var channel = AsyncContext.Run(() => pusher.Subscribe(mockChannelName));
+            var channel = AsyncContext.Run(() => pusher.SubscribeAsync(mockChannelName));
             channel.Subscribed += sender =>
             {
                 channelSubscribed = true;
@@ -105,7 +105,7 @@ namespace PusherClient.Tests.AcceptanceTests
                 reset.Set();
             };
 
-            pusher.Connect();
+            AsyncContext.Run(() => pusher.ConnectAsync());
             reset.WaitOne(TimeSpan.FromSeconds(5));
             reset.Reset();
 
@@ -114,7 +114,7 @@ namespace PusherClient.Tests.AcceptanceTests
             var channelSubscribed = false;
 
             // Act
-            var channel = AsyncContext.Run(() => pusher.Subscribe(mockChannelName));
+            var channel = AsyncContext.Run(() => pusher.SubscribeAsync(mockChannelName));
             channel.Subscribed += sender =>
             {
                 channelSubscribed = true;
@@ -142,7 +142,7 @@ namespace PusherClient.Tests.AcceptanceTests
                 reset.Set();
             };
 
-            pusher.Connect();
+            AsyncContext.Run(() => pusher.ConnectAsync());
             reset.WaitOne(TimeSpan.FromSeconds(5));
             reset.Reset();
 
@@ -151,7 +151,7 @@ namespace PusherClient.Tests.AcceptanceTests
             var channelSubscribed = false;
             var numberOfCalls = 0;
 
-            var firstChannel = AsyncContext.Run(() => pusher.Subscribe(mockChannelName));
+            var firstChannel = AsyncContext.Run(() => pusher.SubscribeAsync(mockChannelName));
             firstChannel.Subscribed += sender =>
             {
                 channelSubscribed = true;
@@ -162,7 +162,7 @@ namespace PusherClient.Tests.AcceptanceTests
             reset.WaitOne(TimeSpan.FromSeconds(5));
 
             // Act
-            var secondChannel = AsyncContext.Run(() => pusher.Subscribe(mockChannelName));
+            var secondChannel = AsyncContext.Run(() => pusher.SubscribeAsync(mockChannelName));
 
             // Assert
             Assert.AreEqual(firstChannel, secondChannel);
@@ -181,10 +181,9 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 connectedEvent.Set();
             };
-            
 
-            pusher.Connect();
 
+            AsyncContext.Run(() => pusher.ConnectAsync());
             connectedEvent.WaitOne(TimeSpan.FromSeconds(5));
             connectedEvent.Reset();
 
@@ -192,14 +191,14 @@ namespace PusherClient.Tests.AcceptanceTests
 
             var subscribedEvent = new AutoResetEvent(false);
 
-            var firstChannel = AsyncContext.Run(() => pusher.Subscribe(mockChannelName));
+            var firstChannel = AsyncContext.Run(() => pusher.SubscribeAsync(mockChannelName));
             firstChannel.Subscribed += sender =>
             {
                 subscribedEvent.Set();
             };
 
             // Act
-            var secondChannel = AsyncContext.Run(() => pusher.Subscribe(mockChannelName));
+            var secondChannel = AsyncContext.Run(() => pusher.SubscribeAsync(mockChannelName));
             subscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             // Assert
@@ -218,13 +217,13 @@ namespace PusherClient.Tests.AcceptanceTests
                 reset.Set();
             };
 
-            pusher.Connect();
+            AsyncContext.Run(() => pusher.ConnectAsync());
             reset.WaitOne(TimeSpan.FromSeconds(5));
             reset.Reset();
 
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName();
 
-            var channel = AsyncContext.Run(() => pusher.Subscribe(mockChannelName));
+            var channel = AsyncContext.Run(() => pusher.SubscribeAsync(mockChannelName));
             channel.Subscribed += sender =>
             {
                 reset.Set();
@@ -258,13 +257,13 @@ namespace PusherClient.Tests.AcceptanceTests
 
             var subscribedEvent = new AutoResetEvent(false);
 
-            var channel = AsyncContext.Run(() => pusher.Subscribe(mockChannelName));
+            var channel = AsyncContext.Run(() => pusher.SubscribeAsync(mockChannelName));
             channel.Subscribed += sender =>
             {
                 subscribedEvent.Set();
             };
 
-            pusher.Connect();
+            AsyncContext.Run(() => pusher.ConnectAsync());
 
             connectedEvent.WaitOne(TimeSpan.FromSeconds(5));
             subscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
@@ -291,14 +290,14 @@ namespace PusherClient.Tests.AcceptanceTests
                 connectedEvent.Set();
             };
 
-            pusher.Connect();
+            AsyncContext.Run(() => pusher.ConnectAsync());
             connectedEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             var subscribedEvent1 = new AutoResetEvent(false);
             var subscribedEvent2 = new AutoResetEvent(false);
             var subscribedEvent3 = new AutoResetEvent(false);
 
-            var mockChannelName1 = ChannelNameFactory.CreateUniqueChannelName(channelNamePostfix : "1");
+            var mockChannelName1 = ChannelNameFactory.CreateUniqueChannelName(channelNamePostfix: "1");
             var mockChannelName2 = ChannelNameFactory.CreateUniqueChannelName(channelNamePostfix: "2");
             var mockChannelName3 = ChannelNameFactory.CreateUniqueChannelName(channelNamePostfix: "3");
 
@@ -311,7 +310,15 @@ namespace PusherClient.Tests.AcceptanceTests
             subscribedEvent3.WaitOne(TimeSpan.FromSeconds(5));
 
             // Act
-            pusher.Disconnect();
+            try
+            {
+                AsyncContext.Run(() => pusher.DisconnectAsync());
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
 
             // Assert
             Assert.IsNotNull(channel1);
@@ -353,7 +360,7 @@ namespace PusherClient.Tests.AcceptanceTests
             };
 
             // Act
-            pusher.Connect();
+            AsyncContext.Run(() => pusher.ConnectAsync());
             connectedEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             subscribedEvent1.WaitOne(TimeSpan.FromSeconds(5));
@@ -387,7 +394,7 @@ namespace PusherClient.Tests.AcceptanceTests
                 connectedEvent.Set();
             };
 
-            pusher.Connect();
+            AsyncContext.Run(() => pusher.ConnectAsync());
             connectedEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             var subscribedEvent1 = new AutoResetEvent(false);
@@ -406,14 +413,14 @@ namespace PusherClient.Tests.AcceptanceTests
             subscribedEvent2.WaitOne(TimeSpan.FromSeconds(5));
             subscribedEvent3.WaitOne(TimeSpan.FromSeconds(5));
 
-            pusher.Disconnect();
+            AsyncContext.Run(() => pusher.DisconnectAsync());
 
             subscribedEvent1.Reset();
             subscribedEvent2.Reset();
             subscribedEvent3.Reset();
 
             // Act
-            pusher.Connect();
+            AsyncContext.Run(() => pusher.ConnectAsync());
 
             subscribedEvent1.WaitOne(TimeSpan.FromSeconds(5));
             subscribedEvent2.WaitOne(TimeSpan.FromSeconds(5));
@@ -435,7 +442,7 @@ namespace PusherClient.Tests.AcceptanceTests
 
         private static Channel SubscribeToChannel(Pusher pusher, string mockChannelName, AutoResetEvent subscribedEvent)
         {
-            var channel = AsyncContext.Run(() => pusher.Subscribe(mockChannelName));
+            var channel = AsyncContext.Run(() => pusher.SubscribeAsync(mockChannelName));
             channel.Subscribed += sender => { subscribedEvent.Set(); };
             return channel;
         }

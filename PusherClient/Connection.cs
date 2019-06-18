@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Nito.AsyncEx;
+//using Nito.AsyncEx;
 using WebSocket4Net;
 
 namespace PusherClient
@@ -198,9 +198,9 @@ namespace PusherClient
                 Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Attempting websocket reconnection");
 
                 ChangeState(ConnectionState.WaitingToReconnect);
-                Thread.Sleep(_backOffMillis);
+                Task.WaitAll(Task.Delay(_backOffMillis));
                 _backOffMillis = Math.Min(MAX_BACKOFF_MILLIS, _backOffMillis + BACK_OFF_MILLIS_INCREMENT);
-                AsyncContext.Run(Connect);
+                Connect(); // TODO
             }
             else
             {

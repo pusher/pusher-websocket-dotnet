@@ -26,7 +26,7 @@ namespace PusherClient.Tests.AcceptanceTests
                 reset.Set();
             };
 
-            pusher.Connect();
+            AsyncContext.Run(() => pusher.ConnectAsync());
             reset.WaitOne(TimeSpan.FromSeconds(5));
             reset.Reset();
 
@@ -35,7 +35,7 @@ namespace PusherClient.Tests.AcceptanceTests
             var channelSubscribed = false;
 
             // Act
-            var channel = pusher.Subscribe(mockChannelName);
+            var channel = AsyncContext.Run(() => pusher.SubscribeAsync(mockChannelName));
             channel.Subscribed += sender =>
             {
                 channelSubscribed = true;
@@ -68,7 +68,7 @@ namespace PusherClient.Tests.AcceptanceTests
                 reset.Set();
             };
 
-            pusher.Connect();
+            AsyncContext.Run(() => pusher.ConnectAsync());
             reset.WaitOne(TimeSpan.FromSeconds(5));
             reset.Reset();
 
