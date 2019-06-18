@@ -1,10 +1,10 @@
-# Pusher .NET Client library
+# Pusher Channels .NET Client library
 
-This is a .NET library for interacting with the Pusher WebSocket API.
+This is a .NET library for interacting with the Channels WebSocket API.
 
-Registering at <http://pusher.com> and use the application credentials within your app as shown below.
+Registering at <http://pusher.com/channels> and use the application credentials within your app as shown below.
 
-More general documentation can be found at <http://pusher.com/docs/>.
+More general documentation can be found at <http://pusher.com/docs/channels>.
 
 ## Installation
 
@@ -38,7 +38,7 @@ static void _pusher_ConnectionStateChanged(object sender, ConnectionState state)
 
 static void _pusher_Error(object sender, PusherException error)
 {
-    Console.WriteLine("Pusher Error: " + error.ToString());
+    Console.WriteLine("Channels Error: " + error.ToString());
 }
 ```
 
