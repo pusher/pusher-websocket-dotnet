@@ -6,6 +6,11 @@ Registering at <http://pusher.com/channels> and use the application credentials 
 
 More general documentation can be found at <http://pusher.com/docs/channels>.
 
+## Supported platforms
+
+* .NET Standard 1.6
+* Unity 2018.1
+
 ## Installation
 
 ### NuGet Package
