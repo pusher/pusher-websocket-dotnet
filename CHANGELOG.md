@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2
+* [CHANGED] Project now targets DotNet Standard 1.6.
+* [REMOVED] Retired Sync versions of method. Updated tests to use async versions of methods.
+
 ## 0.5.1
 * [FIXED] Potential crash when a channel is added while a connection state change is being handled.
 * [CHANGED] Log an error rather than throw an exception if an error occurs on a connection.
