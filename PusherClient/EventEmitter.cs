@@ -72,6 +72,11 @@ namespace PusherClient
 
         internal void EmitEvent(string eventName, string data)
         {
+            //No data, no event!
+            if(data == null)
+            {
+                return;
+            }
             var obj = JsonConvert.DeserializeObject<dynamic>(data);
 
             // Emit to general listeners regardless of event type

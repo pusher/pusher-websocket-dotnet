@@ -7,17 +7,21 @@ namespace PusherClient
     /// <summary>
     /// An implementation of the <see cref="IAuthorizer"/> using Http
     /// </summary>
-    public class HttpAuthorizer: IAuthorizer
+    public class HttpAuthorizer : IAuthorizer
     {
         private readonly Uri _authEndpoint;
+
+        protected HttpClient _httpClient;
 
         /// <summary>
         /// ctor
         /// </summary>
         /// <param name="authEndpoint">The End point to contact</param>
-        public HttpAuthorizer(string authEndpoint)
+        /// <param name="httpClient">An optional HttpClient to use, in case certain properties should be set (e.g. Bearer token)</param>
+        public HttpAuthorizer(string authEndpoint, HttpClient httpClient = null)
         {
             _authEndpoint = new Uri(authEndpoint);
+            _httpClient = httpClient;
         }
 
         /// <summary>
@@ -30,7 +34,7 @@ namespace PusherClient
         {
             string authToken = null;
 
-            using (var httpClient = new HttpClient())
+            using (_httpClient ?? new HttpClient())
             {
                 var data = new List<KeyValuePair<string, string>>
                 {
@@ -39,11 +43,11 @@ namespace PusherClient
                 };
 
                 HttpContent content = new FormUrlEncodedContent(data);
-
-                var response = httpClient.PostAsync(_authEndpoint, content).Result;
-                authToken = response.Content.ToString();
+                
+                var response = _httpClient.PostAsync(_authEndpoint, content).Result;
+                authToken = response.Content.ReadAsStringAsync().Result;
             }
-
+            
             return authToken;
         }
     }

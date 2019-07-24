@@ -14,3 +14,4 @@ build
 *.testsettings
 *.vsmdi
 msbuild.log
+/.vs

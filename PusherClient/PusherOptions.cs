@@ -20,6 +20,14 @@
         /// </summary>
         public string Cluster { get; set; } = "mt1";
 
-        internal string Host => $"ws-{Cluster}.pusher.com";
+        /// <summary>
+        /// The Host to use for custom servers to be configurable.
+        /// Defaults to ws-{Cluster}.pusher.com
+        /// </summary>
+        protected string _Host = null;
+        public string Host {
+            get { return _Host ?? $"ws-{Cluster}.pusher.com"; }
+            set { _Host = value; }
+        }
     }
 }
