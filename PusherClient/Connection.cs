@@ -39,10 +39,14 @@ namespace PusherClient
 
         internal Task<ConnectionState> Connect()
         {
-            if (_connectionTaskComplete != null)
-                return _connectionTaskComplete.Task;
+            var completionSource = _connectionTaskComplete;
+            if (completionSource != null)
+                return completionSource.Task;
 
-            _connectionTaskComplete = new TaskCompletionSource<ConnectionState>();
+            completionSource = new TaskCompletionSource<ConnectionState>();
+            var existingCompletionSource = Interlocked.CompareExchange(ref _connectionTaskComplete, completionSource, null);
+            if (existingCompletionSource != null)
+                return existingCompletionSource.Task;
 
             // TODO: Add 'connecting_in' event
             Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Connecting to: {_url}");
@@ -63,15 +67,19 @@ namespace PusherClient
 
             _websocket.Open();
 
-            return _connectionTaskComplete.Task;
+            return completionSource.Task;
         }
 
         internal Task<ConnectionState> Disconnect()
         {
-            if (_disconnectionTaskComplete != null)
-                return _disconnectionTaskComplete.Task;
+            var completionSource = _disconnectionTaskComplete;
+            if (completionSource != null)
+                return completionSource.Task;
 
-            _disconnectionTaskComplete = new TaskCompletionSource<ConnectionState>();
+            completionSource = new TaskCompletionSource<ConnectionState>();
+            var existingCompletionSource = Interlocked.CompareExchange(ref _disconnectionTaskComplete, completionSource, null);
+            if (existingCompletionSource != null)
+                return existingCompletionSource.Task;
 
             Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Disconnecting from: {_url}");
 
@@ -80,7 +88,7 @@ namespace PusherClient
             _allowReconnect = false;
             _websocket.Close();
 
-            return _disconnectionTaskComplete.Task;
+            return completionSource.Task;
         }
 
         internal async Task<bool> Send(string message)
