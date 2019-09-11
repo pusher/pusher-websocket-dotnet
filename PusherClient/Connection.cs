@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using SuperSocket.ClientEngine;
 //using Nito.AsyncEx;
 using WebSocket4Net;
 
@@ -16,6 +17,7 @@ namespace PusherClient
         private readonly string _url;
         private readonly IPusher _pusher;
         private bool _allowReconnect = true;
+        private Func<IProxyConnector> _proxyFactory;
         
         private int _backOffMillis;
 
@@ -31,10 +33,11 @@ namespace PusherClient
         private TaskCompletionSource<ConnectionState> _connectionTaskComplete = null;
         private TaskCompletionSource<ConnectionState> _disconnectionTaskComplete = null;
 
-        public Connection(IPusher pusher, string url)
+        public Connection(IPusher pusher, string url, Func<IProxyConnector> proxyFactory = null)
         {
             _pusher = pusher;
             _url = url;
+            _proxyFactory = proxyFactory;
         }
 
         internal Task<ConnectionState> Connect()
@@ -57,7 +60,8 @@ namespace PusherClient
             _websocket = new WebSocket(_url)
             {
                 EnableAutoSendPing = true,
-                AutoSendPingInterval = 1
+                AutoSendPingInterval = 1,
+                Proxy = _proxyFactory?.Invoke(),
             };
 
             _websocket.Opened += websocket_Opened;

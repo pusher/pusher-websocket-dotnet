@@ -1,4 +1,7 @@
-﻿namespace PusherClient
+﻿using SuperSocket.ClientEngine;
+using System;
+
+namespace PusherClient
 {
     /// <summary>
     /// The Options to set up the connection with <see cref="Pusher"/>
@@ -19,6 +22,12 @@
         /// Gets or sets the Cluster to user for the Host
         /// </summary>
         public string Cluster { get; set; } = "mt1";
+
+        /// <summary>
+        /// Gets or set a IProxyConnector implementation instance may be one of
+        /// HttpConnectProxy, Socks4Connector, or Socks5Connector.
+        /// </summary>
+        public Func<IProxyConnector> ProxyFactory { get; set; }
 
         internal string Host => $"ws-{Cluster}.pusher.com";
     }

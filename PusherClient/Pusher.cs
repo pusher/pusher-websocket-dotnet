@@ -196,7 +196,7 @@ namespace PusherClient
 
                 var url = ConstructUrl();
 
-                _connection = new Connection(this, url);
+                _connection = new Connection(this, url, Options.ProxyFactory);
                 connectionResult = await _connection.Connect();
             }
             finally
