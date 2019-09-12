@@ -269,6 +269,7 @@ namespace PusherClient
             if (channelType != ChannelTypes.Presence)
                 throw new ArgumentException("The channel name must be refer to a presence channel", nameof(channelName));
 
+            // We need to keep track of the type we want the channel to be, in case it gets created or re-created later.
             _presenceChannelFactories.AddOrUpdate(channelName, 
                 (_) => Tuple.Create<Type, Func<Channel>>(typeof(MemberT), 
                     () => new GenericPresenceChannel<MemberT>(channelName, this)), 
@@ -279,8 +280,18 @@ namespace PusherClient
                     return existing;
                 });
 
-            var result = await SubscribeAsync(channelName);
-            return result as GenericPresenceChannel<MemberT>;
+            var channel = await SubscribeAsync(channelName);
+
+            var result = channel as GenericPresenceChannel<MemberT>;
+            if (result == null)
+            {
+                if (channel is PresenceChannel)
+                    throw new InvalidOperationException("This presence channel has already been created without specifying the member info type");
+                else
+                    throw new InvalidOperationException($"The presence channel found is an unexpected type: {channel.GetType().Name}");
+            }
+
+            return result;
         }
 
         private async Task<Channel> SubscribeToChannel(string channelName)

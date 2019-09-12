@@ -94,7 +94,7 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         [Test]
-        public void PresenceChannelShouldUseGenericWhenGivenAMemberAsync()
+        public void PresenceChannelShouldAddATypedMemberWhenGivenAMemberAsync()
         {
             // Arrange
             var stubOptions = new PusherOptions
