@@ -21,7 +21,7 @@ namespace PusherClient.Tests.Utilities
             {
                 var channelData = new PresenceChannelData();
                 channelData.user_id = socketId;
-                channelData.user_info = new { name = _userName };
+                channelData.user_info = new FakeUserInfo { name = _userName };
 
                 authData = provider.Authenticate(channelName, socketId, channelData).ToJson();
             }

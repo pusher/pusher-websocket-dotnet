@@ -92,5 +92,49 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.IsTrue(channel.IsSubscribed);
             Assert.IsTrue(channelSubscribed);
         }
+
+        [Test]
+        public void PresenceChannelShouldUseGenericWhenGivenAMemberAsync()
+        {
+            // Arrange
+            var stubOptions = new PusherOptions
+            {
+                Authorizer = new FakeAuthoriser(UserNameFactory.CreateUniqueUserName())
+            };
+
+            var pusher = PusherFactory.GetPusher(stubOptions);
+            AutoResetEvent reset = new AutoResetEvent(false);
+
+            pusher.Connected += sender =>
+            {
+                reset.Set();
+            };
+
+            AsyncContext.Run(() => pusher.ConnectAsync());
+            reset.WaitOne(TimeSpan.FromSeconds(5));
+            reset.Reset();
+
+            var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(presenceChannel: true);
+
+            var channelSubscribed = false;
+
+            // Act
+            var channel = AsyncContext.Run(() => pusher.SubscribePresenceAsync<FakeUserInfo>(mockChannelName));
+            channel.Subscribed += sender =>
+            {
+                channelSubscribed = true;
+                reset.Set();
+            };
+
+            reset.WaitOne(TimeSpan.FromSeconds(10));
+
+            // Assert
+            Assert.IsNotNull(channel);
+            StringAssert.Contains(mockChannelName, channel.Name);
+            Assert.IsTrue(channel.IsSubscribed);
+            Assert.IsTrue(channelSubscribed);
+
+            CollectionAssert.IsNotEmpty(channel.Members);
+        }
     }
 }
