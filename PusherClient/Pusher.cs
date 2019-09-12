@@ -55,6 +55,12 @@ namespace PusherClient
         private readonly PusherOptions _options;
         private readonly List<string> _pendingChannelSubscriptions = new List<string>();
 
+        /// <summary>
+        /// Tracks the member info types used to create each non-dynamic presence channel
+        /// </summary>
+        private readonly ConcurrentDictionary<string, Tuple<Type, Func<Channel>>> _presenceChannelFactories 
+            = new ConcurrentDictionary<string, Tuple<Type, Func<Channel>>>();
+
         private Connection _connection;
 
         /// <summary>
@@ -229,7 +235,7 @@ namespace PusherClient
         }
 
         /// <summary>
-        /// Subscribes to the given channel asynchronously, unless the channel already exists, in which case the xisting channel will be returned.
+        /// Subscribes to the given channel asynchronously, unless the channel already exists, in which case the existing channel will be returned.
         /// </summary>
         /// <param name="channelName">The name of the Channel to subsribe to</param>
         /// <returns>The Channel that is being subscribed to</returns>
@@ -249,6 +255,32 @@ namespace PusherClient
             _pendingChannelSubscriptions.Add(channelName);
 
             return await SubscribeToChannel(channelName);
+        }
+
+        /// <summary>
+        /// Subscribes to the given channel asynchronously, unless the channel already exists, in which case the existing channel will be returned.
+        /// </summary>
+        /// <param name="channelName">The name of the Channel to subsribe to</param>
+        /// <typeparam name="MemberT">The type used to deserialize channel member info</typeparam>
+        /// <returns>The Channel that is being subscribed to</returns>
+        public async Task<GenericPresenceChannel<MemberT>> SubscribePresenceAsync<MemberT>(string channelName)
+        {
+            var channelType = GetChannelType(channelName);
+            if (channelType != ChannelTypes.Presence)
+                throw new ArgumentException("The channel name must be refer to a presence channel", nameof(channelName));
+
+            _presenceChannelFactories.AddOrUpdate(channelName, 
+                (_) => Tuple.Create<Type, Func<Channel>>(typeof(MemberT), 
+                    () => new GenericPresenceChannel<MemberT>(channelName, this)), 
+                (_, existing) =>
+                {
+                    if (existing.Item1 != typeof(MemberT))
+                        throw new InvalidOperationException($"Cannot change channel member type; was previously defined as {existing.Item1.Name}");
+                    return existing;
+                });
+
+            var result = await SubscribeAsync(channelName);
+            return result as GenericPresenceChannel<MemberT>;
         }
 
         private async Task<Channel> SubscribeToChannel(string channelName)
@@ -308,7 +340,14 @@ namespace PusherClient
                     break;
                 case ChannelTypes.Presence:
                     AuthEndpointCheck();
-                    Channels[channelName] = new PresenceChannel(channelName, this);
+
+                    Channel channel;
+                    if (_presenceChannelFactories.TryGetValue(channelName, out var factory))
+                        channel = factory.Item2();
+                    else
+                        channel = new PresenceChannel(channelName, this);
+
+                    Channels[channelName] = channel;
                     break;
             }
         }

@@ -7,5 +7,5 @@ namespace PusherClient
     /// </summary>
     /// <param name="sender">The Channel that had the member added</param>
     /// <param name="member">The added member information</param>
-    public delegate void MemberAddedEventHandler(object sender, KeyValuePair<string, dynamic> member);
+    public delegate void MemberAddedEventHandler<T>(object sender, KeyValuePair<string, T> member);
 }
