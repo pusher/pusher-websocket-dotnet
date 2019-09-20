@@ -69,6 +69,7 @@
   <ItemGroup>
     <Compile Include="ChannelNameFactory.cs" />
     <Compile Include="Config.cs" />
+    <Compile Include="FakeUserInfo.cs" />
     <Compile Include="FakeAuthoriser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PusherFactory.cs" />
