@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
+using System.Collections.Generic;
 using Newtonsoft.Json;
 
 namespace PusherClient
@@ -24,7 +25,7 @@ namespace PusherClient
         /// <summary>
         /// Gets the Members of the channel
         /// </summary>
-        public Dictionary<string, T> Members { get; private set; } = new Dictionary<string, T>();
+        public ConcurrentDictionary<string, T> Members { get; private set; } = new ConcurrentDictionary<string, T>();
 
         internal override void SubscriptionSucceeded(string data)
         {
@@ -36,10 +37,7 @@ namespace PusherClient
         {
             var member = ParseMember(data);
 
-            if (!Members.ContainsKey(member.Key))
-                Members.Add(member.Key, member.Value);
-            else
-                Members[member.Key] = member.Value;
+            Members[member.Key] = member.Value;
 
             if (MemberAdded != null)
                 MemberAdded(this, member);
@@ -51,10 +49,13 @@ namespace PusherClient
 
             if (Members.ContainsKey(member.Key))
             {
-                Members.Remove(member.Key);
+                T removed;
 
-                if (MemberRemoved != null)
-                    MemberRemoved(this);
+                if (Members.TryRemove(member.Key, out removed))
+                {
+                    if (MemberRemoved != null)
+                        MemberRemoved(this);
+                }
             }
         }
 
@@ -70,9 +71,9 @@ namespace PusherClient
             }
         }
 
-        private Dictionary<string, T> ParseMembersList(string data)
+        private ConcurrentDictionary<string, T> ParseMembersList(string data)
         {
-            Dictionary<string, T> members = new Dictionary<string, T>();
+            ConcurrentDictionary<string, T> members = new ConcurrentDictionary<string, T>();
 
             var dataAsObj = JsonConvert.DeserializeObject<SubscriptionData>(data);
 
@@ -80,12 +81,11 @@ namespace PusherClient
             {
                 var id = dataAsObj.presence.ids[i];
                 var val = dataAsObj.presence.hash[id];
-                members.Add(id, val);
+                members[id] = val;
             }
 
             return members;
         }
-
 
         private class MemberData
         {
