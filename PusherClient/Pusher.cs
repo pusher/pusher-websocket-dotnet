@@ -172,7 +172,8 @@ namespace PusherClient
         /// </summary>
         public async Task<ConnectionState> ConnectAsync()
         {
-            if (_connection != null)
+            if (_connection != null
+                && _connection.IsConnected)
             {
                 //Trace.TraceEvent(TraceEventType.Warning, 0, ErrorConstants.ConnectionAlreadyConnected);
                 return ConnectionState.AlreadyConnected;
@@ -186,7 +187,8 @@ namespace PusherClient
             try
             {
                 // Ensure we only ever attempt to connect once
-                if (_connection != null)
+                if (_connection != null
+                    && _connection.IsConnected)
                 {
                     //Trace.TraceEvent(TraceEventType.Warning, 0, ErrorConstants.ConnectionAlreadyConnected);
                     return ConnectionState.AlreadyConnected;
