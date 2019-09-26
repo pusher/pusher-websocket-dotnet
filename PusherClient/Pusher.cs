@@ -127,12 +127,12 @@ namespace PusherClient
             RaiseError(pusherException);
         }
 
-        void IPusher.EmitPusherEvent(string eventName, string data)
+        void IPusher.EmitPusherEvent(string eventName, PusherEvent data)
         {
             EmitEvent(eventName, data);
         }
 
-        void IPusher.EmitChannelEvent(string channelName, string eventName, string data)
+        void IPusher.EmitChannelEvent(string channelName, string eventName, PusherEvent data)
         {
             if (Channels.ContainsKey(channelName))
             {
