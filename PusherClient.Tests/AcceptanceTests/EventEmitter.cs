@@ -352,7 +352,9 @@ namespace PusherClient.Tests.AcceptanceTests
             var jsonMessage = jObject.ToString(Formatting.None);
 
             var eventData = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonMessage);
-            eventData["data"] = jObject["data"].ToString(Formatting.None); // undo any kind of deserialisation
+
+            if (jObject["data"] != null)
+                eventData["data"] = jObject["data"].ToString(Formatting.None); // undo any kind of deserialisation
 
             return new PusherEvent(eventData, jsonMessage);
         }
