@@ -179,19 +179,7 @@ namespace PusherClient
         internal void EmitEvent(string eventName, PusherEvent data)
         {
             var stringData = data.ToString();
-
-            dynamic thing = new Dictionary<string, object>
-            {
-                { "event", "channel event"},
-                { "data", new Dictionary<string, object>
-                    {
-                        { "stuff", 123}
-                    }
-                }
-            };
-
-            var jsonData = JsonConvert.SerializeObject(thing);
-            var dynamicData = JsonConvert.DeserializeObject<dynamic>(jsonData);
+            var dynamicData = JsonConvert.DeserializeObject<dynamic>(stringData);
             
             ActionData(_rawGeneralListeners, _rawEventListeners, eventName, stringData);
             ActionData(_generalListeners, _eventListeners, eventName, dynamicData);

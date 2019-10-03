@@ -2,6 +2,7 @@
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 
 namespace PusherClient.Tests.AcceptanceTests
 {
@@ -24,7 +25,7 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             Assert.IsNotNull(emittedEvent);
-            StringAssert.AreEqualIgnoringCase("channel event", emittedEvent.@event.Value); // This doesn't feel right
+            StringAssert.AreEqualIgnoringCase("channel event", emittedEvent.@event.Value);
         }
 
         [Test]
@@ -43,7 +44,7 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             Assert.IsNotNull(emittedEvent);
-            StringAssert.AreEqualIgnoringCase("{\"user_id\":\"a user\",\"channel\":\"a channel name\",\"event\":\"channel event\",\"data\":\"stuff\"}", emittedEvent);
+            StringAssert.AreEqualIgnoringCase("{\"user_id\":\"a user\",\"channel\":\"a channel name\",\"event\":\"channel event\",\"data\":\"{\\\"stuff\\\":1234}\"}", emittedEvent);
         }
 
         [Test]
@@ -63,6 +64,7 @@ namespace PusherClient.Tests.AcceptanceTests
             // Assert
             Assert.IsNotNull(emittedEvent);
             StringAssert.AreEqualIgnoringCase("channel event", emittedEvent.EventName);
+            StringAssert.AreEqualIgnoringCase("\"{\\\"stuff\\\":1234}\"", emittedEvent.Data);
         }
 
         [Test]
@@ -102,7 +104,7 @@ namespace PusherClient.Tests.AcceptanceTests
             // Assert
             Assert.IsNotNull(emittedEvent);
             StringAssert.AreEqualIgnoringCase("raw general listener event", emittedEvent.Item1);
-            StringAssert.AreEqualIgnoringCase("{\"user_id\":\"a user\",\"channel\":\"a channel name\",\"event\":\"channel event\",\"data\":\"stuff\"}", emittedEvent.Item2);
+            StringAssert.AreEqualIgnoringCase("{\"user_id\":\"a user\",\"channel\":\"a channel name\",\"event\":\"channel event\",\"data\":\"{\\\"stuff\\\":1234}\"}", emittedEvent.Item2);
         }
 
         [Test]
@@ -322,18 +324,37 @@ namespace PusherClient.Tests.AcceptanceTests
 
         private PusherEvent CreateTestEvent()
         {
+            var dictionary = new Dictionary<string, int>
+            {
+                {
+                    "stuff", 1234
+                }
+            };
+
+            var data = JsonConvert.SerializeObject(dictionary);
+
             var testClass = new TestClass
             {
                 user_id = "a user",
                 channel = "a channel name",
                 @event = "channel event",
-                data = "stuff"
+                data = data
             };
 
             var raw = JsonConvert.SerializeObject(testClass);
-            var properties = JsonConvert.DeserializeObject<Dictionary<string, object>>(raw);
 
-            return new PusherEvent(properties, raw);
+            // This replicates what happens in the connection class
+            var jObject = JObject.Parse(raw);
+
+            if (jObject["data"] != null && jObject["data"].Type != JTokenType.String)
+                jObject["data"] = jObject["data"].ToString(Formatting.None);
+
+            var jsonMessage = jObject.ToString(Formatting.None);
+
+            var eventData = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonMessage);
+            eventData["data"] = jObject["data"].ToString(Formatting.None); // undo any kind of deserialisation
+
+            return new PusherEvent(eventData, jsonMessage);
         }
 
         private class TestClass
