@@ -179,11 +179,19 @@ namespace PusherClient
         internal void EmitEvent(string eventName, PusherEvent data)
         {
             var stringData = data.ToString();
-            var dynamicData = JsonConvert.DeserializeObject<dynamic>(stringData);
             
             ActionData(_rawGeneralListeners, _rawEventListeners, eventName, stringData);
-            ActionData(_generalListeners, _eventListeners, eventName, dynamicData);
+            EmitDynamicEvent(eventName, stringData);
             ActionData(_pusherEventGeneralListeners, _pusherEventEventListeners, eventName, data);
+        }
+
+        internal void EmitDynamicEvent(string eventName, string data)
+        {
+            if (_generalListeners.Count > 0 || _eventListeners.Count > 0)
+            {
+                var dynamicData = JsonConvert.DeserializeObject<dynamic>(data);
+                ActionData(_generalListeners, _eventListeners, eventName, dynamicData);
+            }
         }
 
         private void ActionData<T>(List<Action<string, T>> listToProcess, Dictionary<string, List<Action<T>>> dictionaryToProcess, string eventName, T data)
