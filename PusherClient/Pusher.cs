@@ -127,12 +127,12 @@ namespace PusherClient
             RaiseError(pusherException);
         }
 
-        void IPusher.EmitPusherEvent(string eventName, string data)
+        void IPusher.EmitPusherEvent(string eventName, PusherEvent data)
         {
             EmitEvent(eventName, data);
         }
 
-        void IPusher.EmitChannelEvent(string channelName, string eventName, string data)
+        void IPusher.EmitChannelEvent(string channelName, string eventName, PusherEvent data)
         {
             if (Channels.ContainsKey(channelName))
             {
@@ -172,7 +172,8 @@ namespace PusherClient
         /// </summary>
         public async Task<ConnectionState> ConnectAsync()
         {
-            if (_connection != null)
+            if (_connection != null
+                && _connection.IsConnected)
             {
                 //Trace.TraceEvent(TraceEventType.Warning, 0, ErrorConstants.ConnectionAlreadyConnected);
                 return ConnectionState.AlreadyConnected;
@@ -186,7 +187,8 @@ namespace PusherClient
             try
             {
                 // Ensure we only ever attempt to connect once
-                if (_connection != null)
+                if (_connection != null
+                    && _connection.IsConnected)
                 {
                     //Trace.TraceEvent(TraceEventType.Warning, 0, ErrorConstants.ConnectionAlreadyConnected);
                     return ConnectionState.AlreadyConnected;
