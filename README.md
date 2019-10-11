@@ -199,9 +199,9 @@ You should be familiar with [creating an publishing NuGet packages](http://docs.
 
 From the `pusher-dotnet-client` directory:
 
-1. Update `pusher-dotnet-client.nuspec` with new version number etc.
-2. Run `package.cmd`
-3. Run `tools/nuget.exe push PusherClient.{VERSION}.nupkg`
+1. Update `PusherClient/PusherClient.csproj` and  `PusherClient/Pusher.cs` with new version number etc.
+2. Specify the correct path to `msbuild.exe` in `package.cmd` and run it.
+3. Run `nuget push PusherClient.{VERSION}.nupkg`
 
 ## License
 
