@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0
+* [FIX] Mitigates NRE and race in Connect/Disconnect (PR #72, issue #71)
+* [FIX] Potential incompatibility with il2cpp compiler for iOS target due to dynamic keyword (issue #69)
+* [FIX] Race condition in PresenceChannel name (issue #44)
+* [ADDED] Extended API for Bind/Unbind and BindAll/UnbindAll to emit a more idiomatic <PusherEvent> as an alternative to the raw data String
+* [ADDED] NUnit 3 Test Adaptor to enable test integration with VS2019
+
 ## 1.0.2
 * [CHANGED] Project now targets DotNet Standard 1.6.
 * [REMOVED] Retired Sync versions of method. Updated tests to use async versions of methods.

@@ -7,7 +7,7 @@
   <PropertyGroup>
       <PackageId>PusherClient</PackageId>
       <PackageTitle>Pusher .NET Client Library</PackageTitle>
-      <PackageVersion>0.6</PackageVersion>
+      <PackageVersion>1.1.0</PackageVersion>
       <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
       <PackageTags>pusher realtime websocket</PackageTags>
       <License>https://github.com/pusher/pusher-websocket-dotnet/blob/master/LICENSE.txt</License>
