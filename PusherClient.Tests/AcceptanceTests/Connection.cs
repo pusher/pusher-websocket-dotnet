@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Threading;
-using System.Threading.Tasks;
 using Nito.AsyncEx;
 using NUnit.Framework;
 using PusherClient.Tests.Utilities;

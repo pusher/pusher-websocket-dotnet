@@ -1,11 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SuperSocket.ClientEngine;
-//using Nito.AsyncEx;
 using WebSocket4Net;
 
 namespace PusherClient
@@ -137,7 +137,14 @@ namespace PusherClient
 
             var message = JsonConvert.DeserializeAnonymousType(jsonMessage, template);
 
-            _pusher.EmitPusherEvent(message.@event, message.data);
+            var eventData = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonMessage);
+
+            if (jObject["data"] != null)
+                eventData["data"] = jObject["data"].ToString(Formatting.None); // undo any kind of deserialisation of the data property
+
+            var receivedEvent = new PusherEvent(eventData, jsonMessage);
+
+            _pusher.EmitPusherEvent(message.@event, receivedEvent);
 
             if (message.@event.StartsWith(Constants.PUSHER_MESSAGE_PREFIX))
             {
@@ -177,7 +184,7 @@ namespace PusherClient
             }
             else // Assume channel event
             {
-                _pusher.EmitChannelEvent(message.channel, message.@event, message.data);
+                _pusher.EmitChannelEvent(message.channel, message.@event, receivedEvent);
             }
         }
 
