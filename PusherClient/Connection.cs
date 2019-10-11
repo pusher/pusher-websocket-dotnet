@@ -17,7 +17,7 @@ namespace PusherClient
         private readonly string _url;
         private readonly IPusher _pusher;
         private bool _allowReconnect = true;
-        private Func<IProxyConnector> _proxyFactory;
+        private Func<string, IProxyConnector> _proxyFactory;
         
         private int _backOffMillis;
 
@@ -33,7 +33,7 @@ namespace PusherClient
         private TaskCompletionSource<ConnectionState> _connectionTaskComplete = null;
         private TaskCompletionSource<ConnectionState> _disconnectionTaskComplete = null;
 
-        public Connection(IPusher pusher, string url, Func<IProxyConnector> proxyFactory = null)
+        public Connection(IPusher pusher, string url, Func<string, IProxyConnector> proxyFactory = null)
         {
             _pusher = pusher;
             _url = url;
@@ -61,7 +61,7 @@ namespace PusherClient
             {
                 EnableAutoSendPing = true,
                 AutoSendPingInterval = 1,
-                Proxy = _proxyFactory?.Invoke(),
+                Proxy = _proxyFactory?.Invoke(_url),
             };
 
             _websocket.Opened += websocket_Opened;
