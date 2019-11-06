@@ -136,7 +136,7 @@ namespace PusherClient
             var eventData = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonMessage);
 
             if (jObject["data"] != null)
-                eventData["data"] = jObject["data"].ToString(Formatting.None); // undo any kind of deserialisation of the data property
+                eventData["data"] = jObject["data"].ToString(); // undo any kind of deserialisation of the data property
 
             var receivedEvent = new PusherEvent(eventData, jsonMessage);
 
