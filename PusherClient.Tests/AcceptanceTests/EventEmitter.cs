@@ -64,7 +64,7 @@ namespace PusherClient.Tests.AcceptanceTests
             // Assert
             Assert.IsNotNull(emittedEvent);
             StringAssert.AreEqualIgnoringCase("channel event", emittedEvent.EventName);
-            StringAssert.AreEqualIgnoringCase("\"{\\\"stuff\\\":1234}\"", emittedEvent.Data);
+            StringAssert.AreEqualIgnoringCase("{\"stuff\":1234}", emittedEvent.Data);
         }
 
         [Test]
@@ -354,7 +354,7 @@ namespace PusherClient.Tests.AcceptanceTests
             var eventData = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonMessage);
 
             if (jObject["data"] != null)
-                eventData["data"] = jObject["data"].ToString(Formatting.None); // undo any kind of deserialisation
+                eventData["data"] = jObject["data"].ToString(); // undo any kind of deserialisation
 
             return new PusherEvent(eventData, jsonMessage);
         }
