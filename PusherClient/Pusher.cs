@@ -213,7 +213,7 @@ namespace PusherClient
         {
             var scheme = _options.Encrypted ? Constants.SECURE_SCHEMA : Constants.INSECURE_SCHEMA;
 
-            return $"{scheme}{_options.Host}/app/{_applicationKey}?protocol=5&client=pusher-dotnet-client&version=1.1.0";
+            return $"{scheme}{_options.Host}/app/{_applicationKey}?protocol=5&client=pusher-dotnet-client&version=1.1.1";
         }
 
         /// <summary>

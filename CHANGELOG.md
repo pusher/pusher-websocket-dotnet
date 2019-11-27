@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+* [FIX] Removed extra double quotes from PusherEvent.Data string (PR #84)
+* [FIX] Fixed JsonReaderException in the HttpAuthorizer (issue #78, issue #85, PR #86)
+
 ## 1.1.0
 * [FIX] Mitigates NRE and race in Connect/Disconnect (PR #72, issue #71)
 * [FIX] Potential incompatibility with il2cpp compiler for iOS target due to dynamic keyword (issue #69)
