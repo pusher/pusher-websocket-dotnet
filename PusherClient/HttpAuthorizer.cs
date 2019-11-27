@@ -41,7 +41,7 @@ namespace PusherClient
                 HttpContent content = new FormUrlEncodedContent(data);
 
                 var response = httpClient.PostAsync(_authEndpoint, content).Result;
-                authToken = response.Content.ToString();
+                authToken = response.Content.ReadAsStringAsync().Result;
             }
 
             return authToken;
