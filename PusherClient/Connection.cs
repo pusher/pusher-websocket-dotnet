@@ -189,6 +189,7 @@ namespace PusherClient
             Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Websocket opened OK.");
             _connectionTaskComplete.SetResult(ConnectionState.Connected);
             _connectionTaskComplete = null;
+            _backOffMillis = 0;
         }
 
         private void websocket_Closed(object sender, EventArgs e)
@@ -231,11 +232,13 @@ namespace PusherClient
             if (_connectionTaskComplete != null)
             {
                 _connectionTaskComplete.TrySetException(e.Exception);
+                _connectionTaskComplete = null;
             }
 
             if (_disconnectionTaskComplete != null)
             {
                 _disconnectionTaskComplete.TrySetException(e.Exception);
+                _disconnectionTaskComplete = null;
             }
         }
 
