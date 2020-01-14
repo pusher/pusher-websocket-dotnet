@@ -182,7 +182,12 @@ namespace PusherClient
             // Prevent multiple concurrent connections
             var connectionResult = ConnectionState.Connecting;
 
+#if NET40
+            _mutexLock.Wait();
+#else
             await _mutexLock.WaitAsync().ConfigureAwait(false);
+#endif
+
 
             try
             {

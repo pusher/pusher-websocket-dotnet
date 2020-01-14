@@ -98,7 +98,12 @@ namespace PusherClient
                 Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Sending: " + message);
                 Debug.WriteLine("Sending: " + message);
 
+#if NET40
+                var sendTask = Task.Factory.StartNew(() => _websocket.Send(message));
+#else
                 var sendTask = Task.Run(() => _websocket.Send(message));
+#endif
+
                 await sendTask;
 
                 return true;
@@ -213,7 +218,14 @@ namespace PusherClient
                 Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Attempting websocket reconnection");
 
                 ChangeState(ConnectionState.WaitingToReconnect);
+#if NET40
+                Task.WaitAll(TaskEx.Delay(_backOffMillis));
+#else
                 Task.WaitAll(Task.Delay(_backOffMillis));
+#endif
+
+
+
                 _backOffMillis = Math.Min(MAX_BACKOFF_MILLIS, _backOffMillis + BACK_OFF_MILLIS_INCREMENT);
                 Connect(); // TODO
             }

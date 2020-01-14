@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net45;net46;netstandard1.6</TargetFrameworks>
+    <TargetFrameworks>net40;net45;net46;netstandard1.6</TargetFrameworks>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -16,18 +16,36 @@
       <PackageDescription>$description$</PackageDescription>
       <PackageIconUrl>https://pusher.com/static_logos/64x64.png</PackageIconUrl>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.CSharp" Version="4.5.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
-    <PackageReference Include="WebSocket4Net" Version="0.15.2" />
+  
+  <ItemGroup Condition="'$(TargetFramework)' == 'net40'">
+    <PackageReference Include="Microsoft.Bcl.Async">
+      <Version>1.0.168</Version>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Net.Http">
+      <Version>2.2.29</Version>
+    </PackageReference>
+    <Reference Include="Microsoft.CSharp">
+      <Version>4.0.0</Version>
+    </Reference>
   </ItemGroup>
-
-  <ItemGroup>
+  
+  <ItemGroup Condition="'$(TargetFramework)' != 'net40'">
     <Reference Include="System.Net.Http" />
+    <PackageReference Include="Microsoft.CSharp">
+      <Version>4.5.0</Version>
+    </PackageReference>
   </ItemGroup>
-
+  
+  <ItemGroup Condition="'$(TargetFramework)' == 'net45'">
+    <PackageReference Include="Microsoft.Bcl.Async">
+      <Version>1.0.168</Version>
+    </PackageReference>
+  </ItemGroup>
+  
   <ItemGroup Condition="'$(TargetFramework)' == 'net46'">
+    <PackageReference Include="Microsoft.Bcl.Async">
+      <Version>1.0.168</Version>
+    </PackageReference>
     <PackageReference Include="System.Diagnostics.TraceSource">
       <Version>4.3.0</Version>
     </PackageReference>
@@ -37,6 +55,14 @@
     <PackageReference Include="System.Diagnostics.TraceSource">
       <Version>4.3.0</Version>
     </PackageReference>
+    <PackageReference Include="Microsoft.CSharp">
+      <Version>4.5.0</Version>
+    </PackageReference>
+  </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
+    <PackageReference Include="WebSocket4Net" Version="0.15.2" />
   </ItemGroup>
 
 </Project>
