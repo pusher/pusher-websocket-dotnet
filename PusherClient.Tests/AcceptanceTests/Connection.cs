@@ -118,7 +118,7 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         [Test]
-        public void PusherShouldSuccessfulyReconnectWhenItHasPreviouslyDisconnectedAsync()
+        public void PusherShouldSuccessfullyReconnectWhenItHasPreviouslyDisconnectedAsync()
         {
             // Arrange
             AutoResetEvent reset = new AutoResetEvent(false);
