@@ -99,14 +99,15 @@ namespace ExampleApplication
             ListMembers();
         }
 
-        static void PresenceChannel_MemberRemoved(object sender)
+        static void PresenceChannel_MemberRemoved(object sender, KeyValuePair<string, dynamic> member)
         {
+            Console.WriteLine((string)member.Key + " has left");
             ListMembers();
         }
 
         static void PresenceChannel_MemberAdded(object sender, KeyValuePair<string, dynamic> member)
         {
-            Console.WriteLine((string)member.Value.name.Value + " has joined");
+            Console.WriteLine((string)member.Key + " has joined");
             ListMembers();
         }
 
