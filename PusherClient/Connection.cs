@@ -16,7 +16,7 @@ namespace PusherClient
         private readonly string _url;
         private readonly IPusher _pusher;
         private bool _allowReconnect = true;
-        
+
         private int _backOffMillis;
 
         private static readonly int MAX_BACKOFF_MILLIS = 10000;
@@ -134,7 +134,7 @@ namespace PusherClient
                 jObject["data"] = jObject["data"].ToString(Formatting.None);
 
             var jsonMessage = jObject.ToString(Formatting.None);
-            var template = new { @event = string.Empty, data = string.Empty, channel = string.Empty };
+            var template = new {@event = string.Empty, data = string.Empty, channel = string.Empty};
 
             var message = JsonConvert.DeserializeAnonymousType(jsonMessage, template);
 
@@ -224,8 +224,6 @@ namespace PusherClient
                 Task.WaitAll(Task.Delay(_backOffMillis));
 #endif
 
-
-
                 _backOffMillis = Math.Min(MAX_BACKOFF_MILLIS, _backOffMillis + BACK_OFF_MILLIS_INCREMENT);
                 Connect(); // TODO
             }
@@ -253,7 +251,7 @@ namespace PusherClient
 
         private void ParseConnectionEstablished(string data)
         {
-            var template = new { socket_id = string.Empty };
+            var template = new {socket_id = string.Empty};
             var message = JsonConvert.DeserializeAnonymousType(data, template);
             SocketId = message.socket_id;
 
@@ -262,14 +260,14 @@ namespace PusherClient
 
         private void ParseError(string data)
         {
-            var template = new { message = string.Empty, code = (int?) null };
+            var template = new {message = string.Empty, code = (int?) null};
             var parsed = JsonConvert.DeserializeAnonymousType(data, template);
 
             ErrorCodes error = ErrorCodes.Unkown;
 
             if (parsed.code != null && Enum.IsDefined(typeof(ErrorCodes), parsed.code))
             {
-                error = (ErrorCodes)parsed.code;
+                error = (ErrorCodes) parsed.code;
             }
 
             RaiseError(new PusherException(parsed.message, error));
