@@ -99,7 +99,7 @@ namespace PusherClient
                 Debug.WriteLine("Sending: " + message);
 
 #if NET40
-                var sendTask = Task.Factory.StartNew(() => _websocket.Send(message));
+                var sendTask = Task.Factory.StartNew(() => _websocket.Send(message), CancellationToken.None, TaskCreationOptions.None, TaskScheduler.Default);
 #else
                 var sendTask = Task.Run(() => _websocket.Send(message));
 #endif
