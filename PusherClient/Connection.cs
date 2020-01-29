@@ -204,15 +204,23 @@ namespace PusherClient
 
             _websocket?.Dispose();
 
+            if (!_connectionTaskCompleted)
+            {
+                _connectionTaskCompleted = true;
+            }
+
             ChangeState(ConnectionState.Disconnected);
 
             if (_allowReconnect)
             {
-                Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Attempting websocket reconnection");
+                Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Waiting " + _backOffMillis.ToString() + "ms before attempting a reconnection (backoff)");
 
                 ChangeState(ConnectionState.WaitingToReconnect);
                 Task.WaitAll(Task.Delay(_backOffMillis));
                 _backOffMillis = Math.Min(MAX_BACKOFF_MILLIS, _backOffMillis + BACK_OFF_MILLIS_INCREMENT);
+
+                Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Attempting websocket reconnection now");
+
                 Connect(); // TODO
             }
             else
