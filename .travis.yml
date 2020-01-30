@@ -7,7 +7,7 @@ matrix:
 install:
     - choco install windows-sdk-10-version-1809-all
     - choco install nuget.commandline
-    - nuget install NUnit.Console -Version 3.9.0 -OutputDirectory testrunner
+    - nuget install NUnit.Console -Version 3.10.0 -OutputDirectory testrunner
     - nuget restore pusher-dotnet-client.sln
 script:
    - powershell -Command 'cat ./PusherClient.Tests/App.config.template | % { $_ -replace "APP_ID_PLACEHOLDER","$Env:APP_ID" } | % { $_ -replace "APP_KEY_PLACEHOLDER","$Env:APP_KEY" } | % { $_ -replace "APP_SECRET_PLACEHOLDER","$Env:APP_SECRET" } | Out-File ./PusherClient.Tests/App.config -Encoding UTF8'
