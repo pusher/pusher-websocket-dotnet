@@ -13,4 +13,4 @@ script:
    - powershell -Command 'cat ./PusherClient.Tests/App.config.template | % { $_ -replace "APP_ID_PLACEHOLDER","$Env:APP_ID" } | % { $_ -replace "APP_KEY_PLACEHOLDER","$Env:APP_KEY" } | % { $_ -replace "APP_SECRET_PLACEHOLDER","$Env:APP_SECRET" } | Out-File ./PusherClient.Tests/App.config -Encoding UTF8'
    - export PATH=$MSBUILD_PATH:$PATH
    - MSBuild.exe pusher-dotnet-client.sln -t:Rebuild -p:Configuration=Debug
-   - ./testrunner/NUnit.ConsoleRunner.3.9.0/tools/nunit3-console.exe ./PusherClient.Tests/PusherClient.Tests.csproj
+   - ./testrunner/NUnit.ConsoleRunner.3.10.0/tools/nunit3-console.exe ./PusherClient.Tests/PusherClient.Tests.csproj
