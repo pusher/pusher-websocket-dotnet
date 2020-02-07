@@ -31,6 +31,9 @@ namespace PusherClient
         private TaskCompletionSource<ConnectionState> _connectionTaskComplete = null;
         private TaskCompletionSource<ConnectionState> _disconnectionTaskComplete = null;
 
+        private bool _connectionTaskCompleted = false;
+        private bool _disconnectionTaskCompleted = false;
+
         public Connection(IPusher pusher, string url)
         {
             _pusher = pusher;
@@ -40,13 +43,13 @@ namespace PusherClient
         internal Task<ConnectionState> Connect()
         {
             var completionSource = _connectionTaskComplete;
-            if (completionSource != null)
+
+            if (!_connectionTaskCompleted && _connectionTaskComplete != null)
                 return completionSource.Task;
 
             completionSource = new TaskCompletionSource<ConnectionState>();
-            var existingCompletionSource = Interlocked.CompareExchange(ref _connectionTaskComplete, completionSource, null);
-            if (existingCompletionSource != null)
-                return existingCompletionSource.Task;
+            _connectionTaskComplete = completionSource;
+            _connectionTaskCompleted = false;
 
             // TODO: Add 'connecting_in' event
             Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Connecting to: {_url}");
@@ -73,13 +76,12 @@ namespace PusherClient
         internal Task<ConnectionState> Disconnect()
         {
             var completionSource = _disconnectionTaskComplete;
-            if (completionSource != null)
+            if (!_disconnectionTaskCompleted && completionSource != null)
                 return completionSource.Task;
 
             completionSource = new TaskCompletionSource<ConnectionState>();
-            var existingCompletionSource = Interlocked.CompareExchange(ref _disconnectionTaskComplete, completionSource, null);
-            if (existingCompletionSource != null)
-                return existingCompletionSource.Task;
+            _disconnectionTaskComplete = completionSource;
+            _disconnectionTaskCompleted = false;
 
             Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Disconnecting from: {_url}");
 
@@ -188,7 +190,7 @@ namespace PusherClient
         {
             Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Websocket opened OK.");
             _connectionTaskComplete.SetResult(ConnectionState.Connected);
-            _connectionTaskComplete = null;
+            _connectionTaskCompleted = true;
         }
 
         private void websocket_Closed(object sender, EventArgs e)
@@ -200,27 +202,31 @@ namespace PusherClient
             _websocket.Closed -= websocket_Closed;
             _websocket.MessageReceived -= websocket_MessageReceived;
 
-            if (_websocket != null)
+            _websocket?.Dispose();
+
+            if (!_connectionTaskCompleted)
             {
-                _websocket.Dispose();
-                _websocket = null;
+                _connectionTaskCompleted = true;
             }
 
             ChangeState(ConnectionState.Disconnected);
 
             if (_allowReconnect)
             {
-                Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Attempting websocket reconnection");
+                Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Waiting " + _backOffMillis.ToString() + "ms before attempting a reconnection (backoff)");
 
                 ChangeState(ConnectionState.WaitingToReconnect);
                 Task.WaitAll(Task.Delay(_backOffMillis));
                 _backOffMillis = Math.Min(MAX_BACKOFF_MILLIS, _backOffMillis + BACK_OFF_MILLIS_INCREMENT);
+
+                Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Attempting websocket reconnection now");
+
                 Connect(); // TODO
             }
             else
             {
                 _disconnectionTaskComplete.SetResult(ConnectionState.Disconnected);
-                _disconnectionTaskComplete = null;
+                _disconnectionTaskCompleted = true;
             }
         }
 
