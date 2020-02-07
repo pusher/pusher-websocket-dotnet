@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.2
+* [FIX] Switch to concurrent collections to avoid race in EventEmitter (issue #76, PR #93)
+* [FIX] Fix Reconnection issue and NRE on Disconnect() after websocket_Closed (issue #70, issue #71, issue #73, PR #95)
+* [FIX] Reset `_backOffMillis` after a successful reconnection (issue #97, PR #96)
+
 ## 1.1.1
 * [FIX] Removed extra double quotes from PusherEvent.Data string (PR #84)
 * [FIX] Fixed JsonReaderException in the HttpAuthorizer (issue #78, issue #85, PR #86)
@@ -43,7 +48,7 @@
   * Newtonsoft.Json 7.0.1
   * WebSocket4Net 0.13.1
 
-### 0.2.0
+## 0.2.0
 
 * [CHANGED] Update package dependencies
   * Newtonsoft.Json 6.0.4
