@@ -9,7 +9,7 @@ namespace ExampleApplication
 {
     class Program
     {
-        private static Pusher _pusher;
+        private static Pusher pusher;
         private static Channel _chatChannel;
         private static PresenceChannel _presenceChannel;
         private static string _name;
@@ -38,7 +38,7 @@ namespace ExampleApplication
                 _chatChannel.Trigger("client-my-event", new {message = line, name = _name});
             } while (line != null);
 
-            var disconnectResult = Task.Run(() => _pusher.DisconnectAsync());
+            var disconnectResult = Task.Run(() => pusher.DisconnectAsync());
             Task.WaitAll(disconnectResult);
         }
 
@@ -57,15 +57,15 @@ namespace ExampleApplication
         // Pusher Initiation / Connection
         private static async Task InitPusher()
         {
-            _pusher = new Pusher(Config.AppKey, new PusherOptions
+            pusher = new Pusher(Config.AppKey, new PusherOptions
             {
                 Authorizer = new HttpAuthorizer("http://localhost:8888/auth/" + HttpUtility.UrlEncode(_name))
             });
-            _pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
-            _pusher.Error += _pusher_Error;
+            pusher.ConnectionStateChanged += pusher_ConnectionStateChanged;
+            pusher.Error += pusher_Error;
 
             // Setup private channel
-            _chatChannel = _pusher.SubscribeAsync("private-channel").Result;
+            _chatChannel = pusher.SubscribeAsync("private-channel").Result;
             _chatChannel.Subscribed += ChatChannel_Subscribed;
 
             // Inline binding!
@@ -75,20 +75,20 @@ namespace ExampleApplication
             });
 
             // Setup presence channel
-            _presenceChannel = (PresenceChannel)_pusher.SubscribeAsync("presence-channel").Result;
+            _presenceChannel = (PresenceChannel)pusher.SubscribeAsync("presence-channel").Result;
             _presenceChannel.Subscribed += PresenceChannel_Subscribed;
             _presenceChannel.MemberAdded += PresenceChannel_MemberAdded;
             _presenceChannel.MemberRemoved += PresenceChannel_MemberRemoved;
 
-            await _pusher.ConnectAsync();
+            await pusher.ConnectAsync();
         }
 
-        static void _pusher_Error(object sender, PusherException error)
+        static void pusher_Error(object sender, PusherException error)
         {
             Console.WriteLine("Pusher Error: " + error);
         }
 
-        static void _pusher_ConnectionStateChanged(object sender, ConnectionState state)
+        static void pusher_ConnectionStateChanged(object sender, ConnectionState state)
         {
             Console.WriteLine("Connection state: " + state);
         }

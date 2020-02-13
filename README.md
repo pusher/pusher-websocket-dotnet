@@ -29,21 +29,21 @@ See [the example app](https://github.com/pusher/pusher-websocket-dotnet/tree/mas
 
 #### Event based
 ```cs
-_pusher = new Pusher("YOUR_APP_KEY");
-_pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
-_pusher.Error += _pusher_Error;
-_pusher.Connect();
+pusher = new Pusher("YOUR_APP_KEY");
+pusher.ConnectionStateChanged += pusher_ConnectionStateChanged;
+pusher.Error += pusher_Error;
+pusher.Connect();
 ```
 
-where `_pusher_ConnectionStateChanged` and `_pusher_Error` are custom event handlers such as
+where `pusher_ConnectionStateChanged` and `pusher_Error` are custom event handlers such as
 
 ```cs
-static void _pusher_ConnectionStateChanged(object sender, ConnectionState state)
+static void pusher_ConnectionStateChanged(object sender, ConnectionState state)
 {
     Console.WriteLine("Connection state: " + state.ToString());
 }
 
-static void _pusher_Error(object sender, PusherException error)
+static void pusher_Error(object sender, PusherException error)
 {
     Console.WriteLine("Pusher Channels Error: " + error.ToString());
 }
@@ -51,10 +51,10 @@ static void _pusher_Error(object sender, PusherException error)
 
 #### Asynchronous
 ```cs
-_pusher = new Pusher("YOUR_APP_KEY");
-_pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
-_pusher.Error += _pusher_Error;
-ConnectionState connectionState = await _pusher.ConnectAsync();
+pusher = new Pusher("YOUR_APP_KEY");
+pusher.ConnectionStateChanged += pusher_ConnectionStateChanged;
+pusher.Error += pusher_Error;
+ConnectionState connectionState = await pusher.ConnectAsync();
 ```
 
 In the case of the async version, state and error changes will continue to be published via events, but the initial connection state will be returned from the `ConnectAsync()` method.
@@ -64,23 +64,23 @@ If you have an authentication endpoint for private or presence channels:
 
 #### Event based
 ```cs
-_pusher = new Pusher("YOUR_APP_KEY", new PusherOptions(){
+pusher = new Pusher("YOUR_APP_KEY", new PusherOptions(){
     Authorizer = new HttpAuthorizer("YOUR_ENDPOINT")
 });
-_pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
-_pusher.Error += _pusher_Error;
-_pusher.Connect();
+pusher.ConnectionStateChanged += pusher_ConnectionStateChanged;
+pusher.Error += pusher_Error;
+pusher.Connect();
 ```
 
 #### Asynchronous
 
 ```cs
-_pusher = new Pusher("YOUR_APP_KEY", new PusherOptions(){
+pusher = new Pusher("YOUR_APP_KEY", new PusherOptions(){
     Authorizer = new HttpAuthorizer("YOUR_ENDPOINT")
 });
-_pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
-_pusher.Error += _pusher_Error;
-ConnectionState connectionState = await _pusher.ConnectAsync();
+pusher.ConnectionStateChanged += pusher_ConnectionStateChanged;
+pusher.Error += pusher_Error;
+ConnectionState connectionState = await pusher.ConnectAsync();
 ```
 
 ### Non Default Cluster
@@ -88,29 +88,29 @@ If you are on a non default cluster (e.g. eu):
 
 #### Event based
 ```cs
-_pusher = new Pusher("YOUR_APP_KEY", new PusherOptions(){
+pusher = new Pusher("YOUR_APP_KEY", new PusherOptions(){
     Cluster = "eu"
 });
-_pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
-_pusher.Error += _pusher_Error;
-_pusher.Connect();
+pusher.ConnectionStateChanged += pusher_ConnectionStateChanged;
+pusher.Error += pusher_Error;
+pusher.Connect();
 ```
 
 #### Asynchonous
 ```cs
-_pusher = new Pusher("YOUR_APP_KEY", new PusherOptions(){
+pusher = new Pusher("YOUR_APP_KEY", new PusherOptions(){
     Cluster = "eu"
 });
-_pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
-_pusher.Error += _pusher_Error;
-ConnectionState connectionState = _pusher.ConnectAsync();
+pusher.ConnectionStateChanged += pusher_ConnectionStateChanged;
+pusher.Error += pusher_Error;
+ConnectionState connectionState = pusher.ConnectAsync();
 ```
 
 ### Subscribe to a public or private channel
 
 #### Event based
 ```cs
-_myChannel = _pusher.Subscribe("my-channel");
+_myChannel = pusher.Subscribe("my-channel");
 _myChannel.Subscribed += _myChannel_Subscribed;
 ```
 where `_myChannel_Subscribed` is a custom event handler such as
@@ -124,7 +124,7 @@ static void _myChannel_Subscribed(object sender)
 
 #### Asynchronous
 ```cs
-Channel _myChannel = await _pusher.SubscribeAsync("my-channel");
+Channel _myChannel = await pusher.SubscribeAsync("my-channel");
 ```
 
 ### Bind to an event
@@ -140,7 +140,7 @@ _myChannel.Bind("my-event", (dynamic data) =>
 
 #### Event based
 ```cs
-_presenceChannel = (PresenceChannel)_pusher.Subscribe("presence-channel");
+_presenceChannel = (PresenceChannel)pusher.Subscribe("presence-channel");
 _presenceChannel.Subscribed += _presenceChannel_Subscribed;
 _presenceChannel.MemberAdded += _presenceChannel_MemberAdded;
 _presenceChannel.MemberRemoved += _presenceChannel_MemberRemoved;
@@ -164,7 +164,7 @@ static void _presenceChannel_MemberRemoved(object sender)
 #### Asynchronous
 
 ```cs
-_presenceChannel = await (PresenceChannel)_pusher.SubscribeAsync("presence-channel");
+_presenceChannel = await (PresenceChannel)pusher.SubscribeAsync("presence-channel");
 _presenceChannel.Subscribed += _presenceChannel_Subscribed;
 _presenceChannel.MemberAdded += _presenceChannel_MemberAdded;
 _presenceChannel.MemberRemoved += _presenceChannel_MemberRemoved;
