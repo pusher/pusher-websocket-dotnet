@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.1.2
+* [FIX] Switch to concurrent collections to avoid race in EventEmitter (issue #76, PR #93)
+* [FIX] Fix Reconnection issue and NRE on Disconnect() after websocket_Closed (issue #70, issue #71, issue #73, PR #95)
+* [FIX] Reset `_backOffMillis` after a successful reconnection (issue #97, PR #96)
+
+## 1.1.1
+* [FIX] Removed extra double quotes from PusherEvent.Data string (PR #84)
+* [FIX] Fixed JsonReaderException in the HttpAuthorizer (issue #78, issue #85, PR #86)
+
+## 1.1.0
+* [FIX] Mitigates NRE and race in Connect/Disconnect (PR #72, issue #71)
+* [FIX] Potential incompatibility with il2cpp compiler for iOS target due to dynamic keyword (issue #69)
+* [FIX] Race condition in PresenceChannel name (issue #44)
+* [ADDED] Extended API for Bind/Unbind and BindAll/UnbindAll to emit a more idiomatic <PusherEvent> as an alternative to the raw data String
+* [ADDED] NUnit 3 Test Adaptor to enable test integration with VS2019
+
 ## 1.0.2
 * [CHANGED] Project now targets DotNet Standard 1.6.
 * [REMOVED] Retired Sync versions of method. Updated tests to use async versions of methods.
@@ -32,7 +48,7 @@
   * Newtonsoft.Json 7.0.1
   * WebSocket4Net 0.13.1
 
-### 0.2.0
+## 0.2.0
 
 * [CHANGED] Update package dependencies
   * Newtonsoft.Json 6.0.4

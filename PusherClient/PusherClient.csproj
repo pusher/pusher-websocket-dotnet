@@ -7,19 +7,19 @@
   <PropertyGroup>
       <PackageId>PusherClient</PackageId>
       <PackageTitle>Pusher .NET Client Library</PackageTitle>
-      <PackageVersion>0.6</PackageVersion>
+      <PackageVersion>1.1.2</PackageVersion>
       <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
       <PackageTags>pusher realtime websocket</PackageTags>
       <License>https://github.com/pusher/pusher-websocket-dotnet/blob/master/LICENSE.txt</License>
       <PackageProjectUrl>https://github.com/pusher/pusher-websocket-dotnet</PackageProjectUrl>
-      <PackageCopyright>Copyright © Pusher 2019</PackageCopyright>
-      <PackageDescription>$description$</PackageDescription>
-      <PackageIconUrl>https://pusher.com/static_logos/64x64.png</PackageIconUrl>
+      <PackageCopyright>Copyright © Pusher 2020</PackageCopyright>
+      <PackageDescription>The .NET library for interacting with the Pusher WebSocket API. Register at http://pusher.com</PackageDescription>
+      <PackageIconUrl>https://d2cy1obokpvee9.cloudfront.net/manifest/favicon-96x96.png</PackageIconUrl>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CSharp" Version="4.5.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="WebSocket4Net" Version="0.15.2" />
   </ItemGroup>
 

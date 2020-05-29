@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Threading;
-using System.Threading.Tasks;
 using Nito.AsyncEx;
 using NUnit.Framework;
 using PusherClient.Tests.Utilities;
@@ -11,7 +10,7 @@ namespace PusherClient.Tests.AcceptanceTests
     public class Connection
     {
         [Test]
-        public void PusherShouldSuccessfulyConnectWhenGivenAValidAppKeyAsync()
+        public void PusherShouldSuccessfullyConnectWhenGivenAValidAppKeyAsync()
         {
             // Arrange
             AutoResetEvent reset = new AutoResetEvent(false);
@@ -33,7 +32,7 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         [Test]
-        public void PusherShouldNotSuccessfulyConnectWhenGivenAnInvalidAppKeyAsync()
+        public void PusherShouldNotSuccessfullyConnectWhenGivenAnInvalidAppKeyAsync()
         {
             // Arrange
             AutoResetEvent reset = new AutoResetEvent(false);
@@ -55,7 +54,7 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         [Test]
-        public void PusherShouldSuccessfulyDisconnectWhenItIsConnectedAndDisconnectIsRequestedAsync()
+        public void PusherShouldSuccessfullyDisconnectWhenItIsConnectedAndDisconnectIsRequestedAsync()
         {
             // Arrange
             AutoResetEvent reset = new AutoResetEvent(false);
@@ -119,7 +118,7 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         [Test]
-        public void PusherShouldSuccessfulyReconnectWhenItHasPreviouslyDisconnectedAsync()
+        public void PusherShouldSuccessfullyReconnectWhenItHasPreviouslyDisconnectedAsync()
         {
             // Arrange
             AutoResetEvent reset = new AutoResetEvent(false);

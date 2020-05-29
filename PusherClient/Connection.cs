@@ -1,10 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-//using Nito.AsyncEx;
 using WebSocket4Net;
 
 namespace PusherClient
@@ -31,6 +31,9 @@ namespace PusherClient
         private TaskCompletionSource<ConnectionState> _connectionTaskComplete = null;
         private TaskCompletionSource<ConnectionState> _disconnectionTaskComplete = null;
 
+        private bool _connectionTaskCompleted = false;
+        private bool _disconnectionTaskCompleted = false;
+
         public Connection(IPusher pusher, string url)
         {
             _pusher = pusher;
@@ -39,10 +42,14 @@ namespace PusherClient
 
         internal Task<ConnectionState> Connect()
         {
-            if (_connectionTaskComplete != null)
-                return _connectionTaskComplete.Task;
+            var completionSource = _connectionTaskComplete;
 
-            _connectionTaskComplete = new TaskCompletionSource<ConnectionState>();
+            if (!_connectionTaskCompleted && _connectionTaskComplete != null)
+                return completionSource.Task;
+
+            completionSource = new TaskCompletionSource<ConnectionState>();
+            _connectionTaskComplete = completionSource;
+            _connectionTaskCompleted = false;
 
             // TODO: Add 'connecting_in' event
             Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Connecting to: {_url}");
@@ -63,15 +70,18 @@ namespace PusherClient
 
             _websocket.Open();
 
-            return _connectionTaskComplete.Task;
+            return completionSource.Task;
         }
 
         internal Task<ConnectionState> Disconnect()
         {
-            if (_disconnectionTaskComplete != null)
-                return _disconnectionTaskComplete.Task;
+            var completionSource = _disconnectionTaskComplete;
+            if (!_disconnectionTaskCompleted && completionSource != null)
+                return completionSource.Task;
 
-            _disconnectionTaskComplete = new TaskCompletionSource<ConnectionState>();
+            completionSource = new TaskCompletionSource<ConnectionState>();
+            _disconnectionTaskComplete = completionSource;
+            _disconnectionTaskCompleted = false;
 
             Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Disconnecting from: {_url}");
 
@@ -80,7 +90,7 @@ namespace PusherClient
             _allowReconnect = false;
             _websocket.Close();
 
-            return _disconnectionTaskComplete.Task;
+            return completionSource.Task;
         }
 
         internal async Task<bool> Send(string message)
@@ -125,7 +135,14 @@ namespace PusherClient
 
             var message = JsonConvert.DeserializeAnonymousType(jsonMessage, template);
 
-            _pusher.EmitPusherEvent(message.@event, message.data);
+            var eventData = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonMessage);
+
+            if (jObject["data"] != null)
+                eventData["data"] = jObject["data"].ToString(); // undo any kind of deserialisation of the data property
+
+            var receivedEvent = new PusherEvent(eventData, jsonMessage);
+
+            _pusher.EmitPusherEvent(message.@event, receivedEvent);
 
             if (message.@event.StartsWith(Constants.PUSHER_MESSAGE_PREFIX))
             {
@@ -165,7 +182,7 @@ namespace PusherClient
             }
             else // Assume channel event
             {
-                _pusher.EmitChannelEvent(message.channel, message.@event, message.data);
+                _pusher.EmitChannelEvent(message.channel, message.@event, receivedEvent);
             }
         }
 
@@ -173,7 +190,8 @@ namespace PusherClient
         {
             Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Websocket opened OK.");
             _connectionTaskComplete.SetResult(ConnectionState.Connected);
-            _connectionTaskComplete = null;
+            _connectionTaskCompleted = true;
+            _backOffMillis = 0;
         }
 
         private void websocket_Closed(object sender, EventArgs e)
@@ -185,27 +203,31 @@ namespace PusherClient
             _websocket.Closed -= websocket_Closed;
             _websocket.MessageReceived -= websocket_MessageReceived;
 
-            if (_websocket != null)
+            _websocket?.Dispose();
+
+            if (!_connectionTaskCompleted)
             {
-                _websocket.Dispose();
-                _websocket = null;
+                _connectionTaskCompleted = true;
             }
 
             ChangeState(ConnectionState.Disconnected);
 
             if (_allowReconnect)
             {
-                Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Attempting websocket reconnection");
+                Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Waiting " + _backOffMillis.ToString() + "ms before attempting a reconnection (backoff)");
 
                 ChangeState(ConnectionState.WaitingToReconnect);
                 Task.WaitAll(Task.Delay(_backOffMillis));
                 _backOffMillis = Math.Min(MAX_BACKOFF_MILLIS, _backOffMillis + BACK_OFF_MILLIS_INCREMENT);
+
+                Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Attempting websocket reconnection now");
+
                 Connect(); // TODO
             }
             else
             {
                 _disconnectionTaskComplete.SetResult(ConnectionState.Disconnected);
-                _disconnectionTaskComplete = null;
+                _disconnectionTaskCompleted = true;
             }
         }
 

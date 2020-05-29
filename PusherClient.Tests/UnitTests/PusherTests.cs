@@ -1,6 +1,7 @@
 ﻿using System;
 using Nito.AsyncEx;
 using NUnit.Framework;
+using PusherClient.Tests.Utilities;
 
 namespace PusherClient.Tests.UnitTests
 {
@@ -146,6 +147,76 @@ namespace PusherClient.Tests.UnitTests
             // Assert
             Assert.IsNotNull(caughtException);
             StringAssert.Contains("The channel name cannot be null or whitespace", caughtException.Message);
+        }
+
+        [Test]
+        public void PusherShouldThrowAnExceptionWhenSubscribePresenceIsCalledWithANonPresenceChannelAsync()
+        {
+            // Arrange
+            ArgumentException caughtException = null;
+
+            // Act
+            try
+            {
+                var pusher = new Pusher("FakeAppKey");
+                var channel = AsyncContext.Run(() => pusher.SubscribePresenceAsync<string>("private-123"));
+            }
+            catch (ArgumentException ex)
+            {
+                caughtException = ex;
+            }
+
+            // Assert
+            Assert.IsNotNull(caughtException);
+            StringAssert.Contains("The channel name must be refer to a presence channel", caughtException.Message);
+        }
+
+        [Test]
+        public void PusherShouldThrowAnExceptionWhenSubscribePresenceIsCalledWithADifferentTypeAsync()
+        {
+            // Arrange
+            InvalidOperationException caughtException = null;
+
+            // Act
+            var pusher = new Pusher("FakeAppKey", new PusherOptions { Authorizer = new FakeAuthoriser("test") });
+            AsyncContext.Run(() => pusher.SubscribePresenceAsync<string>("presence-123"));
+
+            try
+            {
+                AsyncContext.Run(() => pusher.SubscribePresenceAsync<int>("presence-123"));
+            }
+            catch (InvalidOperationException ex)
+            {
+                caughtException = ex;
+            }
+
+            // Assert
+            Assert.IsNotNull(caughtException);
+            StringAssert.Contains("Cannot change channel member type; was previously defined as", caughtException.Message);
+        }
+
+        [Test]
+        public void PusherShouldThrowAnExceptionWhenSubscribePresenceIsCalledAfterSubscribe()
+        {
+            // Arrange
+            InvalidOperationException caughtException = null;
+
+            // Act
+            var pusher = new Pusher("FakeAppKey", new PusherOptions { Authorizer = new FakeAuthoriser("test") });
+            AsyncContext.Run(() => pusher.SubscribeAsync("presence-123"));
+
+            try
+            {
+                AsyncContext.Run(() => pusher.SubscribePresenceAsync<int>("presence-123"));
+            }
+            catch (InvalidOperationException ex)
+            {
+                caughtException = ex;
+            }
+
+            // Assert
+            Assert.IsNotNull(caughtException);
+            StringAssert.Contains("This presence channel has already been created without specifying the member info type", caughtException.Message);
         }
     }
 }

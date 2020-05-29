@@ -2,14 +2,16 @@
 
 This is a .NET library for interacting with the Channels WebSocket API.
 
-Registering at <http://pusher.com/channels> and use the application credentials within your app as shown below.
+Register at [pusher.com/channels](https://pusher.com/channels) and use the application credentials within your app as shown below.
 
-More general documentation can be found at <http://pusher.com/docs/channels>.
+More general documentation can be found on the [Official Channels Documentation](https://pusher.com/docs/channels).
+
+For integrating **Pusher Channels** with **Unity** follow the instructions at <https://github.com/pusher/pusher-websocket-unity>
 
 ## Supported platforms
 
 * .NET Standard 1.6
-* Unity 2018.1
+* Unity 2018 and greater via [pusher-websocket-unity](https://github.com/pusher/pusher-websocket-unity)
 
 ## Installation
 
@@ -197,9 +199,9 @@ You should be familiar with [creating an publishing NuGet packages](http://docs.
 
 From the `pusher-dotnet-client` directory:
 
-1. Update `pusher-dotnet-client.nuspec` with new version number etc.
-2. Run `package.cmd`
-3. Run `tools/nuget.exe push PusherClient.{VERSION}.nupkg`
+1. Update `PusherClient/PusherClient.csproj` and  `PusherClient/Pusher.cs` with new version number etc.
+2. Specify the correct path to `msbuild.exe` in `package.cmd` and run it.
+3. Run `nuget push PusherClient.{VERSION}.nupkg`
 
 ## License
 
