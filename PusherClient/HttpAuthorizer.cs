@@ -10,14 +10,17 @@ namespace PusherClient
     public class HttpAuthorizer: IAuthorizer
     {
         private readonly Uri _authEndpoint;
+        private string _bearerToken;
 
         /// <summary>
         /// ctor
         /// </summary>
         /// <param name="authEndpoint">The End point to contact</param>
-        public HttpAuthorizer(string authEndpoint)
+        /// <param name="bearerToken">Optional bearer token</param>
+        public HttpAuthorizer(string authEndpoint, string bearerToken = null)
         {
             _authEndpoint = new Uri(authEndpoint);
+            _bearerToken = bearerToken;
         }
 
         /// <summary>
@@ -39,6 +42,11 @@ namespace PusherClient
                 };
 
                 HttpContent content = new FormUrlEncodedContent(data);
+
+                if (!string.IsNullOrEmpty(_bearerToken))
+                {
+                    httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _bearerToken);
+                }
 
                 var response = httpClient.PostAsync(_authEndpoint, content).Result;
                 authToken = response.Content.ReadAsStringAsync().Result;
