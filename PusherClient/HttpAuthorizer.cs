@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Net.Http.Headers;
 
 namespace PusherClient
 {
@@ -10,17 +11,32 @@ namespace PusherClient
     public class HttpAuthorizer: IAuthorizer
     {
         private readonly Uri _authEndpoint;
-        private string _bearerToken;
+        private AuthenticationHeaderValue _authenticationHeader;
 
         /// <summary>
         /// ctor
         /// </summary>
         /// <param name="authEndpoint">The End point to contact</param>
         /// <param name="bearerToken">Optional bearer token</param>
-        public HttpAuthorizer(string authEndpoint, string bearerToken = null)
+        public HttpAuthorizer(string authEndpoint, string bearerToken) :
+            this(
+                authEndpoint,
+                !string.IsNullOrEmpty(bearerToken)
+                    ? new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", bearerToken)
+                    : null
+            )
+        {
+        }
+
+        /// <summary>
+        /// ctor
+        /// </summary>
+        /// <param name="authEndpoint">The End point to contact</param>
+        /// <param name="authenticationHeader">(optional) arbitrary authentication header</param>
+        public HttpAuthorizer(string authEndpoint, AuthenticationHeaderValue authenticationHeader = null)
         {
             _authEndpoint = new Uri(authEndpoint);
-            _bearerToken = bearerToken;
+            _authenticationHeader = authenticationHeader;
         }
 
         /// <summary>
@@ -43,9 +59,9 @@ namespace PusherClient
 
                 HttpContent content = new FormUrlEncodedContent(data);
 
-                if (!string.IsNullOrEmpty(_bearerToken))
+                if (_authenticationHeader != null)
                 {
-                    httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _bearerToken);
+                    httpClient.DefaultRequestHeaders.Authorization = _authenticationHeader;
                 }
 
                 var response = httpClient.PostAsync(_authEndpoint, content).Result;
