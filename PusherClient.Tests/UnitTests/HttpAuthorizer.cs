@@ -40,7 +40,7 @@ namespace PusherClient.Tests.UnitTests
         public void HttpAuthorizerWithBearerTokenShouldReturnStringToken()
         {
 
-            int hostPort = 3000;
+            int hostPort = 3001;
             string hostUrl = "http://localhost:" + (hostPort).ToString();
             string FakeBearerToken = "noo6xaeN3cohYoozai4ar8doang7ai1elaeTh1di";
             string FakeTokenAuth = "{auth: 'fohgheoghowi2Zaehai0aixe8as9laiQuahJeez78d03ea7d808cab0cc7fcec082676f6b73ca0d9ab2b'}";
