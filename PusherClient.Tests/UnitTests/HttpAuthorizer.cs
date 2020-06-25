@@ -30,6 +30,8 @@ namespace PusherClient.Tests.UnitTests
             var testHttpAuthorizer = new PusherClient.HttpAuthorizer(hostUrl + "/authz");
             var AuthToken = testHttpAuthorizer.Authorize("private-test", "fsfsdfsgsfs");
 
+            server.Stop();
+
             Assert.AreNotEqual("System.Net.Http.StreamContent", AuthToken);
             Assert.AreEqual(FakeTokenAuth, AuthToken);
         }
@@ -59,6 +61,8 @@ namespace PusherClient.Tests.UnitTests
 
             var testHttpAuthorizer = new PusherClient.HttpAuthorizer(hostUrl + "/authz", FakeBearerToken);
             var AuthToken = testHttpAuthorizer.Authorize("private-test", "fsfsdfsgsfs");
+
+            server.Stop();
 
             Assert.AreNotEqual("System.Net.Http.StreamContent", AuthToken);
             Assert.AreEqual(FakeTokenAuth, AuthToken);
