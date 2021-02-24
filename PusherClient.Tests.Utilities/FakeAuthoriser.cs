@@ -19,9 +19,11 @@ namespace PusherClient.Tests.Utilities
 
             if (channelName.StartsWith("presence-"))
             {
-                var channelData = new PresenceChannelData();
-                channelData.user_id = socketId;
-                channelData.user_info = new FakeUserInfo { name = _userName };
+                var channelData = new PresenceChannelData
+                {
+                    user_id = socketId,
+                    user_info = new FakeUserInfo { name = _userName }
+                };
 
                 authData = provider.Authenticate(channelName, socketId, channelData).ToJson();
             }

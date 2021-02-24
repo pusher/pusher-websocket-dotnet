@@ -136,7 +136,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ChatMessage.cs" />
-    <Compile Include="Config.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -147,6 +146,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\PusherClient.Tests.Utilities\PusherClient.Tests.Utilities.csproj">
+      <Project>{00f1f3be-1210-4d06-89ca-f1e17898384c}</Project>
+      <Name>PusherClient.Tests.Utilities</Name>
+    </ProjectReference>
     <ProjectReference Include="..\PusherClient\PusherClient.csproj">
       <Project>{a325bb9f-6476-4422-aef4-c22fa53890dd}</Project>
       <Name>PusherClient</Name>

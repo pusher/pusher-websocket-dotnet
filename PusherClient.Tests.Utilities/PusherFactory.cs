@@ -2,14 +2,16 @@
 {
     public static class PusherFactory
     {
-        public static Pusher GetPusher(PusherOptions options = null)
+        public static Pusher GetPusher(IAuthorizer authorizer = null)
         {
-            return new Pusher(GetAppKey(), options);
-        }
+            PusherOptions options = new PusherOptions()
+            {
+                Authorizer = authorizer,
+                Cluster = Config.Cluster,
+                Encrypted = Config.Encrypted,
+            };
 
-        private static string GetAppKey()
-        {
-            return Config.AppKey;
+            return new Pusher(Config.AppKey, options);
         }
     }
 }

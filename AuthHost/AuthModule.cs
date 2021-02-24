@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Configuration;
 using Nancy;
+using PusherClient.Tests.Utilities;
 using PusherServer;
 
 namespace AuthHost
@@ -8,11 +8,11 @@ namespace AuthHost
     public class AuthModule : NancyModule
     {
 
-        public string PusherApplicationKey => ConfigurationManager.AppSettings["PusherApplicationKey"];
+        public string PusherApplicationKey => Config.AppKey;
 
-        public string PusherApplicationId => ConfigurationManager.AppSettings["PusherApplicationID"];
+        public string PusherApplicationId => Config.AppId;
 
-        public string PusherApplicationSecret => ConfigurationManager.AppSettings["PusherApplicationSecret"];
+        public string PusherApplicationSecret => Config.AppSecret;
 
         public AuthModule()
         {

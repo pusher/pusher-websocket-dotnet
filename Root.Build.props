@@ -1,0 +1,20 @@
+﻿<Project>
+
+  <PropertyGroup>
+    <PackageId>PusherClient</PackageId>
+    <PackageTitle>Pusher .NET Client Library</PackageTitle>
+    <Authors>Pusher</Authors>
+    <Company>Pusher</Company>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageTags>pusher realtime websocket</PackageTags>
+    <PackageProjectUrl>https://github.com/pusher/pusher-websocket-dotnet</PackageProjectUrl>
+    <Copyright>Copyright © 2021</Copyright>
+    <PackageDescription>The .NET library for interacting with the Pusher WebSocket API. Register at http://pusher.com</PackageDescription>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>icon-128.png</PackageIcon>
+    <Version>1.1.2</Version>
+    <AssemblyVersion>$(Version).0</AssemblyVersion>
+    <FileVersion>$(Version).0</FileVersion>
+  </PropertyGroup>
+
+</Project>

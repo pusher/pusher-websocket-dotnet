@@ -10,7 +10,10 @@ For integrating **Pusher Channels** with **Unity** follow the instructions at <h
 
 ## Supported platforms
 
-* .NET Standard 1.6
+* .NET Standard 1.3
+* .NET Standard 2.0
+* .NET 4.5
+* .NET 4.7.2
 * Unity 2018 and greater via [pusher-websocket-unity](https://github.com/pusher/pusher-websocket-unity)
 
 ## Installation
@@ -192,6 +195,8 @@ _myChannel.UnbindAll();
 
 
 ## Developer Notes
+
+The Pusher application settings are now loaded from a JSON config file stored in the root of the source tree and named `AppConfig.test.json`. Make a copy of `./AppConfig.sample.json` and name it `AppConfig.test.json`. Modify the contents of `AppConfig.test.json` with your test application settings. All tests should pass. The AuthHost and ExampleApplication should also run without any start-up errors.
 
 ### Publish to NuGet
 

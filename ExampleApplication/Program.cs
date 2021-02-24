@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
 using PusherClient;
+using PusherClient.Tests.Utilities;
 
 namespace ExampleApplication
 {
@@ -14,7 +15,7 @@ namespace ExampleApplication
         private static PresenceChannel _presenceChannel;
         private static string _name;
             
-        static void Main(string[] args)
+        static void Main()
         {
             // Get the user's name
             Console.WriteLine("What is your name?");
@@ -59,7 +60,9 @@ namespace ExampleApplication
         {
             _pusher = new Pusher(Config.AppKey, new PusherOptions
             {
-                Authorizer = new HttpAuthorizer("http://localhost:8888/auth/" + HttpUtility.UrlEncode(_name))
+                Authorizer = new HttpAuthorizer("http://localhost:8888/auth/" + HttpUtility.UrlEncode(_name)),
+                Cluster = Config.Cluster,
+                Encrypted = Config.Encrypted,
             });
             _pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
             _pusher.Error += _pusher_Error;

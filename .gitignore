@@ -14,3 +14,7 @@ build
 *.testsettings
 *.vsmdi
 msbuild.log
+
+.vs/
+TestResults/
+AppConfig.test.json

@@ -1,39 +1,48 @@
-﻿using System;
-using System.Configuration;
-
-namespace PusherClient.Tests.Utilities
+﻿namespace PusherClient.Tests.Utilities
 {
+    /// <summary>
+    /// Contains the default test configuration.
+    /// </summary>
     public static class Config
     {
-        private const string PUSHER_APP_ID = "PUSHER_APP_ID";
-        private const string PUSHER_APP_KEY = "PUSHER_APP_KEY";
-        private const string PUSHER_APP_SECRET = "PUSHER_APP_SECRET";
-
         static Config()
         {
-            AppId = Environment.GetEnvironmentVariable(PUSHER_APP_ID);
-            if (string.IsNullOrWhiteSpace(AppId))
+            IApplicationConfig config = EnvironmentVariableConfigLoader.Default.Load();
+            if (string.IsNullOrWhiteSpace(config.AppKey))
             {
-                AppId = ConfigurationManager.AppSettings.Get(PUSHER_APP_ID);
+                config = JsonFileConfigLoader.Default.Load();
             }
 
-            AppKey = Environment.GetEnvironmentVariable(PUSHER_APP_KEY);
-            if (string.IsNullOrWhiteSpace(AppKey))
-            {
-                AppKey = ConfigurationManager.AppSettings.Get(PUSHER_APP_KEY);
-            }
-
-            AppSecret = Environment.GetEnvironmentVariable(PUSHER_APP_SECRET);
-            if (string.IsNullOrWhiteSpace(AppSecret))
-            {
-                AppSecret = ConfigurationManager.AppSettings.Get(PUSHER_APP_SECRET);
-            }
+            AppId = config.AppId;
+            AppKey = config.AppKey;
+            AppSecret = config.AppSecret;
+            Cluster = config.Cluster;
+            Encrypted = config.Encrypted;
         }
 
-        public static string AppId { get; set; }
+        /// <summary>
+        /// Gets or sets the Pusher application id.
+        /// </summary>
+        public static string AppId { get; private set; }
 
-        public static string AppKey { get; set; }
+        /// <summary>
+        /// Gets or sets the Pusher application key.
+        /// </summary>
+        public static string AppKey { get; private set; }
 
-        public static string AppSecret { get; set; }
+        /// <summary>
+        /// Gets or sets the Pusher application secret.
+        /// </summary>
+        public static string AppSecret { get; private set; }
+
+        /// <summary>
+        /// Gets or sets the Pusher application cluster.
+        /// </summary>
+        public static string Cluster { get; private set; }
+
+        /// <summary>
+        /// Gets or sets whether the connection will be encrypted.
+        /// </summary>
+        public static bool Encrypted { get; private set; }
     }
 }

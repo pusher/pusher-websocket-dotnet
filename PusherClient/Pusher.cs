@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -51,6 +52,8 @@ namespace PusherClient
         /// </summary>
         public static TraceSource Trace = new TraceSource(nameof(Pusher));
 
+        private static string Version { get; } = typeof(Pusher).GetTypeInfo().Assembly.GetName().Version.ToString(3);
+
         private readonly string _applicationKey;
         private readonly PusherOptions _options;
         private readonly List<string> _pendingChannelSubscriptions = new List<string>();
@@ -76,7 +79,7 @@ namespace PusherClient
         /// <summary>
         /// Gets the channels in use by the Client
         /// </summary>
-        public ConcurrentDictionary<string, Channel> Channels { get; private set; } = new ConcurrentDictionary<string, Channel>();
+        private ConcurrentDictionary<string, Channel> Channels { get; } = new ConcurrentDictionary<string, Channel>();
 
         /// <summary>
         /// Gets the Options in use by the Client
@@ -213,7 +216,7 @@ namespace PusherClient
         {
             var scheme = _options.Encrypted ? Constants.SECURE_SCHEMA : Constants.INSECURE_SCHEMA;
 
-            return $"{scheme}{_options.Host}/app/{_applicationKey}?protocol=5&client=pusher-dotnet-client&version=1.1.2";
+            return $"{scheme}{_options.Host}/app/{_applicationKey}?protocol=5&client=pusher-dotnet-client&version={Version}";
         }
 
         /// <summary>

@@ -50,12 +50,7 @@ namespace PusherClient.Tests.AcceptanceTests
         public void PusherShouldSubscribeToAChannelWhenGivenAPopulatedPrivateChannelName()
         {
             // Arrange
-            var stubOptions = new PusherOptions
-            {
-                Authorizer = new FakeAuthoriser(UserNameFactory.CreateUniqueUserName())
-            };
-
-            var pusher = PusherFactory.GetPusher(stubOptions);
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
             AutoResetEvent reset = new AutoResetEvent(false);
 
             pusher.Connected += sender =>
@@ -92,12 +87,7 @@ namespace PusherClient.Tests.AcceptanceTests
         public void PusherShouldSubscribeToAChannelWhenGivenAPopulatedPresenceChannelName()
         {
             // Arrange
-            var stubOptions = new PusherOptions
-            {
-                Authorizer = new FakeAuthoriser(UserNameFactory.CreateUniqueUserName())
-            };
-
-            var pusher = PusherFactory.GetPusher(stubOptions);
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
             AutoResetEvent reset = new AutoResetEvent(false);
 
             pusher.Connected += sender =>
