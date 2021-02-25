@@ -56,7 +56,7 @@ namespace PusherClient
                 Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Connecting to: {_url}");
             }
 
-            ChangeState(ConnectionState.Initialized);
+            ChangeState(ConnectionState.Connecting);
             _allowReconnect = true;
 
             _websocket = new WebSocket(_url)
@@ -304,8 +304,11 @@ namespace PusherClient
 
         private void ChangeState(ConnectionState state)
         {
-            State = state;
-            _pusher.ConnectionStateChanged(state);
+            if (State != state)
+            {
+                State = state;
+                _pusher.ConnectionStateChanged(state);
+            }
         }
 
         private void RaiseError(PusherException error)

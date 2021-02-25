@@ -119,13 +119,9 @@ namespace PusherClient
                 MarkChannelsAsUnsubscribed();
 
                 Disconnected?.Invoke(this);
+            }
 
-                ConnectionStateChanged?.Invoke(this, state);
-            }
-            else
-            {
-                ConnectionStateChanged?.Invoke(this, state);
-            }
+            ConnectionStateChanged?.Invoke(this, state);
         }
 
         void IPusher.ErrorOccured(PusherException pusherException)
