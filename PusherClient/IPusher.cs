@@ -4,6 +4,8 @@ namespace PusherClient
 {
     internal interface IPusher
     {
+        bool IsTracingEnabled { get; set; }
+
         void ConnectionStateChanged(ConnectionState state);
         void ErrorOccured(PusherException pusherException);
 

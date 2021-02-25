@@ -51,8 +51,10 @@ namespace PusherClient
             _connectionTaskComplete = completionSource;
             _connectionTaskCompleted = false;
 
-            // TODO: Add 'connecting_in' event
-            Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Connecting to: {_url}");
+            if (_pusher.IsTracingEnabled)
+            {
+                Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Connecting to: {_url}");
+            }
 
             ChangeState(ConnectionState.Initialized);
             _allowReconnect = true;
@@ -83,7 +85,10 @@ namespace PusherClient
             _disconnectionTaskComplete = completionSource;
             _disconnectionTaskCompleted = false;
 
-            Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Disconnecting from: {_url}");
+            if (_pusher.IsTracingEnabled)
+            {
+                Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Disconnecting from: {_url}");
+            }
 
             ChangeState(ConnectionState.Disconnecting);
 
@@ -97,8 +102,10 @@ namespace PusherClient
         {
             if (IsConnected)
             {
-                Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Sending: " + message);
-                Debug.WriteLine("Sending: " + message);
+                if (_pusher.IsTracingEnabled)
+                {
+                    Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Sending: " + message);
+                }
 
                 var sendTask = Task.Run(() => _websocket.Send(message));
                 await sendTask;
@@ -106,17 +113,20 @@ namespace PusherClient
                 return true;
             }
 
-            Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Did not send: " + message + ", as there is not active connection.");
-            Debug.WriteLine("Did not send: " + message + ", as there is not active connection.");
+            if (_pusher.IsTracingEnabled)
+            {
+                Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Did not send: " + message + ", as there is not active connection.");
+            }
 
             return false;
         }
 
         private void websocket_MessageReceived(object sender, MessageReceivedEventArgs e)
         {
-            Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Websocket message received: " + e.Message);
-
-            Debug.WriteLine(e.Message);
+            if (_pusher.IsTracingEnabled)
+            {
+                Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Websocket message received: " + e.Message);
+            }
 
             // DeserializeAnonymousType will throw and error when an error comes back from pusher
             // It stems from the fact that the data object is a string normally except when an error is sent back
@@ -169,14 +179,20 @@ namespace PusherClient
 
                     case Constants.CHANNEL_MEMBER_ADDED:
                         _pusher.AddMember(message.channel, message.data);
+                        if (_pusher.IsTracingEnabled)
+                        {
+                            Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Received a presence event on channel '" + message.channel + "', however there is no presence channel which matches.");
+                        }
 
-                        Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Received a presence event on channel '" + message.channel + "', however there is no presence channel which matches.");
                         break;
 
                     case Constants.CHANNEL_MEMBER_REMOVED:
                         _pusher.RemoveMember(message.channel, message.data);
+                        if (_pusher.IsTracingEnabled)
+                        {
+                            Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Received a presence event on channel '" + message.channel + "', however there is no presence channel which matches.");
+                        }
 
-                        Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Received a presence event on channel '" + message.channel + "', however there is no presence channel which matches.");
                         break;
                 }
             }
@@ -188,7 +204,11 @@ namespace PusherClient
 
         private void websocket_Opened(object sender, EventArgs e)
         {
-            Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Websocket opened OK.");
+            if (_pusher.IsTracingEnabled)
+            {
+                Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Websocket opened OK.");
+            }
+
             _connectionTaskComplete.SetResult(ConnectionState.Connected);
             _connectionTaskCompleted = true;
             _backOffMillis = 0;
@@ -196,7 +216,10 @@ namespace PusherClient
 
         private void websocket_Closed(object sender, EventArgs e)
         {
-            Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Websocket connection has been closed");
+            if (_pusher.IsTracingEnabled)
+            {
+                Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Websocket connection has been closed");
+            }
 
             _websocket.Opened -= websocket_Opened;
             _websocket.Error -= websocket_Error;
@@ -214,13 +237,19 @@ namespace PusherClient
 
             if (_allowReconnect)
             {
-                Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Waiting " + _backOffMillis.ToString() + "ms before attempting a reconnection (backoff)");
+                if (_pusher.IsTracingEnabled)
+                {
+                    Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Waiting " + _backOffMillis.ToString() + "ms before attempting a reconnection (backoff)");
+                }
 
                 ChangeState(ConnectionState.WaitingToReconnect);
                 Task.WaitAll(Task.Delay(_backOffMillis));
                 _backOffMillis = Math.Min(MAX_BACKOFF_MILLIS, _backOffMillis + BACK_OFF_MILLIS_INCREMENT);
 
-                Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Attempting websocket reconnection now");
+                if (_pusher.IsTracingEnabled)
+                {
+                    Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Attempting websocket reconnection now");
+                }
 
                 Connect(); // TODO
             }
@@ -233,7 +262,10 @@ namespace PusherClient
 
         private void websocket_Error(object sender, SuperSocket.ClientEngine.ErrorEventArgs e)
         {
-            Pusher.Trace.TraceEvent(TraceEventType.Error, 0, "Error: " + e.Exception);
+            if (_pusher.IsTracingEnabled)
+            {
+                Pusher.Trace.TraceEvent(TraceEventType.Error, 0, "Error: " + e.Exception);
+            }
 
             if (_connectionTaskComplete != null)
             {

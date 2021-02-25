@@ -63,6 +63,7 @@ namespace ExampleApplication
                 Authorizer = new HttpAuthorizer("http://localhost:8888/auth/" + HttpUtility.UrlEncode(_name)),
                 Cluster = Config.Cluster,
                 Encrypted = Config.Encrypted,
+                IsTracingEnabled = true,
             });
             _pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
             _pusher.Error += _pusher_Error;

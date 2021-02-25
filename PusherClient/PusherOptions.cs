@@ -8,7 +8,7 @@
         /// <summary>
         /// Gets or sets whether the connection will be encrypted
         /// </summary>
-        public bool Encrypted { get; set; } = false;
+        public bool Encrypted { get; set; }
 
         /// <summary>
         /// Gets or set the Authorizer to use
@@ -19,6 +19,11 @@
         /// Gets or sets the Cluster to user for the Host
         /// </summary>
         public string Cluster { get; set; } = "mt1";
+
+        /// <summary>
+        /// Gets or sets whether debug tracing is enabled.
+        /// </summary>
+        public bool IsTracingEnabled { get; set; }
 
         internal string Host => $"ws-{Cluster}.pusher.com";
     }

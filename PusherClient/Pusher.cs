@@ -100,8 +100,11 @@ namespace PusherClient
 
             _applicationKey = applicationKey;
 
-            _options = options ?? new PusherOptions { Encrypted = false };
+            _options = options ?? new PusherOptions();
+            ((IPusher)this).IsTracingEnabled = _options.IsTracingEnabled;
         }
+
+        bool IPusher.IsTracingEnabled { get; set; }
 
         void IPusher.ConnectionStateChanged(ConnectionState state)
         {

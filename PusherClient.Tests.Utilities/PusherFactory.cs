@@ -9,6 +9,7 @@
                 Authorizer = authorizer,
                 Cluster = Config.Cluster,
                 Encrypted = Config.Encrypted,
+                IsTracingEnabled = true,
             };
 
             return new Pusher(Config.AppKey, options);
