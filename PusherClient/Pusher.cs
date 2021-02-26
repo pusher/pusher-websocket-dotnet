@@ -64,7 +64,7 @@ namespace PusherClient
         private readonly ConcurrentDictionary<string, Tuple<Type, Func<Channel>>> _presenceChannelFactories 
             = new ConcurrentDictionary<string, Tuple<Type, Func<Channel>>>();
 
-        private Connection _connection;
+        private IConnection _connection;
 
         /// <summary>
         /// Gets the Socket ID
@@ -112,16 +112,37 @@ namespace PusherClient
             {
                 SubscribeExistingChannels();
 
-                Connected?.Invoke(this);
+                try
+                {
+                    Connected?.Invoke(this);
+                }
+                catch (Exception error)
+                {
+                    this.RaiseError(new ConnectedException(error));
+                }
             }
             else if (state == ConnectionState.Disconnected)
             {
                 MarkChannelsAsUnsubscribed();
 
-                Disconnected?.Invoke(this);
+                try
+                {
+                    Disconnected?.Invoke(this);
+                }
+                catch (Exception error)
+                {
+                    this.RaiseError(new DisconnectedException(error));
+                }
             }
 
-            ConnectionStateChanged?.Invoke(this, state);
+            try
+            {
+                ConnectionStateChanged?.Invoke(this, state);
+            }
+            catch(Exception error)
+            {
+                this.RaiseError(new ConnectionStateChangedException(error));
+            }
         }
 
         void IPusher.ErrorOccured(PusherException pusherException)
@@ -170,14 +191,13 @@ namespace PusherClient
         }
 
         /// <summary>
-        /// Start the connection to the Pusher Server asynchronously.  When completed, the <see cref="Connected"/> event will fire.
+        /// Connect to the Pusher Server.
         /// </summary>
         public async Task<ConnectionState> ConnectAsync()
         {
             if (_connection != null
                 && _connection.IsConnected)
             {
-                //Trace.TraceEvent(TraceEventType.Warning, 0, ErrorConstants.ConnectionAlreadyConnected);
                 return ConnectionState.AlreadyConnected;
             }
 
@@ -192,16 +212,13 @@ namespace PusherClient
                 if (_connection != null
                     && _connection.IsConnected)
                 {
-                    //Trace.TraceEvent(TraceEventType.Warning, 0, ErrorConstants.ConnectionAlreadyConnected);
                     return ConnectionState.AlreadyConnected;
                 }
-
-                // TODO: Fallback to secure?
 
                 var url = ConstructUrl();
 
                 _connection = new Connection(this, url);
-                connectionResult = await _connection.Connect();
+                connectionResult = await _connection.ConnectAsync();
             }
             finally
             {
@@ -219,7 +236,7 @@ namespace PusherClient
         }
 
         /// <summary>
-        /// Start the disconnection from the Pusher Server asynchronously.  When completed, the <see cref="Disconnected"/> event will fire.
+        /// Disconnect from the Pusher Server.
         /// </summary>
         public async Task<ConnectionState> DisconnectAsync()
         {
@@ -228,7 +245,7 @@ namespace PusherClient
             if (_connection != null)
             {
                 MarkChannelsAsUnsubscribed();
-                connectionResult = await _connection.Disconnect();
+                connectionResult = await _connection.DisconnectAsync();
             }
             else
             {
@@ -252,7 +269,6 @@ namespace PusherClient
 
             if (AlreadySubscribed(channelName))
             {
-                //Trace.TraceEvent(TraceEventType.Warning, 0, "Channel '" + channelName + "' is already subscribed to. Subscription event has been ignored.");
                 return Channels[channelName];
             }
 
@@ -314,12 +330,12 @@ namespace PusherClient
                     var template = new { auth = string.Empty, channel_data = string.Empty };
                     var message = JsonConvert.DeserializeAnonymousType(jsonAuth, template);
 
-                    await _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName, auth = message.auth, channel_data = message.channel_data } }));
+                    await _connection.SendAsync(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName, auth = message.auth, channel_data = message.channel_data } }));
                 }
                 else
                 {
                     // No need for auth details. Just send subscribe event
-                    await _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName } }));
+                    await _connection.SendAsync(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName } }));
                 }
             }
 
@@ -379,14 +395,14 @@ namespace PusherClient
 
         async Task ITriggerChannels.Trigger(string channelName, string eventName, object obj)
         {
-            await _connection.Send(JsonConvert.SerializeObject(new { @event = eventName, channel = channelName, data = obj }));
+            await _connection.SendAsync(JsonConvert.SerializeObject(new { @event = eventName, channel = channelName, data = obj }));
         }
 
         async Task ITriggerChannels.Unsubscribe(string channelName)
         {
             if (_connection.IsConnected)
             {
-                await _connection.Send(JsonConvert.SerializeObject(new
+                await _connection.SendAsync(JsonConvert.SerializeObject(new
                 {
                     @event = Constants.CHANNEL_UNSUBSCRIBE,
                     data = new {channel = channelName}
@@ -396,12 +412,17 @@ namespace PusherClient
 
         private void RaiseError(PusherException error)
         {
-            var handler = Error;
-
-            if (handler != null)
-                handler(this, error);
-            //else
-            //    Pusher.Trace.TraceEvent(TraceEventType.Error, 0, error.ToString());
+            try
+            {
+                Error?.Invoke(this, error);
+            }
+            catch(Exception e)
+            {
+                if (this.Options.IsTracingEnabled)
+                {
+                    Trace.TraceInformation($"Error caught invoking delegate Pusher.Error:{Environment.NewLine}{e}");
+                }
+            }
         }
 
         private bool AlreadySubscribed(string channelName)

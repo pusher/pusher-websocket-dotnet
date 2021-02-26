@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -9,24 +8,24 @@ using WebSocket4Net;
 
 namespace PusherClient
 {
-    internal class Connection
+    internal class Connection : IConnection
     {
         private WebSocket _websocket;
 
         private readonly string _url;
         private readonly IPusher _pusher;
-        private bool _allowReconnect = true;
+        private bool _allowReconnect;
         
         private int _backOffMillis;
 
         private static readonly int MAX_BACKOFF_MILLIS = 10000;
         private static readonly int BACK_OFF_MILLIS_INCREMENT = 1000;
 
-        internal string SocketId { get; private set; }
+        public string SocketId { get; private set; }
 
-        internal ConnectionState State { get; private set; } = ConnectionState.Uninitialized;
+        public ConnectionState State { get; private set; } = ConnectionState.Uninitialized;
 
-        internal bool IsConnected => State == ConnectionState.Connected;
+        public bool IsConnected => State == ConnectionState.Connected;
 
         private TaskCompletionSource<ConnectionState> _connectionTaskComplete = null;
         private TaskCompletionSource<ConnectionState> _disconnectionTaskComplete = null;
@@ -40,11 +39,11 @@ namespace PusherClient
             _url = url;
         }
 
-        internal Task<ConnectionState> Connect()
+        public Task<ConnectionState> ConnectAsync()
         {
             var completionSource = _connectionTaskComplete;
 
-            if (!_connectionTaskCompleted && _connectionTaskComplete != null)
+            if (!_connectionTaskCompleted && completionSource != null)
                 return completionSource.Task;
 
             completionSource = new TaskCompletionSource<ConnectionState>();
@@ -57,7 +56,6 @@ namespace PusherClient
             }
 
             ChangeState(ConnectionState.Connecting);
-            _allowReconnect = true;
 
             _websocket = new WebSocket(_url)
             {
@@ -69,13 +67,14 @@ namespace PusherClient
             _websocket.Error += websocket_Error;
             _websocket.Closed += websocket_Closed;
             _websocket.MessageReceived += websocket_MessageReceived;
-
+            
+            _allowReconnect = true;
             _websocket.Open();
 
             return completionSource.Task;
         }
 
-        internal Task<ConnectionState> Disconnect()
+        public Task<ConnectionState> DisconnectAsync()
         {
             var completionSource = _disconnectionTaskComplete;
             if (!_disconnectionTaskCompleted && completionSource != null)
@@ -98,7 +97,7 @@ namespace PusherClient
             return completionSource.Task;
         }
 
-        internal async Task<bool> Send(string message)
+        public async Task<bool> SendAsync(string message)
         {
             if (IsConnected)
             {
@@ -208,10 +207,6 @@ namespace PusherClient
             {
                 Pusher.Trace.TraceEvent(TraceEventType.Information, 0, "Websocket opened OK.");
             }
-
-            _connectionTaskComplete.SetResult(ConnectionState.Connected);
-            _connectionTaskCompleted = true;
-            _backOffMillis = 0;
         }
 
         private void websocket_Closed(object sender, EventArgs e)
@@ -237,21 +232,24 @@ namespace PusherClient
 
             if (_allowReconnect)
             {
-                if (_pusher.IsTracingEnabled)
+                Task.Run(() =>
                 {
-                    Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Waiting " + _backOffMillis.ToString() + "ms before attempting a reconnection (backoff)");
-                }
+                    _backOffMillis = Math.Min(MAX_BACKOFF_MILLIS, _backOffMillis + BACK_OFF_MILLIS_INCREMENT);
+                    if (_pusher.IsTracingEnabled)
+                    {
+                        Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Waiting " + _backOffMillis.ToString() + "ms before attempting a reconnection (backoff)");
+                    }
 
-                ChangeState(ConnectionState.WaitingToReconnect);
-                Task.WaitAll(Task.Delay(_backOffMillis));
-                _backOffMillis = Math.Min(MAX_BACKOFF_MILLIS, _backOffMillis + BACK_OFF_MILLIS_INCREMENT);
+                    ChangeState(ConnectionState.WaitingToReconnect);
+                    Task.WaitAll(Task.Delay(_backOffMillis));
 
-                if (_pusher.IsTracingEnabled)
-                {
-                    Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Attempting websocket reconnection now");
-                }
+                    if (_pusher.IsTracingEnabled)
+                    {
+                        Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Attempting websocket reconnection now");
+                    }
 
-                Connect(); // TODO
+                    ConnectAsync();
+                });
             }
             else
             {
@@ -285,6 +283,10 @@ namespace PusherClient
             SocketId = message.socket_id;
 
             ChangeState(ConnectionState.Connected);
+
+            _connectionTaskComplete.SetResult(ConnectionState.Connected);
+            _connectionTaskCompleted = true;
+            _backOffMillis = 0;
         }
 
         private void ParseError(string data)

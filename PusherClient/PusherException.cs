@@ -13,12 +13,24 @@ namespace PusherClient
         public ErrorCodes PusherCode { get; }
 
         /// <summary>
-        /// Creates a new instance of the <see cref="PusherException"/>
+        /// Creates a new instance of a <see cref="PusherException"/> class.
         /// </summary>
-        /// <param name="message">The exception message</param>
-        /// <param name="code">The Pusher error code</param>
+        /// <param name="message">The exception message.</param>
+        /// <param name="code">The Pusher error code.</param>
         public PusherException(string message, ErrorCodes code)
             : base(message)
+        {
+            PusherCode = code;
+        }
+
+        /// <summary>
+        /// Creates a new instance of a <see cref="PusherException"/> class.
+        /// </summary>
+        /// <param name="message">The exception message.</param>
+        /// <param name="code">The Pusher error code.</param>
+        /// <param name="innerException">The exception that is the cause of the current exception.</param>
+        public PusherException(string message, ErrorCodes code, Exception innerException)
+            : base(message, innerException)
         {
             PusherCode = code;
         }
