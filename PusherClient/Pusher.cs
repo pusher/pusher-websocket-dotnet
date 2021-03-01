@@ -74,7 +74,7 @@ namespace PusherClient
         /// <summary>
         /// Gets the current connection state
         /// </summary>
-        public ConnectionState State => _connection?.State ?? ConnectionState.NotConnected;
+        public ConnectionState State => _connection?.State ?? ConnectionState.Uninitialized;
 
         /// <summary>
         /// Gets the channels in use by the Client
@@ -118,7 +118,7 @@ namespace PusherClient
                 }
                 catch (Exception error)
                 {
-                    this.RaiseError(new ConnectedException(error));
+                    RaiseError(new ConnectedException(error));
                 }
             }
             else if (state == ConnectionState.Disconnected)
@@ -131,7 +131,7 @@ namespace PusherClient
                 }
                 catch (Exception error)
                 {
-                    this.RaiseError(new DisconnectedException(error));
+                    RaiseError(new DisconnectedException(error));
                 }
             }
 
@@ -141,7 +141,7 @@ namespace PusherClient
             }
             catch(Exception error)
             {
-                this.RaiseError(new ConnectionStateChangedException(error));
+                RaiseError(new ConnectionStateChangedException(state, error));
             }
         }
 
@@ -193,17 +193,15 @@ namespace PusherClient
         /// <summary>
         /// Connect to the Pusher Server.
         /// </summary>
-        public async Task<ConnectionState> ConnectAsync()
+        public async Task ConnectAsync()
         {
             if (_connection != null
                 && _connection.IsConnected)
             {
-                return ConnectionState.AlreadyConnected;
+                return;
             }
 
             // Prevent multiple concurrent connections
-            var connectionResult = ConnectionState.Connecting;
-
             await _mutexLock.WaitAsync().ConfigureAwait(false);
 
             try
@@ -212,20 +210,18 @@ namespace PusherClient
                 if (_connection != null
                     && _connection.IsConnected)
                 {
-                    return ConnectionState.AlreadyConnected;
+                    return;
                 }
 
                 var url = ConstructUrl();
 
                 _connection = new Connection(this, url);
-                connectionResult = await _connection.ConnectAsync();
+                await _connection.ConnectAsync();
             }
             finally
             {
                 _mutexLock.Release();
             }
-
-            return connectionResult;
         }
 
         private string ConstructUrl()
@@ -238,21 +234,28 @@ namespace PusherClient
         /// <summary>
         /// Disconnect from the Pusher Server.
         /// </summary>
-        public async Task<ConnectionState> DisconnectAsync()
+        public async Task DisconnectAsync()
         {
-            ConnectionState connectionResult = ConnectionState.Disconnecting;
-
-            if (_connection != null)
+            if (_connection == null || State == ConnectionState.Disconnected)
             {
-                MarkChannelsAsUnsubscribed();
-                connectionResult = await _connection.DisconnectAsync();
-            }
-            else
-            {
-                connectionResult = ConnectionState.Disconnected;
+                return;
             }
 
-            return connectionResult;
+            await _mutexLock.WaitAsync().ConfigureAwait(false);
+
+            try
+            {
+                if (_connection != null && State != ConnectionState.Disconnected)
+                {
+                    MarkChannelsAsUnsubscribed();
+                    await _connection.DisconnectAsync();
+                    _connection = null;
+                }
+            }
+            finally
+            {
+                _mutexLock.Release();
+            }
         }
 
         /// <summary>
@@ -418,7 +421,7 @@ namespace PusherClient
             }
             catch(Exception e)
             {
-                if (this.Options.IsTracingEnabled)
+                if (Options.IsTracingEnabled)
                 {
                     Trace.TraceInformation($"Error caught invoking delegate Pusher.Error:{Environment.NewLine}{e}");
                 }

@@ -3,7 +3,7 @@
 namespace PusherClient
 {
     /// <summary>
-    /// An instance of this class gets passed to the delegate Pusher.Error when the delgate Pusher.Connected raises an unexpected exception.
+    /// An instance of this class gets passed to the Pusher Error delegate when the Connected delegate raises an unexpected exception.
     /// </summary>
     public class ConnectedException : PusherException
     {
@@ -12,7 +12,7 @@ namespace PusherClient
         /// </summary>
         /// <param name="innerException">The exception that is the cause of the current exception.</param>
         public ConnectedException(Exception innerException)
-            : base($"Error invoking delegate Pusher.Connected:{Environment.NewLine}{innerException.Message}", ErrorCodes.Unkown, innerException)
+            : base($"Error invoking the Pusher Connected delegate:{Environment.NewLine}{innerException.Message}", ErrorCodes.Unkown, innerException)
         {
         }
     }

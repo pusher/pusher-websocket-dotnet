@@ -21,16 +21,64 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         [Test]
-        public void PusherShouldNotSuccessfullyConnectWhenGivenAnInvalidAppKey()
+        public void CallingPusherConnectMultipleTimesShouldBeIdempotent()
         {
             // Arrange
-            AutoResetEvent reset = new AutoResetEvent(false);
-            AutoResetEvent statusChangeEvent = new AutoResetEvent(false);
+            bool connected = false;
+            bool errored = false;
+            int connectedCount = 0;
+            int stateChangedCount = 0;
+            int expectedFinalCount = 2;
+            List<ConnectionState> stateChangeLog = new List<ConnectionState>(expectedFinalCount);
+
+            var pusher = PusherFactory.GetPusher();
+            pusher.Connected += sender =>
+            {
+                connectedCount++;
+                connected = true;
+            };
+
+            pusher.ConnectionStateChanged += (sender, state) =>
+            {
+                stateChangedCount++;
+                stateChangeLog.Add(state);
+                Trace.TraceInformation($"[{stateChangedCount}]: {state}");
+            };
+
+            pusher.Error += (sender, error) =>
+            {
+                errored = true;
+                Trace.TraceInformation($"[Error]: {error.Message}");
+            };
+
+            List<Task> tasks = new List<Task>();
+            Parallel.For(0, 4, (i) =>
+            {
+                tasks.Add(Task.Run(() =>
+                {
+                    return pusher.ConnectAsync();
+                }));
+            });
+            Task.WaitAll(tasks.ToArray());
+
+            // Assert
+            Assert.IsTrue(connected, nameof(connected));
+            Assert.AreEqual(1, connectedCount, nameof(connectedCount));
+            Assert.AreEqual(expectedFinalCount, stateChangeLog.Count, nameof(expectedFinalCount));
+            Assert.AreEqual(ConnectionState.Connecting, stateChangeLog[0]);
+            Assert.AreEqual(ConnectionState.Connected, stateChangeLog[1]);
+            Assert.IsFalse(errored, nameof(errored));
+        }
+
+        [Test]
+        public async Task PusherShouldNotSuccessfullyConnectWhenGivenAnInvalidAppKeyAsync()
+        {
+            // Arrange
             PusherException exception = null;
+            PusherException caughtException = null;
             bool connected = false;
             bool disconnected = false;
             bool errored = false;
-            int stateChangedCount = 0;
             int expectedFinalCount = 1;
             List<ConnectionState> stateChangeLog = new List<ConnectionState>(expectedFinalCount);
 
@@ -38,45 +86,57 @@ namespace PusherClient.Tests.AcceptanceTests
             pusher.Connected += sender =>
             {
                 connected = true;
-                reset.Set();
             };
 
             pusher.ConnectionStateChanged += (sender, state) =>
             {
-                stateChangedCount++;
                 stateChangeLog.Add(state);
-                if (stateChangedCount == expectedFinalCount)
-                {
-                    statusChangeEvent.Set();
-                }
             };
 
             pusher.Disconnected += sender =>
             {
                 disconnected = true;
-                reset.Set();
             };
 
             pusher.Error += (sender, error) =>
             {
                 errored = true;
                 exception = error;
-                reset.Set();
             };
 
             // Act
-            Task.Run(() => pusher.ConnectAsync());
+            try
+            {
+                await pusher.ConnectAsync().ConfigureAwait(false);
+            }
+            catch (PusherException error)
+            {
+                caughtException = error;
+            }
+
+            /*
+                Wait for 1.5 seconds to ensure that auto reconnect does not happen.
+                The value of disconnected would be true if auto reconnect occured and .
+            */
+            await Task.Delay(1500);
 
             // Assert
-            Assert.IsTrue(reset.WaitOne(TimeSpan.FromSeconds(5)), nameof(reset));
             Assert.IsFalse(connected, nameof(connected));
             Assert.IsFalse(disconnected, nameof(disconnected));
             Assert.IsTrue(errored, nameof(errored));
             Assert.IsNotNull(exception);
+            Assert.IsNotNull(caughtException);
+            Assert.AreEqual(exception.Message, caughtException.Message);
             Assert.AreEqual(ErrorCodes.ApplicationDoesNotExist, exception.PusherCode);
-            statusChangeEvent.WaitOne(TimeSpan.FromSeconds(5));
             Assert.AreEqual(expectedFinalCount, stateChangeLog.Count, nameof(expectedFinalCount));
             Assert.AreEqual(ConnectionState.Connecting, stateChangeLog[0]);
+        }
+
+        [Test]
+        public async Task PusherShouldSuccessfullyDisconnectEvenIfNotConnectedAsync()
+        {
+            var pusher = PusherFactory.GetPusher();
+            await pusher.DisconnectAsync().ConfigureAwait(false);
         }
 
         [Test]
@@ -87,19 +147,67 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         [Test]
+        public async Task CallingPusherDisconnectMultipleTimesShouldBeIdempotentAsync()
+        {
+            // Arrange
+            bool disconnected = false;
+            bool errored = false;
+            int disconnectedCount = 0;
+            int stateChangedCount = 0;
+            int expectedFinalCount = 2;
+            List<ConnectionState> stateChangeLog = new List<ConnectionState>(expectedFinalCount);
+
+            var pusher = await ConnectTestAsync().ConfigureAwait(false);
+            pusher.Disconnected += sender =>
+            {
+                disconnectedCount++;
+                disconnected = true;
+            };
+
+            pusher.ConnectionStateChanged += (sender, state) =>
+            {
+                stateChangedCount++;
+                stateChangeLog.Add(state);
+                Trace.TraceInformation($"[{stateChangedCount}]: {state}");
+            };
+
+            pusher.Error += (sender, error) =>
+            {
+                errored = true;
+                Trace.TraceInformation($"[Error]: {error.Message}");
+            };
+
+            List<Task> tasks = new List<Task>();
+            Parallel.For(0, 4, (i) =>
+            {
+                tasks.Add(Task.Run(() =>
+                {
+                    return pusher.DisconnectAsync();
+                }));
+            });
+            Task.WaitAll(tasks.ToArray());
+
+            // Assert
+            Assert.IsTrue(disconnected, nameof(disconnected));
+            Assert.AreEqual(1, disconnectedCount, nameof(disconnectedCount));
+            Assert.AreEqual(expectedFinalCount, stateChangeLog.Count, nameof(expectedFinalCount));
+            Assert.AreEqual(ConnectionState.Disconnecting, stateChangeLog[0]);
+            Assert.AreEqual(ConnectionState.Disconnected, stateChangeLog[1]);
+            Assert.IsFalse(errored, nameof(errored));
+        }
+
+        [Test]
         public async Task PusherShouldSuccessfullyReconnectWhenItHasPreviouslyDisconnectedAsync()
         {
             // Arrange
             bool connected = false;
             bool errored = false;
-            int stateChangedCount = 0;
             int expectedFinalCount = 2;
             List<ConnectionState> stateChangeLog = new List<ConnectionState>(expectedFinalCount);
 
             var pusher = await DisconnectTestAsync().ConfigureAwait(false);
             pusher.ConnectionStateChanged += (sender, state) =>
             {
-                stateChangedCount++;
                 stateChangeLog.Add(state);
             };
 
@@ -264,6 +372,7 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 stateChangedCount++;
                 stateChangeLog.Add(state);
+                Trace.TraceInformation($"[{stateChangedCount}]: {state}");
                 if (raiseErrorOn != null && raiseErrorOn.Contains(state))
                 {
                     string errorMsg = $"Error raised in delegate {nameof(pusher.ConnectionStateChanged)} for state change {state}.";
@@ -275,6 +384,7 @@ namespace PusherClient.Tests.AcceptanceTests
             pusher.Error += (sender, error) =>
             {
                 errored = true;
+                Trace.TraceInformation($"[Error]: {error.Message}");
                 if (raiseErrorOn != null && raiseErrorOn.Count > 0)
                 {
                     string errorMsg = $"Error ({error.PusherCode}) raised in delegate {nameof(pusher.Error)}. Inner error is:{Environment.NewLine}{error.Message}";
@@ -308,14 +418,12 @@ namespace PusherClient.Tests.AcceptanceTests
             // Arrange
             bool disconnected = false;
             bool errored = false;
-            int stateChangedCount = 0;
             int expectedFinalCount = 2;
             List<ConnectionState> stateChangeLog = new List<ConnectionState>(expectedFinalCount);
 
             var pusher = await ConnectTestAsync().ConfigureAwait(false);
             pusher.ConnectionStateChanged += (sender, state) =>
             {
-                stateChangedCount++;
                 stateChangeLog.Add(state);
                 if (raiseErrorOn != null && raiseErrorOn.Contains(state))
                 {

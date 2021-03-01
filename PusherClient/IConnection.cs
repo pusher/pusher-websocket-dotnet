@@ -10,9 +10,9 @@ namespace PusherClient
 
         bool IsConnected { get; }
 
-        Task<ConnectionState> ConnectAsync();
+        Task ConnectAsync();
 
-        Task<ConnectionState> DisconnectAsync();
+        Task DisconnectAsync();
 
         Task<bool> SendAsync(string message);
     }

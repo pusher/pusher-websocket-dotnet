@@ -3,17 +3,24 @@
 namespace PusherClient
 {
     /// <summary>
-    /// An instance of this class gets passed to the delegate Pusher.Error when the delgate Pusher.ConnectionStateChanged raises an unexpected exception.
+    /// An instance of this class gets passed to the Pusher Error delegate when the ConnectionStateChanged delegate raises an unexpected exception.
     /// </summary>
     public class ConnectionStateChangedException : PusherException
     {
         /// <summary>
         /// Creates a new instance of a <see cref="ConnectionStateChangedException"/> class.
         /// </summary>
+        /// <param name="state">The state passed to the delegate ConnectionStateChanged at the time of the error.</param>
         /// <param name="innerException">The exception that is the cause of the current exception.</param>
-        public ConnectionStateChangedException(Exception innerException)
-            : base($"Error invoking delegate Pusher.ConnectionStateChanged:{Environment.NewLine}{innerException.Message}", ErrorCodes.Unkown, innerException)
+        public ConnectionStateChangedException(ConnectionState state, Exception innerException)
+            : base($"Error invoking the Pusher ConnectionStateChanged delegate:{Environment.NewLine}{innerException.Message}", ErrorCodes.Unkown, innerException)
         {
+            this.State = state;
         }
+
+        /// <summary>
+        /// Gets the <see cref="ConnectionState"/> change that caused the error.
+        /// </summary>
+        public ConnectionState State { get; private set; }
     }
 }
