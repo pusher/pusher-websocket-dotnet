@@ -282,7 +282,7 @@ namespace PusherClient
         private void ChangeState(ConnectionState state)
         {
             State = state;
-            _pusher.ConnectionStateChanged(state);
+            _pusher.ChangeConnectionState(state);
         }
 
         private void RaiseError(PusherException error)

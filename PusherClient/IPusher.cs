@@ -6,7 +6,7 @@ namespace PusherClient
     {
         bool IsTracingEnabled { get; set; }
 
-        void ConnectionStateChanged(ConnectionState state);
+        void ChangeConnectionState(ConnectionState state);
         void ErrorOccured(PusherException pusherException);
 
         void EmitPusherEvent(string eventName, PusherEvent data);

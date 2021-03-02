@@ -11,11 +11,6 @@
         Uninitialized,
 
         /// <summary>
-        /// The state after the Connection has been initialized
-        /// </summary>
-        Initialized,
-
-        /// <summary>
         /// The state when the connection process has begun
         /// </summary>
         Connecting,
@@ -39,25 +34,5 @@
         /// The state when a connection retry is in process
         /// </summary>
         WaitingToReconnect,
-
-        /// <summary>
-        /// The state when a connection is not currently connected
-        /// </summary>
-        NotConnected,
-
-        /// <summary>
-        /// The state when a connector is already connected
-        /// </summary>
-        AlreadyConnected,
-
-        /// <summary>
-        /// The state when a connector failed to connect
-        /// </summary>
-        ConnectionFailed,
-
-        /// <summary>
-        /// The state when a connector failed to disconnect
-        /// </summary>
-        DisconnectionFailed
     }
 }

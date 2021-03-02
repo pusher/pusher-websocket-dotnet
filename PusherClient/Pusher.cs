@@ -61,7 +61,7 @@ namespace PusherClient
         /// <summary>
         /// Tracks the member info types used to create each non-dynamic presence channel
         /// </summary>
-        private readonly ConcurrentDictionary<string, Tuple<Type, Func<Channel>>> _presenceChannelFactories 
+        private readonly ConcurrentDictionary<string, Tuple<Type, Func<Channel>>> _presenceChannelFactories
             = new ConcurrentDictionary<string, Tuple<Type, Func<Channel>>>();
 
         private IConnection _connection;
@@ -86,7 +86,7 @@ namespace PusherClient
         /// </summary>
         internal PusherOptions Options => _options;
 
-        SemaphoreSlim _mutexLock = new SemaphoreSlim(1);
+        private readonly SemaphoreSlim _mutexLock = new SemaphoreSlim(1);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Pusher" /> class.
@@ -106,7 +106,7 @@ namespace PusherClient
 
         bool IPusher.IsTracingEnabled { get; set; }
 
-        void IPusher.ConnectionStateChanged(ConnectionState state)
+        void IPusher.ChangeConnectionState(ConnectionState state)
         {
             if (state == ConnectionState.Connected)
             {
@@ -139,7 +139,7 @@ namespace PusherClient
             {
                 ConnectionStateChanged?.Invoke(this, state);
             }
-            catch(Exception error)
+            catch (Exception error)
             {
                 RaiseError(new ConnectionStateChangedException(state, error));
             }
@@ -165,17 +165,17 @@ namespace PusherClient
 
         void IPusher.AddMember(string channelName, string member)
         {
-            if (Channels.Keys.Contains(channelName) && Channels[channelName] is PresenceChannel)
+            if (Channels.Keys.Contains(channelName) && Channels[channelName] is PresenceChannel channel)
             {
-                ((PresenceChannel)Channels[channelName]).AddMember(member);
+                channel.AddMember(member);
             }
         }
 
         void IPusher.RemoveMember(string channelName, string member)
         {
-            if (Channels.Keys.Contains(channelName) && Channels[channelName] is PresenceChannel)
+            if (Channels.Keys.Contains(channelName) && Channels[channelName] is PresenceChannel channel)
             {
-                ((PresenceChannel)Channels[channelName]).RemoveMember(member);
+                channel.RemoveMember(member);
             }
         }
 
@@ -249,7 +249,6 @@ namespace PusherClient
                 {
                     MarkChannelsAsUnsubscribed();
                     await _connection.DisconnectAsync();
-                    _connection = null;
                 }
             }
             finally
@@ -293,9 +292,9 @@ namespace PusherClient
                 throw new ArgumentException("The channel name must be refer to a presence channel", nameof(channelName));
 
             // We need to keep track of the type we want the channel to be, in case it gets created or re-created later.
-            _presenceChannelFactories.AddOrUpdate(channelName, 
-                (_) => Tuple.Create<Type, Func<Channel>>(typeof(MemberT), 
-                    () => new GenericPresenceChannel<MemberT>(channelName, this)), 
+            _presenceChannelFactories.AddOrUpdate(channelName,
+                (_) => Tuple.Create<Type, Func<Channel>>(typeof(MemberT),
+                    () => new GenericPresenceChannel<MemberT>(channelName, this)),
                 (_, existing) =>
                 {
                     if (existing.Item1 != typeof(MemberT))
@@ -305,8 +304,7 @@ namespace PusherClient
 
             var channel = await SubscribeAsync(channelName);
 
-            var result = channel as GenericPresenceChannel<MemberT>;
-            if (result == null)
+            if (!(channel is GenericPresenceChannel<MemberT> result))
             {
                 if (channel is PresenceChannel)
                     throw new InvalidOperationException("This presence channel has already been created without specifying the member info type");
@@ -333,7 +331,7 @@ namespace PusherClient
                     var template = new { auth = string.Empty, channel_data = string.Empty };
                     var message = JsonConvert.DeserializeAnonymousType(jsonAuth, template);
 
-                    await _connection.SendAsync(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName, auth = message.auth, channel_data = message.channel_data } }));
+                    await _connection.SendAsync(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName, message.auth, message.channel_data } }));
                 }
                 else
                 {
@@ -408,7 +406,7 @@ namespace PusherClient
                 await _connection.SendAsync(JsonConvert.SerializeObject(new
                 {
                     @event = Constants.CHANNEL_UNSUBSCRIBE,
-                    data = new {channel = channelName}
+                    data = new { channel = channelName }
                 }));
             }
         }
@@ -419,7 +417,7 @@ namespace PusherClient
             {
                 Error?.Invoke(this, error);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 if (Options.IsTracingEnabled)
                 {
@@ -445,7 +443,7 @@ namespace PusherClient
         {
             foreach (var channel in Channels)
             {
-                var result = SubscribeToChannel(channel.Key).Result;
+                _ = SubscribeToChannel(channel.Key).Result;
             }
         }
     }

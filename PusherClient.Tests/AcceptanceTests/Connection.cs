@@ -51,6 +51,7 @@ namespace PusherClient.Tests.AcceptanceTests
                 Trace.TraceInformation($"[Error]: {error.Message}");
             };
 
+            // Act
             List<Task> tasks = new List<Task>();
             Parallel.For(0, 4, (i) =>
             {
@@ -62,6 +63,7 @@ namespace PusherClient.Tests.AcceptanceTests
             Task.WaitAll(tasks.ToArray());
 
             // Assert
+            Assert.AreEqual(ConnectionState.Connected, pusher.State, nameof(pusher.State));
             Assert.IsTrue(connected, nameof(connected));
             Assert.AreEqual(1, connectedCount, nameof(connectedCount));
             Assert.AreEqual(expectedFinalCount, stateChangeLog.Count, nameof(expectedFinalCount));
@@ -116,11 +118,13 @@ namespace PusherClient.Tests.AcceptanceTests
 
             /*
                 Wait for 1.5 seconds to ensure that auto reconnect does not happen.
-                The value of disconnected would be true if auto reconnect occured and .
+                The value of disconnected would be true if auto reconnect occured and 
+                there would be more than a single state change.
             */
             await Task.Delay(1500);
 
             // Assert
+            Assert.AreEqual(ConnectionState.Connecting, pusher.State, nameof(pusher.State));
             Assert.IsFalse(connected, nameof(connected));
             Assert.IsFalse(disconnected, nameof(disconnected));
             Assert.IsTrue(errored, nameof(errored));
@@ -135,8 +139,14 @@ namespace PusherClient.Tests.AcceptanceTests
         [Test]
         public async Task PusherShouldSuccessfullyDisconnectEvenIfNotConnectedAsync()
         {
+            // Arrange
             var pusher = PusherFactory.GetPusher();
+
+            // Act
             await pusher.DisconnectAsync().ConfigureAwait(false);
+
+            // Assert
+            Assert.AreEqual(ConnectionState.Uninitialized, pusher.State, nameof(pusher.State));
         }
 
         [Test]
@@ -177,6 +187,7 @@ namespace PusherClient.Tests.AcceptanceTests
                 Trace.TraceInformation($"[Error]: {error.Message}");
             };
 
+            // Act
             List<Task> tasks = new List<Task>();
             Parallel.For(0, 4, (i) =>
             {
@@ -188,6 +199,7 @@ namespace PusherClient.Tests.AcceptanceTests
             Task.WaitAll(tasks.ToArray());
 
             // Assert
+            Assert.AreEqual(ConnectionState.Disconnected, pusher.State, nameof(pusher.State));
             Assert.IsTrue(disconnected, nameof(disconnected));
             Assert.AreEqual(1, disconnectedCount, nameof(disconnectedCount));
             Assert.AreEqual(expectedFinalCount, stateChangeLog.Count, nameof(expectedFinalCount));
@@ -225,6 +237,7 @@ namespace PusherClient.Tests.AcceptanceTests
             await pusher.ConnectAsync().ConfigureAwait(false);
 
             // Assert
+            Assert.AreEqual(ConnectionState.Connected, pusher.State, nameof(pusher.State));
             Assert.IsFalse(errored, nameof(errored));
             Assert.IsTrue(connected, nameof(connected));
             Assert.AreEqual(expectedFinalCount, stateChangeLog.Count, nameof(expectedFinalCount));
@@ -397,6 +410,7 @@ namespace PusherClient.Tests.AcceptanceTests
             await pusher.ConnectAsync().ConfigureAwait(false);
 
             // Assert
+            Assert.AreEqual(ConnectionState.Connected, pusher.State, nameof(pusher.State));
             Assert.IsTrue(connected, nameof(connected));
             Assert.AreEqual(expectedFinalCount, stateChangeLog.Count, nameof(expectedFinalCount));
             Assert.AreEqual(ConnectionState.Connecting, stateChangeLog[0]);
@@ -459,6 +473,7 @@ namespace PusherClient.Tests.AcceptanceTests
             await pusher.DisconnectAsync().ConfigureAwait(false);
 
             // Assert
+            Assert.AreEqual(ConnectionState.Disconnected, pusher.State, nameof(pusher.State));
             Assert.IsTrue(disconnected, nameof(disconnected));
             Assert.AreEqual(expectedFinalCount, stateChangeLog.Count, nameof(expectedFinalCount));
             Assert.AreEqual(ConnectionState.Disconnecting, stateChangeLog[0]);
