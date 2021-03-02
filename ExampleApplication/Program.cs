@@ -65,8 +65,8 @@ namespace ExampleApplication
                 Encrypted = Config.Encrypted,
                 IsTracingEnabled = true,
             });
-            _pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
-            _pusher.Error += _pusher_Error;
+            _pusher.ConnectionStateChanged += PusherConnectionStateChanged;
+            _pusher.Error += PusherError;
 
             // Setup private channel
             _chatChannel = _pusher.SubscribeAsync("private-channel").Result;
@@ -87,12 +87,12 @@ namespace ExampleApplication
             await _pusher.ConnectAsync();
         }
 
-        static void _pusher_Error(object sender, PusherException error)
+        static void PusherError(object sender, PusherException error)
         {
             Console.WriteLine("Pusher Error: " + error);
         }
 
-        static void _pusher_ConnectionStateChanged(object sender, ConnectionState state)
+        static void PusherConnectionStateChanged(object sender, ConnectionState state)
         {
             Console.WriteLine("Connection state: " + state);
         }

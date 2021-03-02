@@ -125,6 +125,7 @@ namespace PusherClient
         {
             _currentError = null;
             _websocket.Closed -= WebsocketAutoReconnect;
+            _websocket.Error -= WebsocketError;
             _websocket.Dispose();
             _websocket = null;
             ChangeState(ConnectionState.Disconnected);
@@ -210,6 +211,16 @@ namespace PusherClient
             _connectionSemaphore?.Release();
         }
 
+        private void WebsocketError(object sender, SuperSocket.ClientEngine.ErrorEventArgs e)
+        {
+            if (_pusher.IsTracingEnabled)
+            {
+                Pusher.Trace.TraceEvent(TraceEventType.Error, 0, $"Websocket error:{Environment.NewLine}{e.Exception}");
+            }
+
+            RaiseError(new WebsocketException(State, e.Exception));
+        }
+
         private void ParseConnectionEstablished(string data)
         {
             var template = new { socket_id = string.Empty };
@@ -219,6 +230,7 @@ namespace PusherClient
             ChangeState(ConnectionState.Connected);
             _connectionSemaphore?.Release();
             _websocket.Closed += WebsocketAutoReconnect;
+            _websocket.Error += WebsocketError;
             _backOffMillis = 0;
         }
 
@@ -254,6 +266,7 @@ namespace PusherClient
                         ChangeState(ConnectionState.Connecting);
                         _websocket.MessageReceived += WebsocketMessageReceived;
                         _websocket.Closed += WebsocketAutoReconnect;
+                        _websocket.Error += WebsocketError;
                         _websocket.Open();
                     }
                 }
