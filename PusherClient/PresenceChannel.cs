@@ -8,6 +8,6 @@ namespace PusherClient
     /// </summary>
     public class PresenceChannel : GenericPresenceChannel<dynamic>
     {
-        internal PresenceChannel(string channelName, ITriggerChannels pusher) : base(channelName, pusher) { }
+        internal PresenceChannel(string channelName, ITriggerChannels pusher, PusherOptions options) : base(channelName, pusher, options) { }
     }
 }

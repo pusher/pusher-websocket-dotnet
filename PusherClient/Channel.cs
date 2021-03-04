@@ -1,4 +1,6 @@
-﻿namespace PusherClient
+﻿using System;
+
+namespace PusherClient
 {
     /// <summary>
     /// Represents a Pusher channel that can be subscribed to
@@ -6,10 +8,12 @@
     public class Channel : EventEmitter
     {
         private readonly ITriggerChannels _pusher;
+        private readonly PusherOptions _options;
         private bool _isSubscribed;
 
         /// <summary>
-        /// Fired when the Channel has successfully been subscribed to
+        /// To be deprecated, please use Pusher.Subscribed.
+        /// Fired when the Channel has successfully been subscribed to.
         /// </summary>
         public event SubscriptionEventHandler Subscribed;
 
@@ -24,25 +28,46 @@
         public string Name { get; }
 
         /// <summary>
+        /// Gets the channel type; Public, Private or Presence.
+        /// </summary>
+        public ChannelTypes ChannelType
+        {
+            get
+            {
+                return GetChannelType(this.Name);
+            }
+        }
+
+        /// <summary>
         /// Ctor
         /// </summary>
         /// <param name="channelName">The name of the Channel</param>
         /// <param name="pusher">The parent Pusher object</param>
-        internal Channel(string channelName, ITriggerChannels pusher)
+        /// <param name="options">The Pusher options.</param>
+        internal Channel(string channelName, ITriggerChannels pusher, PusherOptions options)
         {
             _pusher = pusher;
+            _options = options;
             Name = channelName;
         }
 
         internal virtual void SubscriptionSucceeded(string data)
         {
-            if (_isSubscribed)
-                return;
-
-            _isSubscribed = true;
-
-            if(Subscribed != null)
-                Subscribed(this);
+            if (!_isSubscribed)
+            {
+                _isSubscribed = true;
+                try
+                {
+                    Subscribed?.Invoke(this);
+                }
+                catch (Exception error)
+                {
+                    if (_options.IsTracingEnabled)
+                    {
+                        Pusher.Trace.TraceInformation($"Error caught invoking delegate Pusher.Error:{Environment.NewLine}{error}");
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -62,6 +87,31 @@
         public void Trigger(string eventName, object obj)
         {
             _pusher.Trigger(Name, eventName, obj);
+        }
+
+        /// <summary>
+        /// Derives the channel type from the channel name.
+        /// </summary>
+        /// <param name="channelName">The channel name</param>
+        /// <returns>The channel type; Public, Private or Presence.</returns>
+        internal static ChannelTypes GetChannelType(string channelName)
+        {
+            if (string.IsNullOrWhiteSpace(channelName))
+            {
+                throw new ArgumentNullException(nameof(channelName));
+            }
+
+            ChannelTypes channelType = ChannelTypes.Public;
+            if (channelName.StartsWith(Constants.PRIVATE_CHANNEL, StringComparison.OrdinalIgnoreCase))
+            {
+                channelType = ChannelTypes.Private;
+            }
+            else if (channelName.StartsWith(Constants.PRESENCE_CHANNEL, StringComparison.OrdinalIgnoreCase))
+            {
+                channelType = ChannelTypes.Presence;
+            }
+
+            return channelType;
         }
     }
 }

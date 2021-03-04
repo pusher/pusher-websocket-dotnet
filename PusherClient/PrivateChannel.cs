@@ -5,6 +5,6 @@
     /// </summary>
     public class PrivateChannel : Channel
     {
-        internal PrivateChannel(string channelName, ITriggerChannels pusher) : base(channelName, pusher) { }
+        internal PrivateChannel(string channelName, ITriggerChannels pusher, PusherOptions options) : base(channelName, pusher, options) { }
     }
 }

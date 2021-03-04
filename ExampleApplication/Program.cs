@@ -67,10 +67,10 @@ namespace ExampleApplication
             });
             _pusher.ConnectionStateChanged += PusherConnectionStateChanged;
             _pusher.Error += PusherError;
+            _pusher.Subscribed += Channel_Subscribed;
 
             // Setup private channel
-            _chatChannel = _pusher.SubscribeAsync("private-channel").Result;
-            _chatChannel.Subscribed += ChatChannel_Subscribed;
+            _chatChannel = await _pusher.SubscribeAsync("private-channel").ConfigureAwait(false);
 
             // Inline binding!
             _chatChannel.Bind("client-my-event", (dynamic data) =>
@@ -79,8 +79,7 @@ namespace ExampleApplication
             });
 
             // Setup presence channel
-            _presenceChannel = (PresenceChannel)_pusher.SubscribeAsync("presence-channel").Result;
-            _presenceChannel.Subscribed += PresenceChannel_Subscribed;
+            _presenceChannel = (PresenceChannel)(await _pusher.SubscribeAsync("presence-channel").ConfigureAwait(false));
             _presenceChannel.MemberAdded += PresenceChannel_MemberAdded;
             _presenceChannel.MemberRemoved += PresenceChannel_MemberRemoved;
 
@@ -97,12 +96,6 @@ namespace ExampleApplication
             Console.WriteLine("Connection state: " + state);
         }
 
-        // Presence Channel Events
-        static void PresenceChannel_Subscribed(object sender)
-        {
-            ListMembers();
-        }
-
         static void PresenceChannel_MemberRemoved(object sender)
         {
             ListMembers();
@@ -114,10 +107,23 @@ namespace ExampleApplication
             ListMembers();
         }
 
-        // Chat Channel Events
-        static void ChatChannel_Subscribed(object sender)
+        // Channel Events
+        static void Channel_Subscribed(object sender, string channelName)
         {
-            Console.WriteLine("Hi " + _name + "! Type 'quit' to exit, otherwise type anything to chat!");
+            Pusher pusher = sender as Pusher;
+            Channel channel = pusher.GetChannel(channelName);
+            Console.WriteLine();
+            Console.WriteLine($"Subscribed to {channelName}.");
+            if (channel.ChannelType == ChannelTypes.Private)
+            {
+                Console.WriteLine($"Hi {_name}! Type 'quit' to exit, otherwise type anything to chat!");
+            }
+            else if (channel.ChannelType == ChannelTypes.Presence)
+            {
+                ListMembers();
+            }
+
+            Console.WriteLine();
         }
     }
 }

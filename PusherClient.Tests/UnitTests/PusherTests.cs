@@ -1,5 +1,5 @@
 ﻿using System;
-using Nito.AsyncEx;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using PusherClient.Tests.Utilities;
 
@@ -106,7 +106,7 @@ namespace PusherClient.Tests.UnitTests
         }
 
         [Test]
-        public void PusherShouldThrowAnExceptionWhenSubscribeIsCalledWithAnEmptyStringForAChannelNameAsync()
+        public async Task PusherShouldThrowAnExceptionWhenSubscribeIsCalledWithAnEmptyStringForAChannelNameAsync()
         {
             // Arrange
             ArgumentException caughtException = null;
@@ -115,7 +115,7 @@ namespace PusherClient.Tests.UnitTests
             try
             {
                 var pusher = new Pusher("FakeAppKey");
-                var channel = AsyncContext.Run(() => pusher.SubscribeAsync(string.Empty));
+                var channel = await pusher.SubscribeAsync(string.Empty).ConfigureAwait(false);
             }
             catch (ArgumentException ex)
             {
@@ -128,7 +128,7 @@ namespace PusherClient.Tests.UnitTests
         }
 
         [Test]
-        public void PusherShouldThrowAnExceptionWhenSubscribeIsCalledWithANullStringForAChannelNameAsync()
+        public async Task PusherShouldThrowAnExceptionWhenSubscribeIsCalledWithANullStringForAChannelNameAsync()
         {
             // Arrange
             ArgumentException caughtException = null;
@@ -137,7 +137,7 @@ namespace PusherClient.Tests.UnitTests
             try
             {
                 var pusher = new Pusher("FakeAppKey");
-                var channel = AsyncContext.Run(() => pusher.SubscribeAsync(null));
+                var channel = await pusher.SubscribeAsync(null).ConfigureAwait(false);
             }
             catch (ArgumentException ex)
             {
@@ -150,7 +150,7 @@ namespace PusherClient.Tests.UnitTests
         }
 
         [Test]
-        public void PusherShouldThrowAnExceptionWhenSubscribePresenceIsCalledWithANonPresenceChannelAsync()
+        public async Task PusherShouldThrowAnExceptionWhenSubscribePresenceIsCalledWithANonPresenceChannelAsync()
         {
             // Arrange
             ArgumentException caughtException = null;
@@ -159,7 +159,7 @@ namespace PusherClient.Tests.UnitTests
             try
             {
                 var pusher = new Pusher("FakeAppKey");
-                var channel = AsyncContext.Run(() => pusher.SubscribePresenceAsync<string>("private-123"));
+                var channel = await pusher.SubscribePresenceAsync<string>("private-123").ConfigureAwait(false);
             }
             catch (ArgumentException ex)
             {
@@ -172,18 +172,18 @@ namespace PusherClient.Tests.UnitTests
         }
 
         [Test]
-        public void PusherShouldThrowAnExceptionWhenSubscribePresenceIsCalledWithADifferentTypeAsync()
+        public async Task PusherShouldThrowAnExceptionWhenSubscribePresenceIsCalledWithADifferentTypeAsync()
         {
             // Arrange
             InvalidOperationException caughtException = null;
 
             // Act
             var pusher = new Pusher("FakeAppKey", new PusherOptions { Authorizer = new FakeAuthoriser("test") });
-            AsyncContext.Run(() => pusher.SubscribePresenceAsync<string>("presence-123"));
+            await pusher.SubscribePresenceAsync<string>("presence-123").ConfigureAwait(false);
 
             try
             {
-                AsyncContext.Run(() => pusher.SubscribePresenceAsync<int>("presence-123"));
+                await pusher.SubscribePresenceAsync<int>("presence-123").ConfigureAwait(false);
             }
             catch (InvalidOperationException ex)
             {
@@ -196,18 +196,18 @@ namespace PusherClient.Tests.UnitTests
         }
 
         [Test]
-        public void PusherShouldThrowAnExceptionWhenSubscribePresenceIsCalledAfterSubscribe()
+        public async Task PusherShouldThrowAnExceptionWhenSubscribePresenceIsCalledAfterSubscribeAsync()
         {
             // Arrange
             InvalidOperationException caughtException = null;
 
             // Act
             var pusher = new Pusher("FakeAppKey", new PusherOptions { Authorizer = new FakeAuthoriser("test") });
-            AsyncContext.Run(() => pusher.SubscribeAsync("presence-123"));
+            await pusher.SubscribeAsync("presence-123").ConfigureAwait(false);
 
             try
             {
-                AsyncContext.Run(() => pusher.SubscribePresenceAsync<int>("presence-123"));
+                await pusher.SubscribePresenceAsync<int>("presence-123").ConfigureAwait(false);
             }
             catch (InvalidOperationException ex)
             {

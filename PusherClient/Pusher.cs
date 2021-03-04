@@ -43,9 +43,14 @@ namespace PusherClient
         public event ConnectionStateChangedEventHandler ConnectionStateChanged;
 
         /// <summary>
-        /// Fire when an error occurs
+        /// Fires when an error occurs.
         /// </summary>
         public event ErrorEventHandler Error;
+
+        /// <summary>
+        /// Fires when a channel becomes subscribed.
+        /// </summary>
+        public event SubscribedEventHandler Subscribed;
 
         /// <summary>
         /// The TraceSource instance to be used for logging
@@ -184,9 +189,17 @@ namespace PusherClient
             if (_pendingChannelSubscriptions.Contains(channelName))
                 _pendingChannelSubscriptions.Remove(channelName);
 
-            if (Channels.Keys.Contains(channelName))
+            if (Channels.TryGetValue(channelName, out Channel channel))
             {
-                Channels[channelName].SubscriptionSucceeded(data);
+                channel.SubscriptionSucceeded(data);
+                try
+                {
+                    Subscribed?.Invoke(this, channelName);
+                }
+                catch (Exception error)
+                {
+                    RaiseError(new SubscribedException(channelName, error, data));
+                }
             }
         }
 
@@ -287,14 +300,14 @@ namespace PusherClient
         /// <returns>The Channel that is being subscribed to</returns>
         public async Task<GenericPresenceChannel<MemberT>> SubscribePresenceAsync<MemberT>(string channelName)
         {
-            var channelType = GetChannelType(channelName);
+            var channelType = Channel.GetChannelType(channelName);
             if (channelType != ChannelTypes.Presence)
                 throw new ArgumentException("The channel name must be refer to a presence channel", nameof(channelName));
 
             // We need to keep track of the type we want the channel to be, in case it gets created or re-created later.
             _presenceChannelFactories.AddOrUpdate(channelName,
                 (_) => Tuple.Create<Type, Func<Channel>>(typeof(MemberT),
-                    () => new GenericPresenceChannel<MemberT>(channelName, this)),
+                    () => new GenericPresenceChannel<MemberT>(channelName, this, Options)),
                 (_, existing) =>
                 {
                     if (existing.Item1 != typeof(MemberT))
@@ -315,9 +328,39 @@ namespace PusherClient
             return result;
         }
 
+        /// <summary>
+        /// Gets a channel.
+        /// </summary>
+        /// <param name="channelName">The name of the channel to get.</param>
+        /// <returns>The <see cref="Channel"/> if it exists; otherwise <c>null</c>.</returns>
+        public Channel GetChannel(string channelName)
+        {
+            if (Channels.TryGetValue(channelName, out Channel channel))
+            {
+                return channel;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Get all current channels.
+        /// </summary>
+        /// <returns>A list of the current channels.</returns>
+        public IList<Channel> GetAllChannels()
+        {
+            List<Channel> result = new List<Channel>(Channels.Count);
+            foreach (Channel channel in Channels.Values)
+            {
+                result.Add(channel);
+            }
+
+            return result;
+        }
+
         private async Task<Channel> SubscribeToChannel(string channelName)
         {
-            var channelType = GetChannelType(channelName);
+            var channelType = Channel.GetChannelType(channelName);
 
             if (!Channels.ContainsKey(channelName))
                 CreateChannel(channelType, channelName);
@@ -343,32 +386,16 @@ namespace PusherClient
             return Channels[channelName];
         }
 
-        private static ChannelTypes GetChannelType(string channelName)
-        {
-            // If private or presence channel, check that auth endpoint has been set
-            var channelType = ChannelTypes.Public;
-
-            if (channelName.ToLowerInvariant().StartsWith(Constants.PRIVATE_CHANNEL))
-            {
-                channelType = ChannelTypes.Private;
-            }
-            else if (channelName.ToLowerInvariant().StartsWith(Constants.PRESENCE_CHANNEL))
-            {
-                channelType = ChannelTypes.Presence;
-            }
-            return channelType;
-        }
-
         private void CreateChannel(ChannelTypes type, string channelName)
         {
             switch (type)
             {
                 case ChannelTypes.Public:
-                    Channels[channelName] = new Channel(channelName, this);
+                    Channels[channelName] = new Channel(channelName, this, Options);
                     break;
                 case ChannelTypes.Private:
                     AuthEndpointCheck();
-                    Channels[channelName] = new PrivateChannel(channelName, this);
+                    Channels[channelName] = new PrivateChannel(channelName, this, Options);
                     break;
                 case ChannelTypes.Presence:
                     AuthEndpointCheck();
@@ -377,7 +404,7 @@ namespace PusherClient
                     if (_presenceChannelFactories.TryGetValue(channelName, out var factory))
                         channel = factory.Item2();
                     else
-                        channel = new PresenceChannel(channelName, this);
+                        channel = new PresenceChannel(channelName, this, Options);
 
                     Channels[channelName] = channel;
                     break;
@@ -403,11 +430,14 @@ namespace PusherClient
         {
             if (_connection.IsConnected)
             {
-                await _connection.SendAsync(JsonConvert.SerializeObject(new
+                if (Channels.ContainsKey(channelName))
                 {
-                    @event = Constants.CHANNEL_UNSUBSCRIBE,
-                    data = new { channel = channelName }
-                }));
+                    await _connection.SendAsync(JsonConvert.SerializeObject(new
+                    {
+                        @event = Constants.CHANNEL_UNSUBSCRIBE,
+                        data = new { channel = channelName }
+                    }));
+                }
             }
         }
 
