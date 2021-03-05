@@ -124,7 +124,7 @@ namespace PusherClient.Tests.UnitTests
 
             // Assert
             Assert.IsNotNull(caughtException);
-            StringAssert.Contains("The channel name cannot be null or whitespace", caughtException.Message);
+            StringAssert.Contains("Value cannot be null.", caughtException.Message);
         }
 
         [Test]
@@ -146,7 +146,7 @@ namespace PusherClient.Tests.UnitTests
 
             // Assert
             Assert.IsNotNull(caughtException);
-            StringAssert.Contains("The channel name cannot be null or whitespace", caughtException.Message);
+            StringAssert.Contains("Value cannot be null.", caughtException.Message);
         }
 
         [Test]
@@ -154,12 +154,13 @@ namespace PusherClient.Tests.UnitTests
         {
             // Arrange
             ArgumentException caughtException = null;
+            string channelName = "private-123";
 
             // Act
             try
             {
                 var pusher = new Pusher("FakeAppKey");
-                var channel = await pusher.SubscribePresenceAsync<string>("private-123").ConfigureAwait(false);
+                var channel = await pusher.SubscribePresenceAsync<string>(channelName).ConfigureAwait(false);
             }
             catch (ArgumentException ex)
             {
@@ -168,7 +169,7 @@ namespace PusherClient.Tests.UnitTests
 
             // Assert
             Assert.IsNotNull(caughtException);
-            StringAssert.Contains("The channel name must be refer to a presence channel", caughtException.Message);
+            StringAssert.Contains($"The channel name '{channelName}' is not that of a presence channel.", caughtException.Message);
         }
 
         [Test]
@@ -192,7 +193,7 @@ namespace PusherClient.Tests.UnitTests
 
             // Assert
             Assert.IsNotNull(caughtException);
-            StringAssert.Contains("Cannot change channel member type; was previously defined as", caughtException.Message);
+            StringAssert.Contains("The presence channel has already been created but with a different type", caughtException.Message);
         }
 
         [Test]

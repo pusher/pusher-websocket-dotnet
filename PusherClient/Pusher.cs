@@ -63,12 +63,6 @@ namespace PusherClient
         private readonly PusherOptions _options;
         private readonly List<string> _pendingChannelSubscriptions = new List<string>();
 
-        /// <summary>
-        /// Tracks the member info types used to create each non-dynamic presence channel
-        /// </summary>
-        private readonly ConcurrentDictionary<string, Tuple<Type, Func<Channel>>> _presenceChannelFactories
-            = new ConcurrentDictionary<string, Tuple<Type, Func<Channel>>>();
-
         private IConnection _connection;
 
         /// <summary>
@@ -229,7 +223,7 @@ namespace PusherClient
                 var url = ConstructUrl();
 
                 _connection = new Connection(this, url);
-                await _connection.ConnectAsync();
+                await _connection.ConnectAsync().ConfigureAwait(false);
             }
             finally
             {
@@ -261,7 +255,7 @@ namespace PusherClient
                 if (_connection != null && State != ConnectionState.Disconnected)
                 {
                     MarkChannelsAsUnsubscribed();
-                    await _connection.DisconnectAsync();
+                    await _connection.DisconnectAsync().ConfigureAwait(false);
                 }
             }
             finally
@@ -277,10 +271,7 @@ namespace PusherClient
         /// <returns>The Channel that is being subscribed to</returns>
         public async Task<Channel> SubscribeAsync(string channelName)
         {
-            if (string.IsNullOrWhiteSpace(channelName))
-            {
-                throw new ArgumentException("The channel name cannot be null or whitespace", nameof(channelName));
-            }
+            GuardChannelName(channelName);
 
             if (AlreadySubscribed(channelName))
             {
@@ -289,7 +280,7 @@ namespace PusherClient
 
             _pendingChannelSubscriptions.Add(channelName);
 
-            return await SubscribeToChannel(channelName);
+            return await SubscribeToChannel(channelName).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -300,29 +291,45 @@ namespace PusherClient
         /// <returns>The Channel that is being subscribed to</returns>
         public async Task<GenericPresenceChannel<MemberT>> SubscribePresenceAsync<MemberT>(string channelName)
         {
+            GuardChannelName(channelName);
+
             var channelType = Channel.GetChannelType(channelName);
             if (channelType != ChannelTypes.Presence)
-                throw new ArgumentException("The channel name must be refer to a presence channel", nameof(channelName));
-
-            // We need to keep track of the type we want the channel to be, in case it gets created or re-created later.
-            _presenceChannelFactories.AddOrUpdate(channelName,
-                (_) => Tuple.Create<Type, Func<Channel>>(typeof(MemberT),
-                    () => new GenericPresenceChannel<MemberT>(channelName, this, Options)),
-                (_, existing) =>
-                {
-                    if (existing.Item1 != typeof(MemberT))
-                        throw new InvalidOperationException($"Cannot change channel member type; was previously defined as {existing.Item1.Name}");
-                    return existing;
-                });
-
-            var channel = await SubscribeAsync(channelName);
-
-            if (!(channel is GenericPresenceChannel<MemberT> result))
             {
-                if (channel is PresenceChannel)
-                    throw new InvalidOperationException("This presence channel has already been created without specifying the member info type");
+                throw new ArgumentException($"The channel name '{channelName}' is not that of a presence channel.", nameof(channelName));
+            }
+
+            GenericPresenceChannel<MemberT> result;
+            if (Channels.TryGetValue(channelName, out Channel channel))
+            {
+                if (!(channel is GenericPresenceChannel<MemberT> presenceChannel))
+                {
+                    if (channel is PresenceChannel)
+                    {
+                        throw new InvalidOperationException("This presence channel has already been created without specifying the member info type.");
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"The presence channel has already been created but with a different type: {channel.GetType()}");
+                    }
+                }
+
+                if (presenceChannel.IsSubscribed)
+                {
+                    result = presenceChannel;
+                }
                 else
-                    throw new InvalidOperationException($"The presence channel found is an unexpected type: {channel.GetType().Name}");
+                {
+                    result = (await SubscribeAsync(channelName, presenceChannel).ConfigureAwait(false)) as GenericPresenceChannel<MemberT>;
+                }
+            }
+            else
+            {
+                result = new GenericPresenceChannel<MemberT>(channelName, this, Options);
+                if (Channels.TryAdd(channelName, result))
+                {
+                    result = (await SubscribeAsync(channelName, result).ConfigureAwait(false)) as GenericPresenceChannel<MemberT>;
+                }
             }
 
             return result;
@@ -360,10 +367,29 @@ namespace PusherClient
 
         private async Task<Channel> SubscribeToChannel(string channelName)
         {
-            var channelType = Channel.GetChannelType(channelName);
+            if (Channels.TryGetValue(channelName, out Channel channel))
+            {
+                if (channel.IsSubscribed)
+                {
+                    return channel;
+                }
+            }
 
-            if (!Channels.ContainsKey(channelName))
-                CreateChannel(channelType, channelName);
+            return await SubscribeAsync(channelName, channel).ConfigureAwait(false);
+        }
+
+        private async Task<Channel> SubscribeAsync(string channelName, Channel channel)
+        {
+            ChannelTypes channelType;
+            if (channel != null)
+            {
+                channelType = channel.ChannelType;
+            }
+            else
+            {
+                channelType = Channel.GetChannelType(channelName);
+                channel = CreateChannel(channelType, channelName);
+            }
 
             if (State == ConnectionState.Connected)
             {
@@ -372,43 +398,60 @@ namespace PusherClient
                     var jsonAuth = _options.Authorizer.Authorize(channelName, _connection.SocketId);
 
                     var template = new { auth = string.Empty, channel_data = string.Empty };
-                    var message = JsonConvert.DeserializeAnonymousType(jsonAuth, template);
+                    dynamic messageObj = JsonConvert.DeserializeAnonymousType(jsonAuth, template);
+                    string message = JsonConvert.SerializeObject(new
+                    {
+                        @event = Constants.CHANNEL_SUBSCRIBE,
+                        data = new
+                        {
+                            channel = channelName,
+                            messageObj.auth,
+                            messageObj.channel_data
+                        }
+                    });
 
-                    await _connection.SendAsync(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName, message.auth, message.channel_data } }));
+                    await _connection.SendAsync(message).ConfigureAwait(false);
                 }
                 else
                 {
                     // No need for auth details. Just send subscribe event
-                    await _connection.SendAsync(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName } }));
+                    string message = JsonConvert.SerializeObject(new
+                    {
+                        @event = Constants.CHANNEL_SUBSCRIBE,
+                        data = new { channel = channelName }
+                    });
+                    await _connection.SendAsync(message).ConfigureAwait(false);
                 }
             }
 
-            return Channels[channelName];
+            return channel;
         }
 
-        private void CreateChannel(ChannelTypes type, string channelName)
+        private Channel CreateChannel(ChannelTypes type, string channelName)
         {
+            Channel result;
             switch (type)
             {
-                case ChannelTypes.Public:
-                    Channels[channelName] = new Channel(channelName, this, Options);
-                    break;
                 case ChannelTypes.Private:
                     AuthEndpointCheck();
-                    Channels[channelName] = new PrivateChannel(channelName, this, Options);
+                    result = new PrivateChannel(channelName, this, Options);
                     break;
                 case ChannelTypes.Presence:
                     AuthEndpointCheck();
-
-                    Channel channel;
-                    if (_presenceChannelFactories.TryGetValue(channelName, out var factory))
-                        channel = factory.Item2();
-                    else
-                        channel = new PresenceChannel(channelName, this, Options);
-
-                    Channels[channelName] = channel;
+                    result = new PresenceChannel(channelName, this, Options);
                     break;
+                default:
+                    result = new Channel(channelName, this, Options);
+                    break;
+
             }
+
+            if (Channels.TryAdd(channelName, result))
+            {
+                return result;
+            }
+
+            return Channels[channelName];
         }
 
         private void AuthEndpointCheck()
@@ -423,7 +466,13 @@ namespace PusherClient
 
         async Task ITriggerChannels.Trigger(string channelName, string eventName, object obj)
         {
-            await _connection.SendAsync(JsonConvert.SerializeObject(new { @event = eventName, channel = channelName, data = obj }));
+            string message = JsonConvert.SerializeObject(new
+            {
+                @event = eventName,
+                channel = channelName,
+                data = obj,
+            });
+            await _connection.SendAsync(message).ConfigureAwait(false);
         }
 
         async Task ITriggerChannels.Unsubscribe(string channelName)
@@ -436,22 +485,25 @@ namespace PusherClient
                     {
                         @event = Constants.CHANNEL_UNSUBSCRIBE,
                         data = new { channel = channelName }
-                    }));
+                    })).ConfigureAwait(false);
                 }
             }
         }
 
         private void RaiseError(PusherException error)
         {
-            try
+            if (Error != null)
             {
-                Error?.Invoke(this, error);
-            }
-            catch (Exception e)
-            {
-                if (Options.IsTracingEnabled)
+                try
                 {
-                    Trace.TraceInformation($"Error caught invoking delegate Pusher.Error:{Environment.NewLine}{e}");
+                    Error.Invoke(this, error);
+                }
+                catch (Exception e)
+                {
+                    if (Options.IsTracingEnabled)
+                    {
+                        Trace.TraceInformation($"Error caught invoking delegate Pusher.Error:{Environment.NewLine}{e}");
+                    }
                 }
             }
         }
@@ -474,6 +526,14 @@ namespace PusherClient
             foreach (var channel in Channels)
             {
                 _ = SubscribeToChannel(channel.Key).Result;
+            }
+        }
+
+        private static void GuardChannelName(string channelName)
+        {
+            if (string.IsNullOrWhiteSpace(channelName))
+            {
+                throw new ArgumentNullException(nameof(channelName));
             }
         }
     }

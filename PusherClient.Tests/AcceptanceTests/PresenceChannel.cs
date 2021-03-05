@@ -17,25 +17,25 @@ namespace PusherClient.Tests.AcceptanceTests
             var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
             AutoResetEvent reset = new AutoResetEvent(false);
 
-            await pusher.ConnectAsync();
+            await pusher.ConnectAsync().ConfigureAwait(false);
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(presenceChannel: true);
-            string subscribedChannelName = null;
             var channelSubscribed = false;
             pusher.Subscribed += (sender, channelName) =>
             {
-                subscribedChannelName = channelName;
-                channelSubscribed = true;
-                reset.Set();
+                if (channelName == mockChannelName)
+                {
+                    channelSubscribed = true;
+                    reset.Set();
+                }
             };
 
             // Act
-            var channel = await pusher.SubscribeAsync(mockChannelName);
+            var channel = await pusher.SubscribeAsync(mockChannelName).ConfigureAwait(false);
 
             reset.WaitOne(TimeSpan.FromSeconds(10));
 
             // Assert
             ValidateChannel(pusher, mockChannelName, channel);
-            Assert.AreEqual(mockChannelName, subscribedChannelName);
             Assert.IsTrue(channelSubscribed);
         }
 
@@ -46,15 +46,16 @@ namespace PusherClient.Tests.AcceptanceTests
             var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
             AutoResetEvent reset = new AutoResetEvent(false);
 
-            await pusher.ConnectAsync();
+            await pusher.ConnectAsync().ConfigureAwait(false);
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(presenceChannel: true);
-            string subscribedChannelName = null;
             var channelSubscribed = false;
             pusher.Subscribed += (sender, channelName) =>
             {
-                subscribedChannelName = channelName;
-                channelSubscribed = true;
-                reset.Set();
+                if (channelName == mockChannelName)
+                {
+                    channelSubscribed = true;
+                    reset.Set();
+                }
             };
 
             // Act
@@ -66,7 +67,6 @@ namespace PusherClient.Tests.AcceptanceTests
             ValidateChannel(pusher, mockChannelName, channel);
 
             CollectionAssert.IsNotEmpty(channel.Members);
-            Assert.AreEqual(mockChannelName, subscribedChannelName);
             Assert.IsTrue(channelSubscribed);
         }
 

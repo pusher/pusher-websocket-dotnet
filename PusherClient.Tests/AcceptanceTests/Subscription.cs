@@ -18,13 +18,14 @@ namespace PusherClient.Tests.AcceptanceTests
             var pusher = PusherFactory.GetPusher();
             AutoResetEvent reset = new AutoResetEvent(false);
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName();
-            string subscribedChannelName = null;
             var channelSubscribed = false;
             pusher.Subscribed += (sender, channelName) =>
             {
-                subscribedChannelName = channelName;
-                channelSubscribed = true;
-                reset.Set();
+                if (channelName == mockChannelName)
+                {
+                    channelSubscribed = true;
+                    reset.Set();
+                }
             };
 
             await pusher.ConnectAsync().ConfigureAwait(false);
@@ -36,7 +37,6 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             ValidateSubscribedChannel(pusher, mockChannelName, channel, ChannelTypes.Public);
-            Assert.AreEqual(mockChannelName, subscribedChannelName);
             Assert.IsTrue(channelSubscribed);
         }
 
@@ -77,13 +77,14 @@ namespace PusherClient.Tests.AcceptanceTests
             var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
             AutoResetEvent reset = new AutoResetEvent(false);
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(privateChannel: true);
-            string subscribedChannelName = null;
             var channelSubscribed = false;
             pusher.Subscribed += (sender, channelName) =>
             {
-                subscribedChannelName = channelName;
-                channelSubscribed = true;
-                reset.Set();
+                if (channelName == mockChannelName)
+                {
+                    channelSubscribed = true;
+                    reset.Set();
+                }
             };
 
             await pusher.ConnectAsync().ConfigureAwait(false);
@@ -95,7 +96,6 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             ValidateSubscribedChannel(pusher, mockChannelName, channel, ChannelTypes.Private);
-            Assert.AreEqual(mockChannelName, subscribedChannelName);
             Assert.IsTrue(channelSubscribed);
         }
 
@@ -106,13 +106,14 @@ namespace PusherClient.Tests.AcceptanceTests
             var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
             AutoResetEvent reset = new AutoResetEvent(false);
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(presenceChannel: true);
-            string subscribedChannelName = null;
             var channelSubscribed = false;
             pusher.Subscribed += (sender, channelName) =>
             {
-                subscribedChannelName = channelName;
-                channelSubscribed = true;
-                reset.Set();
+                if (channelName == mockChannelName)
+                {
+                    channelSubscribed = true;
+                    reset.Set();
+                }
             };
 
             await pusher.ConnectAsync().ConfigureAwait(false);
@@ -124,7 +125,6 @@ namespace PusherClient.Tests.AcceptanceTests
 
             ValidateSubscribedChannel(pusher, mockChannelName, channel, ChannelTypes.Presence);
             Assert.IsTrue(channelSubscribed);
-            Assert.AreEqual(mockChannelName, subscribedChannelName);
         }
 
         [Test]
@@ -135,14 +135,15 @@ namespace PusherClient.Tests.AcceptanceTests
             AutoResetEvent reset = new AutoResetEvent(false);
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName();
             var numberOfCalls = 0;
-            string subscribedChannelName = null;
             var channelSubscribed = false;
             pusher.Subscribed += (sender, channelName) =>
             {
-                numberOfCalls++;
-                subscribedChannelName = channelName;
-                channelSubscribed = true;
-                reset.Set();
+                if (channelName == mockChannelName)
+                {
+                    numberOfCalls++;
+                    channelSubscribed = true;
+                    reset.Set();
+                }
             };
 
             await pusher.ConnectAsync().ConfigureAwait(false);
@@ -157,7 +158,6 @@ namespace PusherClient.Tests.AcceptanceTests
             // Assert
             Assert.AreEqual(firstChannel, secondChannel);
             Assert.IsTrue(channelSubscribed);
-            Assert.AreEqual(mockChannelName, subscribedChannelName);
             Assert.AreEqual(1, numberOfCalls);
         }
 
@@ -169,11 +169,12 @@ namespace PusherClient.Tests.AcceptanceTests
             var connectedEvent = new AutoResetEvent(false);
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName();
             var subscribedEvent = new AutoResetEvent(false);
-            string subscribedChannelName = null;
             pusher.Subscribed += (sender, channelName) =>
             {
-                subscribedChannelName = channelName;
-                subscribedEvent.Set();
+                if (channelName == mockChannelName)
+                {
+                    subscribedEvent.Set();
+                }
             };
 
             await pusher.ConnectAsync().ConfigureAwait(false);
@@ -186,7 +187,6 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             Assert.AreEqual(firstChannel, secondChannel);
-            Assert.AreEqual(mockChannelName, subscribedChannelName);
         }
 
         [Test]
@@ -196,11 +196,12 @@ namespace PusherClient.Tests.AcceptanceTests
             var pusher = PusherFactory.GetPusher();
             AutoResetEvent reset = new AutoResetEvent(false);
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName();
-            string subscribedChannelName = null;
             pusher.Subscribed += (sender, channelName) =>
             {
-                subscribedChannelName = channelName;
-                reset.Set();
+                if (channelName == mockChannelName)
+                {
+                    reset.Set();
+                }
             };
 
             await pusher.ConnectAsync().ConfigureAwait(false);
@@ -214,7 +215,6 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             ValidateUnsubscribedChannel(pusher, mockChannelName, channel, ChannelTypes.Public);
-            Assert.AreEqual(mockChannelName, subscribedChannelName);
         }
 
         [Test]
@@ -224,11 +224,12 @@ namespace PusherClient.Tests.AcceptanceTests
             var pusher = PusherFactory.GetPusher();
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName();
             var subscribedEvent = new AutoResetEvent(false);
-            string subscribedChannelName = null;
             pusher.Subscribed += (sender, channelName) =>
             {
-                subscribedChannelName = channelName;
-                subscribedEvent.Set();
+                if (channelName == mockChannelName)
+                {
+                    subscribedEvent.Set();
+                }
             };
 
             var channel = await pusher.SubscribeAsync(mockChannelName).ConfigureAwait(false);
@@ -242,7 +243,6 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             ValidateUnsubscribedChannel(pusher, mockChannelName, channel, ChannelTypes.Public);
-            Assert.AreEqual(mockChannelName, subscribedChannelName);
         }
 
         [Test]
@@ -391,7 +391,8 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Validate GetAllChannels results
             IList<Channel> channels = pusher.GetAllChannels();
-            Assert.IsTrue(channels != null && channels.Count >= 1);
+            Assert.IsNotNull(channels);
+            Assert.IsTrue(channels.Count >= 1);
             Channel channelInfo = channels.Where((c) => c.Name.Equals(expectedChannelName)).SingleOrDefault();
             ValidateChannelInfo(channel, expectedChannelType, isSubscribed, channelInfo);
         }

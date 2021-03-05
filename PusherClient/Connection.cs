@@ -109,7 +109,7 @@ namespace PusherClient
                     Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Sending:{Environment.NewLine}{message}");
                 }
 
-                await Task.Run(() => _websocket.Send(message));
+                await Task.Run(() => _websocket.Send(message)).ConfigureAwait(false);
                 return true;
             }
 

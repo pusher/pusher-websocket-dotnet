@@ -121,7 +121,7 @@ namespace PusherClient.Tests.AcceptanceTests
                 The value of disconnected would be true if auto reconnect occured and 
                 there would be more than a single state change.
             */
-            await Task.Delay(1500);
+            await Task.Delay(1500).ConfigureAwait(false);
 
             // Assert
             Assert.AreEqual(ConnectionState.Connecting, pusher.State, nameof(pusher.State));
