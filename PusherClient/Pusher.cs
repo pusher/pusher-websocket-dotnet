@@ -117,7 +117,7 @@ namespace PusherClient
                 }
                 catch (Exception error)
                 {
-                    RaiseError(new ConnectedException(error));
+                    RaiseError(new ConnectedDelegateException(error));
                 }
             }
             else if (state == ConnectionState.Disconnected)
@@ -130,7 +130,7 @@ namespace PusherClient
                 }
                 catch (Exception error)
                 {
-                    RaiseError(new DisconnectedException(error));
+                    RaiseError(new DisconnectedDelegateException(error));
                 }
             }
 
@@ -140,7 +140,7 @@ namespace PusherClient
             }
             catch (Exception error)
             {
-                RaiseError(new ConnectionStateChangedException(state, error));
+                RaiseError(new ConnectionStateChangedDelegateException(state, error));
             }
         }
 
@@ -192,7 +192,7 @@ namespace PusherClient
                 }
                 catch (Exception error)
                 {
-                    RaiseError(new SubscribedException(channelName, error, data));
+                    RaiseError(new SubscribedDelegateException(channelName, error, data));
                 }
             }
         }
