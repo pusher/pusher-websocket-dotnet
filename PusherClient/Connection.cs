@@ -182,7 +182,7 @@ namespace PusherClient
                         break;
 
                     case Constants.CHANNEL_SUBSCRIPTION_ERROR:
-                        RaiseError(new PusherException($"Subscription error received on channel: {message.channel}", ErrorCodes.SubscriptionError));
+                        _pusher.SubscriptionFailed(message.channel, message.data);
                         break;
 
                     case Constants.CHANNEL_MEMBER_ADDED:

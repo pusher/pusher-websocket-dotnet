@@ -21,6 +21,18 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         [Test]
+        public async Task PusherShouldSuccessfullyConnectTwiceWhenGivenAValidAppKeyAsync()
+        {
+            // Once
+            Pusher pusher = await ConnectTestAsync().ConfigureAwait(false);
+            Assert.IsNotNull(pusher);
+
+            // Twice
+            await pusher.ConnectAsync().ConfigureAwait(false);
+            Assert.AreEqual(ConnectionState.Connected, pusher.State);
+        }
+
+        [Test]
         public void CallingPusherConnectMultipleTimesShouldBeIdempotent()
         {
             // Arrange
@@ -53,13 +65,14 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Act
             List<Task> tasks = new List<Task>();
-            Parallel.For(0, 4, (i) =>
+            for (int i = 0; i < 4; i++)
             {
                 tasks.Add(Task.Run(() =>
                 {
                     return pusher.ConnectAsync();
                 }));
-            });
+            }
+
             Task.WaitAll(tasks.ToArray());
 
             // Assert
@@ -189,13 +202,14 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Act
             List<Task> tasks = new List<Task>();
-            Parallel.For(0, 4, (i) =>
+            for (int i = 0; i < 4; i++)
             {
                 tasks.Add(Task.Run(() =>
                 {
                     return pusher.DisconnectAsync();
                 }));
-            });
+            };
+
             Task.WaitAll(tasks.ToArray());
 
             // Assert
@@ -370,6 +384,7 @@ namespace PusherClient.Tests.AcceptanceTests
             List<ConnectionState> stateChangeLog = new List<ConnectionState>(expectedFinalCount);
 
             var pusher = PusherFactory.GetPusher();
+            Assert.IsNull(pusher.SocketID);
             pusher.Connected += sender =>
             {
                 connected = true;
@@ -412,6 +427,7 @@ namespace PusherClient.Tests.AcceptanceTests
             // Assert
             Assert.AreEqual(ConnectionState.Connected, pusher.State, nameof(pusher.State));
             Assert.IsTrue(connected, nameof(connected));
+            Assert.IsNotNull(pusher.SocketID);
             Assert.AreEqual(expectedFinalCount, stateChangeLog.Count, nameof(expectedFinalCount));
             Assert.AreEqual(ConnectionState.Connecting, stateChangeLog[0]);
             Assert.AreEqual(ConnectionState.Connected, stateChangeLog[1]);

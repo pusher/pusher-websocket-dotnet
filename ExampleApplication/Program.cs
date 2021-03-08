@@ -52,7 +52,7 @@ namespace ExampleApplication
                 names.Add((string)mem.Value.name.Value);
             }
 
-            Console.WriteLine("[MEMBERS] " + names.Aggregate((i, j) => i + ", " + j));
+            Console.WriteLine($"{Environment.NewLine}[MEMBERS] " + names.Aggregate((i, j) => i + ", " + j));
         }
 
         // Pusher Initiation / Connection

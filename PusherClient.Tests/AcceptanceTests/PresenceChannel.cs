@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using PusherClient.Tests.Utilities;
@@ -11,57 +9,23 @@ namespace PusherClient.Tests.AcceptanceTests
     public class PresenceChannel
     {
         [Test]
-        public async Task PresenceChannelShouldAddAMemberWhenGivenAMemberAsync()
-        {
-            // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
-            AutoResetEvent reset = new AutoResetEvent(false);
-
-            await pusher.ConnectAsync().ConfigureAwait(false);
-            var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(presenceChannel: true);
-            var channelSubscribed = false;
-            pusher.Subscribed += (sender, channelName) =>
-            {
-                if (channelName == mockChannelName)
-                {
-                    channelSubscribed = true;
-                    reset.Set();
-                }
-            };
-
-            // Act
-            var channel = await pusher.SubscribeAsync(mockChannelName).ConfigureAwait(false);
-
-            reset.WaitOne(TimeSpan.FromSeconds(10));
-
-            // Assert
-            ValidateChannel(pusher, mockChannelName, channel);
-            Assert.IsTrue(channelSubscribed);
-        }
-
-        [Test]
         public async Task PresenceChannelShouldAddATypedMemberWhenGivenAMemberAsync()
         {
             // Arrange
             var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
-            AutoResetEvent reset = new AutoResetEvent(false);
-
             await pusher.ConnectAsync().ConfigureAwait(false);
-            var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(presenceChannel: true);
+            var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence);
             var channelSubscribed = false;
             pusher.Subscribed += (sender, channelName) =>
             {
                 if (channelName == mockChannelName)
                 {
                     channelSubscribed = true;
-                    reset.Set();
                 }
             };
 
             // Act
             var channel = await pusher.SubscribePresenceAsync<FakeUserInfo>(mockChannelName).ConfigureAwait(false);
-
-            reset.WaitOne(TimeSpan.FromSeconds(10));
 
             // Assert
             ValidateChannel(pusher, mockChannelName, channel);
@@ -78,7 +42,8 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Validate GetChannelInfoList results
             IList<Channel> channels = pusher.GetAllChannels();
-            Assert.IsTrue(channels != null && channels.Count == 1);
+            Assert.IsNotNull(channels);
+            Assert.IsTrue(channels.Count >= 1);
             Assert.AreEqual(channel.Name, channels[0].Name, nameof(Channel.Name));
             Assert.AreEqual(true, channels[0].IsSubscribed, nameof(Channel.IsSubscribed));
             Assert.AreEqual(ChannelTypes.Presence, channels[0].ChannelType, nameof(Channel.ChannelType));

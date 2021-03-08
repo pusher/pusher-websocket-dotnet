@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace PusherClient
 {
@@ -9,18 +11,16 @@ namespace PusherClient
     {
         private readonly ITriggerChannels _pusher;
         private readonly PusherOptions _options;
-        private bool _isSubscribed;
 
         /// <summary>
-        /// To be deprecated, please use Pusher.Subscribed.
         /// Fired when the Channel has successfully been subscribed to.
         /// </summary>
-        public event SubscriptionEventHandler Subscribed;
+        internal event SubscriptionEventHandler Subscribed;
 
         /// <summary>
         /// Gets whether the Channel is currently Subscribed
         /// </summary>
-        public bool IsSubscribed => _isSubscribed;
+        public bool IsSubscribed { get; internal set; }
 
         /// <summary>
         /// Gets the name of the Channel
@@ -38,6 +38,10 @@ namespace PusherClient
             }
         }
 
+        internal SemaphoreSlim _subscribeLock = new SemaphoreSlim(1);
+        internal SemaphoreSlim _subscribeCompleted;
+        internal Exception _subscriptionError;
+
         /// <summary>
         /// Ctor
         /// </summary>
@@ -53,19 +57,16 @@ namespace PusherClient
 
         internal virtual void SubscriptionSucceeded(string data)
         {
-            if (!_isSubscribed)
+            if (!IsSubscribed)
             {
-                _isSubscribed = true;
+                IsSubscribed = true;
                 try
                 {
                     Subscribed?.Invoke(this);
                 }
                 catch (Exception error)
                 {
-                    if (_options.IsTracingEnabled)
-                    {
-                        Pusher.Trace.TraceInformation($"Error caught invoking delegate Pusher.Error:{Environment.NewLine}{error}");
-                    }
+                    _pusher.RaiseSubscribedError(new SubscribedDelegateException(this.Name, error, data));
                 }
             }
         }
@@ -75,8 +76,7 @@ namespace PusherClient
         /// </summary>
         public void Unsubscribe()
         {
-            _pusher.Unsubscribe(Name);
-            _isSubscribed = false;
+            Task.WaitAll(_pusher.SendUnsubscribe(this));
         }
 
         /// <summary>
@@ -96,10 +96,7 @@ namespace PusherClient
         /// <returns>The channel type; Public, Private or Presence.</returns>
         internal static ChannelTypes GetChannelType(string channelName)
         {
-            if (string.IsNullOrWhiteSpace(channelName))
-            {
-                throw new ArgumentNullException(nameof(channelName));
-            }
+            Guard.ChannelName(channelName);
 
             ChannelTypes channelType = ChannelTypes.Public;
             if (channelName.StartsWith(Constants.PRIVATE_CHANNEL, StringComparison.OrdinalIgnoreCase))

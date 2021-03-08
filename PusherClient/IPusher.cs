@@ -14,5 +14,6 @@ namespace PusherClient
         void AddMember(string channelName, string member);
         void RemoveMember(string channelName, string member);
         void SubscriptionSuceeded(string channelName, string data);
+        void SubscriptionFailed(string channelName, string data);
     }
 }

@@ -6,6 +6,8 @@ namespace PusherClient
     {
         Task Trigger(string channelName, string eventName, object obj);
 
-        Task Unsubscribe(string channelName);
+        Task SendUnsubscribe(Channel channel);
+
+        void RaiseSubscribedError(PusherException error);
     }
 }
