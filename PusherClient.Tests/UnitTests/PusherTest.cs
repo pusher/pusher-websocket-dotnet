@@ -6,7 +6,7 @@ using PusherClient.Tests.Utilities;
 namespace PusherClient.Tests.UnitTests
 {
     [TestFixture]
-    public class PusherTests
+    public class PusherTest
     {
         [Test]
         public void PusherShouldThrowAnExceptionWhenInitialisedWithANullApplicationKey()

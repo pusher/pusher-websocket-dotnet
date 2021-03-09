@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using PusherClient.Tests.Utilities;
@@ -51,22 +49,32 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Validate GetChannel result
             Channel gotChannel = pusher.GetChannel(expectedChannelName);
-            ValidateChannelInfo(channel, expectedChannelType, isSubscribed, gotChannel);
+            ValidateChannel(channel, expectedChannelType, gotChannel, isSubscribed);
 
             // Validate GetAllChannels results
             IList<Channel> channels = pusher.GetAllChannels();
             Assert.IsNotNull(channels);
             Assert.IsTrue(channels.Count >= 1);
-            Channel channelInfo = channels.Where((c) => c.Name.Equals(expectedChannelName)).SingleOrDefault();
-            ValidateChannelInfo(channel, expectedChannelType, isSubscribed, channelInfo);
+            Channel actualChannel = channels.Where((c) => c.Name.Equals(expectedChannelName)).SingleOrDefault();
+            ValidateChannel(channel, expectedChannelType, actualChannel, isSubscribed);
         }
 
-        private static void ValidateChannelInfo(Channel channel, ChannelTypes expectedChannelType, bool isSubscribed, Channel channelInfo)
+        private static void ValidateChannel(Channel expectedChannel, ChannelTypes expectedChannelType, Channel actualChannel, bool isSubscribed)
         {
-            Assert.IsNotNull(channelInfo);
-            Assert.AreEqual(channel.Name, channelInfo.Name, nameof(Channel.Name));
-            Assert.AreEqual(isSubscribed, channelInfo.IsSubscribed, nameof(Channel.IsSubscribed));
-            Assert.AreEqual(expectedChannelType, channelInfo.ChannelType, nameof(Channel.ChannelType));
+            Assert.IsNotNull(actualChannel);
+            Assert.AreEqual(expectedChannel.Name, actualChannel.Name, nameof(Channel.Name));
+            Assert.AreEqual(isSubscribed, actualChannel.IsSubscribed, nameof(Channel.IsSubscribed));
+            Assert.AreEqual(expectedChannelType, actualChannel.ChannelType, nameof(Channel.ChannelType));
+        }
+
+        private static void ValidateSubscribedExceptions(string mockChannelName, SubscribedDelegateException[] errors)
+        {
+            foreach (var error in errors)
+            {
+                Assert.IsNotNull(error, "Expected a SubscribedDelegateException error to be raised.");
+                Assert.IsNotNull(error.MessageData, nameof(SubscribedDelegateException.MessageData));
+                Assert.AreEqual(mockChannelName, error.ChannelName, nameof(SubscribedDelegateException.ChannelName));
+            }
         }
     }
 }

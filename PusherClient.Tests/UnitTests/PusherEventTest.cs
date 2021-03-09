@@ -6,7 +6,7 @@ using System.Collections.Generic;
 namespace PusherClient.Tests.UnitTests
 {
     [TestFixture]
-    public class PusherEvent
+    public class PusherEventTest
     {
         [Test]
         public void PusherEventShouldPopulateCorrectlyWhenGivenAnEventDataDictionaryAndRawJsonString()

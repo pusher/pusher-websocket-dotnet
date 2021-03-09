@@ -11,7 +11,7 @@ using WebSocket4Net;
 namespace PusherClient.Tests.AcceptanceTests
 {
     [TestFixture]
-    public class Connection
+    public class ConnectionTest
     {
         [Test]
         public async Task PusherShouldSuccessfullyConnectWhenGivenAValidAppKeyAsync()

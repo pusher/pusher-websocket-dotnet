@@ -269,7 +269,7 @@ namespace PusherClient.Tests.AcceptanceTests
                 }
             };
 
-            bool[] errored = { false, false };
+            SubscribedDelegateException[] errors = { null, null };
             if (raiseSubscribedError)
             {
                 errorEvent[0] = new AutoResetEvent(false);
@@ -278,12 +278,12 @@ namespace PusherClient.Tests.AcceptanceTests
                 {
                     if (error.ToString().Contains($"{nameof(Pusher)}.{nameof(Pusher.Subscribed)}"))
                     {
-                        errored[0] = true;
+                        errors[0] = error as SubscribedDelegateException;
                         errorEvent[0].Set();
                     }
                     else if (error.ToString().Contains($"{nameof(Channel)}.{nameof(Pusher.Subscribed)}"))
                     {
-                        errored[1] = true;
+                        errors[1] = error as SubscribedDelegateException;
                         errorEvent[1].Set();
                     }
                 };
@@ -309,8 +309,10 @@ namespace PusherClient.Tests.AcceptanceTests
             ValidateSubscribedChannel(pusher, mockChannelName, channel, channelType);
             Assert.IsTrue(channelSubscribed[0]);
             Assert.IsTrue(channelSubscribed[1]);
-            Assert.AreEqual(raiseSubscribedError, errored[0], "Expected a Pusher.Subcribed error to be raised.");
-            Assert.AreEqual(raiseSubscribedError, errored[1], "Expected a Channel.Subcribed error to be raised.");
+            if (raiseSubscribedError)
+            {
+                ValidateSubscribedExceptions(mockChannelName, errors);
+            }
         }
 
         private static async Task SubscribeThenConnectSameChannelTwiceAsync(ChannelTypes channelType)

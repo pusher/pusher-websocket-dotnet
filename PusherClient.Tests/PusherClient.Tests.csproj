@@ -167,16 +167,16 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AcceptanceTests\Connection.cs" />
-    <Compile Include="AcceptanceTests\EventEmitter.cs" />
-    <Compile Include="AcceptanceTests\PresenceChannel.cs" />
+    <Compile Include="AcceptanceTests\ConnectionTest.cs" />
+    <Compile Include="AcceptanceTests\EventEmitterTest.cs" />
+    <Compile Include="AcceptanceTests\PresenceChannelTest.cs" />
     <Compile Include="AcceptanceTests\SubscriptionTest.SubscribeThenConnect.cs" />
     <Compile Include="AcceptanceTests\SubscriptionTest.ConnectThenSubscribe.cs" />
     <Compile Include="AcceptanceTests\SubscriptionTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="UnitTests\HttpAuthorizer.cs" />
-    <Compile Include="UnitTests\PusherEvent.cs" />
-    <Compile Include="UnitTests\PusherTests.cs" />
+    <Compile Include="UnitTests\HttpAuthorizerTest.cs" />
+    <Compile Include="UnitTests\PusherEventTest.cs" />
+    <Compile Include="UnitTests\PusherTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

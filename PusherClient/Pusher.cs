@@ -278,10 +278,10 @@ namespace PusherClient
         /// <param name="subscribedEventHandler">An optional <see cref="SubscriptionEventHandler"/>. Alternatively, use <c>Pusher.Subscribed</c>.</param>
         /// <returns>The channel identified by <paramref name="channelName"/>.</returns>
         /// <remarks>
-        /// If Pusher is connected when calling this method, the channel will be subscribed when this method exits;
+        /// If Pusher is connected when calling this method, the channel will be subscribed when this method returns;
         /// that is <c>channel.IsSubscribed == true</c>.
         /// If Pusher is not connected when calling this method, <c>channel.IsSubscribed == false</c> and 
-        /// the channel will only be subscibed after calling <c>Pusher.ConnectAsync</c>.
+        /// the channel will only be subscribed after calling <c>Pusher.ConnectAsync</c>.
         /// </remarks>
         public async Task<Channel> SubscribeAsync(string channelName, SubscriptionEventHandler subscribedEventHandler = null)
         {
@@ -299,17 +299,17 @@ namespace PusherClient
         }
 
         /// <summary>
-        /// Subscribes to a typed presence channel.
+        /// Subscribes to a typed member info presence channel.
         /// </summary>
         /// <typeparam name="MemberT">The type used to deserialize channel member info.</typeparam>
         /// <param name="channelName">The name of the channel to subsribe to.</param>
         /// <param name="subscribedEventHandler">An optional <see cref="SubscriptionEventHandler"/>. Alternatively, use <c>Pusher.Subscribed</c>.</param>
         /// <returns>A GenericPresenceChannel<MemberT> channel identified by <paramref name="channelName"/>.</returns>
         /// <remarks>
-        /// If Pusher is connected when calling this method, the channel will be subscribed when this method exits;
+        /// If Pusher is connected when calling this method, the channel will be subscribed when this method returns;
         /// that is <c>channel.IsSubscribed == true</c>.
         /// If Pusher is not connected when calling this method, <c>channel.IsSubscribed == false</c> and 
-        /// the channel will only be subscibed after calling <c>Pusher.ConnectAsync</c>.
+        /// the channel will only be subscribed after calling <c>Pusher.ConnectAsync</c>.
         /// </remarks>
         public async Task<GenericPresenceChannel<MemberT>> SubscribePresenceAsync<MemberT>(string channelName, SubscriptionEventHandler subscribedEventHandler = null)
         {
@@ -347,6 +347,7 @@ namespace PusherClient
             }
             else
             {
+                AuthEndpointCheck();
                 result = new GenericPresenceChannel<MemberT>(channelName, this, Options);
                 if (Channels.TryAdd(channelName, result))
                 {

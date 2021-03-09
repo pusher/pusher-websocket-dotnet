@@ -7,7 +7,7 @@ using Newtonsoft.Json.Linq;
 namespace PusherClient.Tests.AcceptanceTests
 {
     [TestFixture]
-    public class EventEmitter
+    public class EventEmitterTest
     {
         [Test]
         public void EventEmitterShouldEmitAnEventToARegisteredListener()
