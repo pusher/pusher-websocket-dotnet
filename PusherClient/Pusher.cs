@@ -276,6 +276,9 @@ namespace PusherClient
         /// </summary>
         /// <param name="channelName">The name of the channel to subsribe to.</param>
         /// <param name="subscribedEventHandler">An optional <see cref="SubscriptionEventHandler"/>. Alternatively, use <c>Pusher.Subscribed</c>.</param>
+        /// <exception cref="ArgumentNullException">If <paramref name="channelName"/> is <c>null</c> or whitespace.</exception>
+        /// <exception cref="ChannelUnauthorizedException">Only for private or presence channels if authorization fails.</exception>
+        /// <exception cref="System.Net.Http.HttpRequestException">Only for private or presence channels if an HTTP call to the authorization URL fails.</exception>
         /// <returns>The channel identified by <paramref name="channelName"/>.</returns>
         /// <remarks>
         /// If Pusher is connected when calling this method, the channel will be subscribed when this method returns;
@@ -304,6 +307,9 @@ namespace PusherClient
         /// <typeparam name="MemberT">The type used to deserialize channel member info.</typeparam>
         /// <param name="channelName">The name of the channel to subsribe to.</param>
         /// <param name="subscribedEventHandler">An optional <see cref="SubscriptionEventHandler"/>. Alternatively, use <c>Pusher.Subscribed</c>.</param>
+        /// <exception cref="ArgumentNullException">If <paramref name="channelName"/> is <c>null</c> or whitespace.</exception>
+        /// <exception cref="ChannelUnauthorizedException">If authorization fails.</exception>
+        /// <exception cref="System.Net.Http.HttpRequestException">If an HTTP call to the authorization URL fails.</exception>
         /// <returns>A GenericPresenceChannel<MemberT> channel identified by <paramref name="channelName"/>.</returns>
         /// <remarks>
         /// If Pusher is connected when calling this method, the channel will be subscribed when this method returns;
@@ -391,15 +397,9 @@ namespace PusherClient
 
         private async Task<Channel> SubscribeAsync(string channelName, Channel channel, SubscriptionEventHandler subscribedEventHandler = null)
         {
-            ChannelTypes channelType;
-            if (channel != null)
+            if (channel == null)
             {
-                channelType = channel.ChannelType;
-            }
-            else
-            {
-                channelType = Channel.GetChannelType(channelName);
-                channel = CreateChannel(channelType, channelName);
+                channel = CreateChannel(channelName);
             }
 
             if (subscribedEventHandler != null)
@@ -410,20 +410,55 @@ namespace PusherClient
 
             if (State == ConnectionState.Connected)
             {
+                bool raiseError = true;
                 await channel._subscribeLock.WaitAsync().ConfigureAwait(false);
                 try
                 {
-                    if (!channel.IsSubscribed)
+                    if (!channel.IsSubscribed && Channels.ContainsKey(channelName))
                     {
                         channel._subscribeCompleted = new SemaphoreSlim(0, 1);
                         try
                         {
-                            string message = CreateChannelSubscribeMessage(channelName, channelType);
+                            string message;
+                            if (channel.ChannelType == ChannelTypes.Presence || channel.ChannelType == ChannelTypes.Private)
+                            {
+                                try
+                                {
+                                    string jsonAuth;
+                                    if (_options.Authorizer is IAuthorizerAsync asyncAuthorizer)
+                                    {
+                                        jsonAuth = await asyncAuthorizer.AuthorizeAsync(channelName, _connection.SocketId).ConfigureAwait(false);
+                                    }
+                                    else
+                                    {
+                                        jsonAuth = _options.Authorizer.Authorize(channelName, _connection.SocketId);
+                                    }
+
+                                    message = CreateAuthorizedChannelSubscribeMessage(channelName, jsonAuth);
+                                }
+                                catch (ChannelUnauthorizedException unauthorizedEx)
+                                {
+                                    if (Channels.TryRemove(channelName, out Channel unauthorizedChannel))
+                                    {
+                                        unauthorizedChannel.IsSubscribed = false;
+                                        unauthorizedEx.Channel = unauthorizedChannel;
+                                    }
+
+                                    throw unauthorizedEx;
+                                }
+                            }
+                            else
+                            {
+                                message = CreateChannelSubscribeMessage(channelName);
+                            }
+
                             await _connection.SendAsync(message).ConfigureAwait(false);
 
                             await channel._subscribeCompleted.WaitAsync().ConfigureAwait(false);
                             if (channel._subscriptionError != null)
                             {
+                                // Error already raised in IPusher.SubscriptionFailed
+                                raiseError = false;
                                 throw channel._subscriptionError;
                             }
                         }
@@ -434,6 +469,11 @@ namespace PusherClient
                         }
                     }
                 }
+                catch (PusherException pusherError)
+                {
+                    if (raiseError) RaiseError(pusherError);
+                    throw;
+                }
                 finally
                 {
                     channel._subscribeLock.Release();
@@ -443,40 +483,34 @@ namespace PusherClient
             return channel;
         }
 
-        private string CreateChannelSubscribeMessage(string channelName, ChannelTypes channelType)
+        private string CreateAuthorizedChannelSubscribeMessage(string channelName, string jsonAuth)
         {
-            string message;
-            if (channelType == ChannelTypes.Presence || channelType == ChannelTypes.Private)
+            var template = new { auth = string.Empty, channel_data = string.Empty };
+            dynamic messageObj = JsonConvert.DeserializeAnonymousType(jsonAuth, template);
+            return JsonConvert.SerializeObject(new
             {
-                var jsonAuth = _options.Authorizer.Authorize(channelName, _connection.SocketId);
-
-                var template = new { auth = string.Empty, channel_data = string.Empty };
-                dynamic messageObj = JsonConvert.DeserializeAnonymousType(jsonAuth, template);
-                message = JsonConvert.SerializeObject(new
+                @event = Constants.CHANNEL_SUBSCRIBE,
+                data = new
                 {
-                    @event = Constants.CHANNEL_SUBSCRIBE,
-                    data = new
-                    {
-                        channel = channelName,
-                        messageObj.auth,
-                        messageObj.channel_data
-                    }
-                });
-            }
-            else
-            {
-                message = JsonConvert.SerializeObject(new
-                {
-                    @event = Constants.CHANNEL_SUBSCRIBE,
-                    data = new { channel = channelName }
-                });
-            }
-
-            return message;
+                    channel = channelName,
+                    messageObj.auth,
+                    messageObj.channel_data
+                }
+            });
         }
 
-        private Channel CreateChannel(ChannelTypes type, string channelName)
+        private string CreateChannelSubscribeMessage(string channelName)
         {
+            return JsonConvert.SerializeObject(new
+            {
+                @event = Constants.CHANNEL_SUBSCRIBE,
+                data = new { channel = channelName }
+            });
+        }
+
+        private Channel CreateChannel(string channelName)
+        {
+            ChannelTypes type = Channel.GetChannelType(channelName);
             Channel result;
             switch (type)
             {
@@ -526,12 +560,23 @@ namespace PusherClient
         {
             if (channel.IsSubscribed && _connection.IsConnected)
             {
-                channel.IsSubscribed = false;
-                await _connection.SendAsync(JsonConvert.SerializeObject(new
+                await channel._subscribeLock.WaitAsync().ConfigureAwait(false);
+                try
                 {
-                    @event = Constants.CHANNEL_UNSUBSCRIBE,
-                    data = new { channel = channel.Name },
-                })).ConfigureAwait(false);
+                    if (channel.IsSubscribed)
+                    {
+                        channel.IsSubscribed = false;
+                        await _connection.SendAsync(JsonConvert.SerializeObject(new
+                        {
+                            @event = Constants.CHANNEL_UNSUBSCRIBE,
+                            data = new { channel = channel.Name },
+                        })).ConfigureAwait(false);
+                    }
+                }
+                finally
+                {
+                    channel._subscribeLock.Release();
+                }
             }
             else
             {

@@ -9,7 +9,6 @@
         /// Creates a new instance of a <see cref="SubscriptionException"/> class.
         /// </summary>
         /// <param name="channelName">The name of the channel for which the exception occured.</param>
-        /// <param name="innerException">The exception that is the cause of the current exception.</param>
         /// <param name="data">The channel's message data.</param>
         public SubscriptionException(string channelName, string data)
             : base($"Subscription error received on channel {channelName}", ErrorCodes.SubscriptionError)

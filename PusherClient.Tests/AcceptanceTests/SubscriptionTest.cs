@@ -76,5 +76,42 @@ namespace PusherClient.Tests.AcceptanceTests
                 Assert.AreEqual(mockChannelName, error.ChannelName, nameof(SubscribedDelegateException.ChannelName));
             }
         }
+
+        private static void AssertIsSubscribed(Pusher pusher, IList<string> channelNames)
+        {
+            foreach (string channelName in channelNames)
+            {
+                Channel channel = pusher.GetChannel(channelName);
+                Assert.IsNotNull(channel, $"Channel {channelName} should be found");
+                Assert.IsTrue(channel.IsSubscribed, $"Expected {channel.Name} to be subscribed");
+            }
+        }
+
+        private static void AssertIsDisconnected(Pusher pusher, IList<string> channelNames)
+        {
+            foreach (string channelName in channelNames)
+            {
+                Channel channel = pusher.GetChannel(channelName);
+                Assert.IsNotNull(channel, $"Channel {channelName} should be found");
+                Assert.IsFalse(channel.IsSubscribed, $"Expected {channel.Name} to be disconnected");
+            }
+        }
+
+        private static void AssertUnauthorized(Pusher pusher, List<string> channelNames)
+        {
+            foreach (string channelName in channelNames)
+            {
+                Channel channel = pusher.GetChannel(channelName);
+                if (Channel.GetChannelType(channelName) == ChannelTypes.Public)
+                {
+                    Assert.IsNotNull(channel, $"Channel {channelName} should be found");
+                    Assert.IsTrue(channel.IsSubscribed, $"Expected {channel.Name} to be subscribed");
+                }
+                else
+                {
+                    Assert.IsNull(channel, $"Channel {channelName} should not be found");
+                }
+            }
+        }
     }
 }

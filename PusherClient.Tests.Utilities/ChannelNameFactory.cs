@@ -4,7 +4,7 @@ namespace PusherClient.Tests.Utilities
 {
     public static class ChannelNameFactory
     {
-        public static string CreateUniqueChannelName(ChannelTypes channelType = ChannelTypes.Public, string channelNamePostfix = null)
+        public static string CreateUniqueChannelName(ChannelTypes channelType = ChannelTypes.Public)
         {
             string channelPrefix;
             switch (channelType)
@@ -20,7 +20,7 @@ namespace PusherClient.Tests.Utilities
                     break;
             }
 
-            var mockChannelName = $"{channelPrefix}myTestChannel{channelNamePostfix}{DateTime.Now.Ticks}";
+            var mockChannelName = $"{channelPrefix}myTestChannel{Guid.NewGuid().ToString("N")}";
             return mockChannelName;
         }
     }
