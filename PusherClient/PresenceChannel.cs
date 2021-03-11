@@ -5,8 +5,8 @@
     /// </summary>
     public class PresenceChannel : GenericPresenceChannel<dynamic>
     {
-        internal PresenceChannel(string channelName, ITriggerChannels pusher, PusherOptions options)
-            : base(channelName, pusher, options)
+        internal PresenceChannel(string channelName, ITriggerChannels pusher)
+            : base(channelName, pusher)
         {
         }
     }

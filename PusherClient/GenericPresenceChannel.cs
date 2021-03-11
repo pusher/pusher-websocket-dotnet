@@ -20,7 +20,7 @@ namespace PusherClient
         /// </summary>
         public event MemberRemovedEventHandler MemberRemoved;
 
-        internal GenericPresenceChannel(string channelName, ITriggerChannels pusher, PusherOptions options) : base(channelName, pusher, options)
+        internal GenericPresenceChannel(string channelName, ITriggerChannels pusher) : base(channelName, pusher)
         {
         }
 

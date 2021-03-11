@@ -10,7 +10,6 @@ namespace PusherClient
     public class Channel : EventEmitter
     {
         private readonly ITriggerChannels _pusher;
-        private readonly PusherOptions _options;
 
         /// <summary>
         /// Fired when the Channel has successfully been subscribed to.
@@ -47,11 +46,9 @@ namespace PusherClient
         /// </summary>
         /// <param name="channelName">The name of the Channel</param>
         /// <param name="pusher">The parent Pusher object</param>
-        /// <param name="options">The Pusher options.</param>
-        internal Channel(string channelName, ITriggerChannels pusher, PusherOptions options)
+        internal Channel(string channelName, ITriggerChannels pusher)
         {
             _pusher = pusher;
-            _options = options;
             Name = channelName;
         }
 
@@ -66,7 +63,7 @@ namespace PusherClient
                 }
                 catch (Exception error)
                 {
-                    _pusher.RaiseSubscribedError(new SubscribedDelegateException(this.Name, error, data));
+                    _pusher.RaiseSubscribedError(new SubscribedDelegateException(this, error, data));
                 }
             }
         }

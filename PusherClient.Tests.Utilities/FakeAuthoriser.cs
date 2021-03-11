@@ -1,8 +1,11 @@
 ﻿using PusherServer;
+using System;
+using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace PusherClient.Tests.Utilities
 {
-    public class FakeAuthoriser : IAuthorizer
+    public class FakeAuthoriser : IAuthorizer, IAuthorizerAsync
     {
         private readonly string _userName;
 
@@ -13,26 +16,35 @@ namespace PusherClient.Tests.Utilities
 
         public string Authorize(string channelName, string socketId)
         {
-            var provider = new PusherServer.Pusher(Config.AppId, Config.AppKey, Config.AppSecret);
+            return AuthorizeAsync(channelName, socketId).Result;
+        }
 
-            string authData;
-
-            if (channelName.StartsWith("presence-"))
+        public async Task<string> AuthorizeAsync(string channelName, string socketId)
+        {
+            string authData = null;
+            double delay = (await LatencyInducer.InduceLatencyAsync(200, 2500)) / 1000.0;
+            Trace.TraceInformation($"{this.GetType().Name} paused for {Math.Round(delay, 3)} second(s)");
+            await Task.Run(() =>
             {
-                var channelData = new PresenceChannelData
+                var provider = new PusherServer.Pusher(Config.AppId, Config.AppKey, Config.AppSecret);
+                if (channelName.StartsWith("presence-"))
                 {
-                    user_id = socketId,
-                    user_info = new FakeUserInfo { name = _userName }
-                };
+                    var channelData = new PresenceChannelData
+                    {
+                        user_id = socketId,
+                        user_info = new FakeUserInfo { name = _userName }
+                    };
 
-                authData = provider.Authenticate(channelName, socketId, channelData).ToJson();
-            }
-            else
-            {
-                authData = provider.Authenticate(channelName, socketId).ToJson();
-            }
-
+                    authData = provider.Authenticate(channelName, socketId, channelData).ToJson();
+                }
+                else
+                {
+                    authData = provider.Authenticate(channelName, socketId).ToJson();
+                }
+            }).ConfigureAwait(false);
             return authData;
         }
+
+        private static ILatencyInducer LatencyInducer { get; } = new LatencyInducer();
     }
 }

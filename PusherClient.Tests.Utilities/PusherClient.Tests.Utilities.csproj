@@ -101,6 +101,8 @@
     <Compile Include="FakeAuthoriser.cs" />
     <Compile Include="IApplicationConfig.cs" />
     <Compile Include="IApplicationConfigLoader.cs" />
+    <Compile Include="LatencyInducer.cs" />
+    <Compile Include="ILatencyInducer.cs" />
     <Compile Include="JsonFileConfigLoader.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PusherFactory.cs" />

@@ -260,9 +260,9 @@ namespace PusherClient.Tests.AcceptanceTests
                 ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
             };
 
-            pusher.Subscribed += (sender, channelName) =>
+            pusher.Subscribed += (sender, channel) =>
             {
-                if (channelName == channelNames[2])
+                if (channel.Name == channelNames[2])
                 {
                     subscribedEvent.Set();
                 }
@@ -317,14 +317,14 @@ namespace PusherClient.Tests.AcceptanceTests
             }
 
             bool[] channelSubscribed = { false, false };
-            pusher.Subscribed += (sender, channelName) =>
+            pusher.Subscribed += (sender, channel) =>
             {
-                if (channelName == mockChannelName)
+                if (channel.Name == mockChannelName)
                 {
                     channelSubscribed[0] = true;
                     if (raiseSubscribedError)
                     {
-                        throw new InvalidOperationException($"Simulated error for {nameof(Pusher)}.{nameof(Pusher.Subscribed)} {channelName}.");
+                        throw new InvalidOperationException($"Simulated error for {nameof(Pusher)}.{nameof(Pusher.Subscribed)} {channel.Name}.");
                     }
                 }
             };
@@ -356,10 +356,10 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Act
             await pusher.ConnectAsync().ConfigureAwait(false);
-            var channel = await pusher.SubscribeAsync(mockChannelName, subscribedEventHandler).ConfigureAwait(false);
+            var subscribedChannel = await pusher.SubscribeAsync(mockChannelName, subscribedEventHandler).ConfigureAwait(false);
 
             // Assert
-            ValidateSubscribedChannel(pusher, mockChannelName, channel, channelType);
+            ValidateSubscribedChannel(pusher, mockChannelName, subscribedChannel, channelType);
             Assert.IsTrue(channelSubscribed[0]);
             Assert.IsTrue(channelSubscribed[1]);
             if (raiseSubscribedError)
@@ -375,9 +375,9 @@ namespace PusherClient.Tests.AcceptanceTests
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(channelType);
             var numberOfCalls = 0;
             var channelSubscribed = false;
-            pusher.Subscribed += (sender, channelName) =>
+            pusher.Subscribed += (sender, channel) =>
             {
-                if (channelName == mockChannelName)
+                if (channel.Name == mockChannelName)
                 {
                     numberOfCalls++;
                     channelSubscribed = true;
@@ -402,9 +402,9 @@ namespace PusherClient.Tests.AcceptanceTests
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(channelType);
             var numberOfCalls = 0;
             var channelSubscribed = false;
-            pusher.Subscribed += (sender, channelName) =>
+            pusher.Subscribed += (sender, channel) =>
             {
-                if (channelName == mockChannelName)
+                if (channel.Name == mockChannelName)
                 {
                     numberOfCalls++;
                     channelSubscribed = true;

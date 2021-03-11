@@ -1,8 +1,9 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Diagnostics;
 
 namespace PusherClient.Tests.Utilities
 {
-    public class FakeUnauthoriser : IAuthorizer, IAuthorizerAsync
+    public class FakeUnauthoriser : IAuthorizer
     {
         public FakeUnauthoriser()
         {
@@ -10,18 +11,11 @@ namespace PusherClient.Tests.Utilities
 
         public string Authorize(string channelName, string socketId)
         {
+            double delay = LatencyInducer.InduceLatency(200, 2500) / 1000.0;
+            Trace.TraceInformation($"{this.GetType().Name} paused for {Math.Round(delay, 3)} second(s)");
             throw new ChannelUnauthorizedException(channelName, socketId);
         }
 
-        public async Task<string> AuthorizeAsync(string channelName, string socketId)
-        {
-            string result = null;
-            await Task.Run(() =>
-            {
-                result = this.Authorize(channelName, socketId);
-            }).ConfigureAwait(false);
-
-            return result;
-        }
+        private static ILatencyInducer LatencyInducer { get; } = new LatencyInducer();
     }
 }

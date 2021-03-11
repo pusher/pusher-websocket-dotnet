@@ -10,20 +10,20 @@ namespace PusherClient
         /// <summary>
         /// Creates a new instance of a <see cref="SubscribedDelegateException"/> class.
         /// </summary>
-        /// <param name="channelName">The name of the channel for which the exception occured.</param>
+        /// <param name="channel">The channel for which the exception occured.</param>
         /// <param name="innerException">The exception that is the cause of the current exception.</param>
         /// <param name="data">The channel's message data.</param>
-        public SubscribedDelegateException(string channelName, Exception innerException, string data)
+        public SubscribedDelegateException(Channel channel, Exception innerException, string data)
             : base($"Error invoking the Pusher Subscribed delegate:{Environment.NewLine}{innerException.Message}", ErrorCodes.Unkown, innerException)
         {
-            this.ChannelName = channelName;
+            this.Channel = channel;
             this.MessageData = data;
         }
 
         /// <summary>
-        /// Gets the name of the channel for which the exception occured.
+        /// Gets the channel for which the exception occured.
         /// </summary>
-        public string ChannelName { get; private set; }
+        public Channel Channel { get; private set; }
 
         /// <summary>
         /// Gets the channel's message data.

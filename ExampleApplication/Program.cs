@@ -70,9 +70,9 @@ namespace ExampleApplication
 
             // Setup private channel
             string privateChannelName = "private-channel";
-            _pusher.Subscribed += (sender, channelName) =>
+            _pusher.Subscribed += (sender, channel) =>
             {
-                if (channelName == privateChannelName)
+                if (channel.Name == privateChannelName)
                 {
                     string message = $"{Environment.NewLine}Hi {_name}! Type 'quit' to exit, otherwise type anything to chat!{Environment.NewLine}";
                     Console.WriteLine(message);
@@ -88,9 +88,9 @@ namespace ExampleApplication
 
             // Setup presence channel
             string presenceChannelName = "presence-channel";
-            _pusher.Subscribed += (sender, channelName) =>
+            _pusher.Subscribed += (sender, channel) =>
             {
-                if (channelName == presenceChannelName)
+                if (channel.Name == presenceChannelName)
                 {
                     ListMembers();
                 }

@@ -13,7 +13,7 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task PusherShouldUnsubscribeSuccessfullyWhenTheRequestIsMadeViaTheChannelAsync()
         {
             /*
-             *  This test is for exisitng functionality which is wrong. 
+             *  This test is for exisitng functionality that is wrong. 
              *  Unsubscribe should really remove the subscription and not just mark IsSubscribed to false.
              *  If you disconnect and then reconnect the channel will be subscribed again.
              */
@@ -73,7 +73,8 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 Assert.IsNotNull(error, "Expected a SubscribedDelegateException error to be raised.");
                 Assert.IsNotNull(error.MessageData, nameof(SubscribedDelegateException.MessageData));
-                Assert.AreEqual(mockChannelName, error.ChannelName, nameof(SubscribedDelegateException.ChannelName));
+                Assert.IsNotNull(error.Channel, nameof(SubscribedDelegateException.Channel));
+                Assert.AreEqual(mockChannelName, error.Channel.Name, nameof(Channel.Name));
             }
         }
 

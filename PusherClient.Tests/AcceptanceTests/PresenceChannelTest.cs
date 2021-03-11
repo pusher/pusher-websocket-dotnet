@@ -31,9 +31,9 @@ namespace PusherClient.Tests.AcceptanceTests
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(ChannelTypes.Presence);
             var numberOfCalls = 0;
             var channelSubscribed = false;
-            pusher.Subscribed += (sender, channelName) =>
+            pusher.Subscribed += (sender, channel) =>
             {
-                if (channelName == mockChannelName)
+                if (channel.Name == mockChannelName)
                 {
                     numberOfCalls++;
                     channelSubscribed = true;
@@ -59,9 +59,9 @@ namespace PusherClient.Tests.AcceptanceTests
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(ChannelTypes.Presence);
             var numberOfCalls = 0;
             var channelSubscribed = false;
-            pusher.Subscribed += (sender, channelName) =>
+            pusher.Subscribed += (sender, channel) =>
             {
-                if (channelName == mockChannelName)
+                if (channel.Name == mockChannelName)
                 {
                     numberOfCalls++;
                     channelSubscribed = true;
@@ -125,15 +125,17 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             // Arrange
             var pusher = PusherFactory.GetPusher(ChannelTypes.Presence);
+            AutoResetEvent subscribedEvent = new AutoResetEvent(false);
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(ChannelTypes.Presence);
             var numberOfCalls = 0;
             var channelSubscribed = false;
-            pusher.Subscribed += (sender, channelName) =>
+            pusher.Subscribed += (sender, channel) =>
             {
-                if (channelName == mockChannelName)
+                if (channel.Name == mockChannelName)
                 {
                     numberOfCalls++;
                     channelSubscribed = true;
+                    subscribedEvent.Set();
                 }
             };
 
@@ -141,9 +143,7 @@ namespace PusherClient.Tests.AcceptanceTests
             var firstChannel = await pusher.SubscribePresenceAsync<FakeUserInfo>(mockChannelName).ConfigureAwait(false);
             var secondChannel = await pusher.SubscribePresenceAsync<FakeUserInfo>(mockChannelName).ConfigureAwait(false);
             await pusher.ConnectAsync().ConfigureAwait(false);
-
-            // Delay for enough time to be sure numberOfCalls is not greater than one
-            await Task.Delay(1000).ConfigureAwait(false);
+            subscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             // Assert
             Assert.AreEqual(firstChannel, secondChannel);
@@ -156,15 +156,17 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             // Arrange
             var pusher = PusherFactory.GetPusher(ChannelTypes.Presence);
+            AutoResetEvent subscribedEvent = new AutoResetEvent(false);
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(ChannelTypes.Presence);
             var numberOfCalls = 0;
             var channelSubscribed = false;
-            pusher.Subscribed += (sender, channelName) =>
+            pusher.Subscribed += (sender, channel) =>
             {
-                if (channelName == mockChannelName)
+                if (channel.Name == mockChannelName)
                 {
                     numberOfCalls++;
                     channelSubscribed = true;
+                    subscribedEvent.Set();
                 }
             };
 
@@ -175,9 +177,7 @@ namespace PusherClient.Tests.AcceptanceTests
             };
 
             await pusher.ConnectAsync().ConfigureAwait(false);
-
-            // Delay for enough time to be sure numberOfCalls is not greater than one
-            await Task.Delay(1500).ConfigureAwait(false);
+            subscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             // Assert
             Assert.IsTrue(channelSubscribed);
@@ -195,14 +195,14 @@ namespace PusherClient.Tests.AcceptanceTests
             }
 
             bool[] channelSubscribed = { false, false };
-            pusher.Subscribed += (sender, channelName) =>
+            pusher.Subscribed += (sender, channel) =>
             {
-                if (channelName == mockChannelName)
+                if (channel.Name == mockChannelName)
                 {
                     channelSubscribed[0] = true;
                     if (raiseSubscribedError)
                     {
-                        throw new InvalidOperationException($"Simulated error for {nameof(Pusher)}.{nameof(Pusher.Subscribed)} {channelName}.");
+                        throw new InvalidOperationException($"Simulated error for {nameof(Pusher)}.{nameof(Pusher.Subscribed)} {channel.Name}.");
                     }
                 }
             };
@@ -234,10 +234,10 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Act
             await pusher.ConnectAsync().ConfigureAwait(false);
-            var channel = await pusher.SubscribePresenceAsync<FakeUserInfo>(mockChannelName, subscribedEventHandler).ConfigureAwait(false);
+            var presenceChannel = await pusher.SubscribePresenceAsync<FakeUserInfo>(mockChannelName, subscribedEventHandler).ConfigureAwait(false);
 
             // Assert
-            ValidateSubscribedChannel(pusher, mockChannelName, channel);
+            ValidateSubscribedChannel(pusher, mockChannelName, presenceChannel);
             Assert.IsTrue(channelSubscribed[0]);
             Assert.IsTrue(channelSubscribed[1]);
             if (raiseSubscribedError)
@@ -259,15 +259,15 @@ namespace PusherClient.Tests.AcceptanceTests
             }
 
             bool[] channelSubscribed = { false, false };
-            pusher.Subscribed += (sender, channelName) =>
+            pusher.Subscribed += (sender, channel) =>
             {
-                if (channelName == mockChannelName)
+                if (channel.Name == mockChannelName)
                 {
                     channelSubscribed[0] = true;
                     subscribedEvent.Set();
                     if (raiseSubscribedError)
                     {
-                        throw new InvalidOperationException($"Simulated error for {nameof(Pusher)}.{nameof(Pusher.Subscribed)} {channelName}.");
+                        throw new InvalidOperationException($"Simulated error for {nameof(Pusher)}.{nameof(Pusher.Subscribed)} {channel.Name}.");
                     }
                 }
             };
@@ -302,14 +302,14 @@ namespace PusherClient.Tests.AcceptanceTests
             };
 
             // Act
-            var channel = await pusher.SubscribePresenceAsync<FakeUserInfo>(mockChannelName, subscribedEventHandler).ConfigureAwait(false);
+            var presenceChannel = await pusher.SubscribePresenceAsync<FakeUserInfo>(mockChannelName, subscribedEventHandler).ConfigureAwait(false);
             await pusher.ConnectAsync().ConfigureAwait(false);
             subscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
             errorEvent[0]?.WaitOne(TimeSpan.FromSeconds(5));
             errorEvent[1]?.WaitOne(TimeSpan.FromSeconds(5));
 
             // Assert
-            ValidateSubscribedChannel(pusher, mockChannelName, channel);
+            ValidateSubscribedChannel(pusher, mockChannelName, presenceChannel);
             Assert.IsTrue(channelSubscribed[0]);
             Assert.IsTrue(channelSubscribed[1]);
             if (raiseSubscribedError)
@@ -360,7 +360,8 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 Assert.IsNotNull(error, "Expected a SubscribedDelegateException error to be raised.");
                 Assert.IsNotNull(error.MessageData, nameof(SubscribedDelegateException.MessageData));
-                Assert.AreEqual(mockChannelName, error.ChannelName, nameof(SubscribedDelegateException.ChannelName));
+                Assert.IsNotNull(error.Channel, nameof(SubscribedDelegateException.Channel));
+                Assert.AreEqual(mockChannelName, error.Channel.Name, nameof(Channel.Name));
             }
         }
     }

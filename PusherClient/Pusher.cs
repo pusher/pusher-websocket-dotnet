@@ -184,11 +184,11 @@ namespace PusherClient
                 channel.SubscriptionSucceeded(data);
                 try
                 {
-                    Subscribed?.Invoke(this, channelName);
+                    Subscribed?.Invoke(this, channel);
                 }
                 catch (Exception error)
                 {
-                    RaiseError(new SubscribedDelegateException(channelName, error, data));
+                    RaiseError(new SubscribedDelegateException(channel, error, data));
                 }
 
                 channel._subscribeCompleted?.Release();
@@ -354,7 +354,7 @@ namespace PusherClient
             else
             {
                 AuthEndpointCheck();
-                result = new GenericPresenceChannel<MemberT>(channelName, this, Options);
+                result = new GenericPresenceChannel<MemberT>(channelName, this);
                 if (Channels.TryAdd(channelName, result))
                 {
                     result = (await SubscribeAsync(channelName, result, subscribedEventHandler).ConfigureAwait(false)) as GenericPresenceChannel<MemberT>;
@@ -516,14 +516,14 @@ namespace PusherClient
             {
                 case ChannelTypes.Private:
                     AuthEndpointCheck();
-                    result = new PrivateChannel(channelName, this, Options);
+                    result = new PrivateChannel(channelName, this);
                     break;
                 case ChannelTypes.Presence:
                     AuthEndpointCheck();
-                    result = new PresenceChannel(channelName, this, Options);
+                    result = new PresenceChannel(channelName, this);
                     break;
                 default:
-                    result = new Channel(channelName, this, Options);
+                    result = new Channel(channelName, this);
                     break;
             }
 

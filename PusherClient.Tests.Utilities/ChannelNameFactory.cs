@@ -20,7 +20,7 @@ namespace PusherClient.Tests.Utilities
                     break;
             }
 
-            var mockChannelName = $"{channelPrefix}myTestChannel{Guid.NewGuid().ToString("N")}";
+            var mockChannelName = $"{channelPrefix}myTestChannel{Guid.NewGuid():N}";
             return mockChannelName;
         }
     }
