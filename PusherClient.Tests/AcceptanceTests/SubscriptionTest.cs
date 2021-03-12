@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using PusherClient.Tests.Utilities;
@@ -114,5 +116,215 @@ namespace PusherClient.Tests.AcceptanceTests
                 }
             }
         }
+
+        private static async Task SubscribeTestAsync(bool connectBeforeSubscribing, ChannelTypes channelType, Pusher pusher = null, bool raiseSubscribedError = false)
+        {
+            // Arrange
+            AutoResetEvent subscribedEvent = new AutoResetEvent(false);
+            AutoResetEvent[] errorEvent = { null, null };
+            string mockChannelName = ChannelNameFactory.CreateUniqueChannelName(channelType: channelType);
+            if (pusher == null)
+            {
+                pusher = PusherFactory.GetPusher(channelType: channelType);
+            }
+
+            bool[] channelSubscribed = { false, false };
+            pusher.Subscribed += (sender, channel) =>
+            {
+                if (channel.Name == mockChannelName)
+                {
+                    channelSubscribed[0] = true;
+                    subscribedEvent.Set();
+                    if (raiseSubscribedError)
+                    {
+                        throw new InvalidOperationException($"Simulated error for {nameof(Pusher)}.{nameof(Pusher.Subscribed)} {channel.Name}.");
+                    }
+                }
+            };
+
+            SubscribedDelegateException[] errors = { null, null };
+            if (raiseSubscribedError)
+            {
+                errorEvent[0] = new AutoResetEvent(false);
+                errorEvent[1] = new AutoResetEvent(false);
+                pusher.Error += (sender, error) =>
+                {
+                    if (error.ToString().Contains($"{nameof(Pusher)}.{nameof(Pusher.Subscribed)}"))
+                    {
+                        errors[0] = error as SubscribedDelegateException;
+                        errorEvent[0].Set();
+                    }
+                    else if (error.ToString().Contains($"{nameof(Channel)}.{nameof(Pusher.Subscribed)}"))
+                    {
+                        errors[1] = error as SubscribedDelegateException;
+                        errorEvent[1].Set();
+                    }
+                };
+            }
+
+            SubscriptionEventHandler subscribedEventHandler = (sender) =>
+            {
+                channelSubscribed[1] = true;
+                if (raiseSubscribedError)
+                {
+                    throw new InvalidOperationException($"Simulated error for {nameof(Channel)}.{nameof(Pusher.Subscribed)} {mockChannelName}.");
+                }
+            };
+
+            // Act
+            Channel subscribedChannel;
+            if (connectBeforeSubscribing)
+            {
+                await pusher.ConnectAsync().ConfigureAwait(false);
+                subscribedChannel = await pusher.SubscribeAsync(mockChannelName, subscribedEventHandler).ConfigureAwait(false);
+            }
+            else
+            {
+                subscribedChannel = await pusher.SubscribeAsync(mockChannelName, subscribedEventHandler).ConfigureAwait(false);
+                await pusher.ConnectAsync().ConfigureAwait(false);
+            }
+
+            subscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
+            errorEvent[0]?.WaitOne(TimeSpan.FromSeconds(5));
+            errorEvent[1]?.WaitOne(TimeSpan.FromSeconds(5));
+
+            // Assert
+            ValidateSubscribedChannel(pusher, mockChannelName, subscribedChannel, channelType);
+            Assert.IsTrue(channelSubscribed[0]);
+            Assert.IsTrue(channelSubscribed[1]);
+            if (raiseSubscribedError)
+            {
+                ValidateSubscribedExceptions(mockChannelName, errors);
+            }
+        }
+
+        private static async Task SubscribeSameChannelTwiceAsync(bool connectBeforeSubscribing, ChannelTypes channelType)
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusher(channelType);
+            var subscribedEvent = new AutoResetEvent(false);
+            var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(channelType);
+            var numberOfCalls = 0;
+            var channelSubscribed = false;
+            pusher.Subscribed += (sender, channel) =>
+            {
+                if (channel.Name == mockChannelName)
+                {
+                    numberOfCalls++;
+                    channelSubscribed = true;
+                    subscribedEvent.Set();
+                }
+            };
+
+            Channel firstChannel;
+            Channel secondChannel;
+
+            // Act
+            if (connectBeforeSubscribing)
+            {
+                await pusher.ConnectAsync().ConfigureAwait(false);
+                firstChannel = await pusher.SubscribeAsync(mockChannelName).ConfigureAwait(false);
+                secondChannel = await pusher.SubscribeAsync(mockChannelName).ConfigureAwait(false);
+            }
+            else
+            {
+                firstChannel = await pusher.SubscribeAsync(mockChannelName).ConfigureAwait(false);
+                secondChannel = await pusher.SubscribeAsync(mockChannelName).ConfigureAwait(false);
+                await pusher.ConnectAsync().ConfigureAwait(false);
+            }
+
+            subscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
+
+            // Assert
+            Assert.IsTrue(channelSubscribed);
+            Assert.AreEqual(1, numberOfCalls);
+            Assert.AreEqual(firstChannel, secondChannel);
+            Assert.AreEqual(firstChannel.IsSubscribed, secondChannel.IsSubscribed);
+            Assert.AreEqual(firstChannel.Name, secondChannel.Name);
+            Assert.AreEqual(firstChannel.ChannelType, secondChannel.ChannelType);
+        }
+
+        private static async Task SubscribeSameChannelMultipleTimesTestAsync(bool connectBeforeSubscribing, ChannelTypes channelType)
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusher(channelType);
+            var subscribedEvent = new AutoResetEvent(false);
+            var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(channelType);
+            var numberOfCalls = 0;
+            var channelSubscribed = false;
+            pusher.Subscribed += (sender, channel) =>
+            {
+                if (channel.Name == mockChannelName)
+                {
+                    numberOfCalls++;
+                    channelSubscribed = true;
+                    subscribedEvent.Set();
+                }
+            };
+
+            // Act
+            if (connectBeforeSubscribing)
+            {
+                await pusher.ConnectAsync().ConfigureAwait(false);
+                for (int i = 0; i < 4; i++)
+                {
+                    await pusher.SubscribeAsync(mockChannelName).ConfigureAwait(false);
+                };
+            }
+            else
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    await pusher.SubscribeAsync(mockChannelName).ConfigureAwait(false);
+                };
+
+                await pusher.ConnectAsync().ConfigureAwait(false);
+            }
+
+            subscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
+
+            // Assert
+            Assert.IsTrue(channelSubscribed);
+            Assert.AreEqual(1, numberOfCalls);
+        }
+
+        private static async Task SubscribeMultipleChannelsTestAsync(bool connectBeforeSubscribing, Pusher pusher, IList<string> channelNames)
+        {
+            // Arrange
+            var subscribedEvent = new AutoResetEvent(false);
+            int subscribedCount = 0;
+            pusher.Subscribed += (sender, channelName) =>
+            {
+                subscribedCount++;
+                if (subscribedCount == channelNames.Count)
+                {
+                    subscribedEvent.Set();
+                }
+            };
+
+            // Act
+            if (connectBeforeSubscribing)
+            {
+                await pusher.ConnectAsync().ConfigureAwait(false);
+                foreach (string channelName in channelNames)
+                {
+                    await pusher.SubscribeAsync(channelName).ConfigureAwait(false);
+                }
+            }
+            else
+            {
+                foreach (string channelName in channelNames)
+                {
+                    await pusher.SubscribeAsync(channelName).ConfigureAwait(false);
+                }
+                AssertIsDisconnected(pusher, channelNames);
+                await pusher.ConnectAsync().ConfigureAwait(false);
+            }
+
+            // Assert
+            Assert.IsTrue(subscribedEvent.WaitOne(TimeSpan.FromSeconds(5)));
+            AssertIsSubscribed(pusher, channelNames);
+        }
+
     }
 }

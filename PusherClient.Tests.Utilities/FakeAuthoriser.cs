@@ -22,7 +22,7 @@ namespace PusherClient.Tests.Utilities
         public async Task<string> AuthorizeAsync(string channelName, string socketId)
         {
             string authData = null;
-            double delay = (await LatencyInducer.InduceLatencyAsync(200, 2500)) / 1000.0;
+            double delay = (await LatencyInducer.InduceLatencyAsync(200, 1500)) / 1000.0;
             Trace.TraceInformation($"{this.GetType().Name} paused for {Math.Round(delay, 3)} second(s)");
             await Task.Run(() =>
             {

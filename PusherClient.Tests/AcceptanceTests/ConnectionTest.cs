@@ -173,6 +173,8 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task CallingPusherDisconnectMultipleTimesShouldBeIdempotentAsync()
         {
             // Arrange
+            var disconnectedEvent = new AutoResetEvent(false);
+            var statusChangeEvent = new AutoResetEvent(false);
             bool disconnected = false;
             bool errored = false;
             int disconnectedCount = 0;
@@ -185,6 +187,7 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 disconnectedCount++;
                 disconnected = true;
+                disconnectedEvent.Set();
             };
 
             pusher.ConnectionStateChanged += (sender, state) =>
@@ -192,6 +195,10 @@ namespace PusherClient.Tests.AcceptanceTests
                 stateChangedCount++;
                 stateChangeLog.Add(state);
                 Trace.TraceInformation($"[{stateChangedCount}]: {state}");
+                if (stateChangedCount == expectedFinalCount)
+                {
+                    statusChangeEvent.Set();
+                }
             };
 
             pusher.Error += (sender, error) =>
@@ -211,6 +218,8 @@ namespace PusherClient.Tests.AcceptanceTests
             };
 
             Task.WaitAll(tasks.ToArray());
+            disconnectedEvent.WaitOne(TimeSpan.FromSeconds(5));
+            statusChangeEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             // Assert
             Assert.AreEqual(ConnectionState.Disconnected, pusher.State, nameof(pusher.State));
@@ -226,6 +235,8 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task PusherShouldSuccessfullyReconnectWhenItHasPreviouslyDisconnectedAsync()
         {
             // Arrange
+            var connectedEvent = new AutoResetEvent(false);
+            var statusChangeEvent = new AutoResetEvent(false);
             bool connected = false;
             bool errored = false;
             int expectedFinalCount = 2;
@@ -235,11 +246,16 @@ namespace PusherClient.Tests.AcceptanceTests
             pusher.ConnectionStateChanged += (sender, state) =>
             {
                 stateChangeLog.Add(state);
+                if (stateChangeLog.Count == expectedFinalCount)
+                {
+                    statusChangeEvent.Set();
+                }
             };
 
             pusher.Connected += sender =>
             {
                 connected = true;
+                connectedEvent.Set();
             };
 
             pusher.Error += (sender, error) =>
@@ -249,6 +265,8 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Act
             await pusher.ConnectAsync().ConfigureAwait(false);
+            connectedEvent.WaitOne(TimeSpan.FromSeconds(5));
+            statusChangeEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             // Assert
             Assert.AreEqual(ConnectionState.Connected, pusher.State, nameof(pusher.State));
@@ -374,11 +392,39 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.AreEqual(ConnectionState.Connected, stateChangeLog[3]);
         }
 
+        private static int CalculateExpectedErrorCount(SortedSet<ConnectionState> raiseErrorOn)
+        {
+            int expectedErrorCount = 0;
+            if (raiseErrorOn != null)
+            {
+                foreach (var status in raiseErrorOn)
+                {
+                    switch (status)
+                    {
+                        case ConnectionState.WaitingToReconnect:
+                        case ConnectionState.Connecting:
+                        case ConnectionState.Disconnecting:
+                            expectedErrorCount++;
+                            break;
+                        case ConnectionState.Connected:
+                        case ConnectionState.Disconnected:
+                            expectedErrorCount += 2;
+                            break;
+                    }
+                }
+            }
+
+            return expectedErrorCount;
+        }
+
         private static async Task<Pusher> ConnectTestAsync(SortedSet<ConnectionState> raiseErrorOn = null)
         {
             // Arrange
-            bool connected = false;
-            bool errored = false;
+            var connectedEvent = new AutoResetEvent(false);
+            var statusChangeEvent = new AutoResetEvent(false);
+            var errorEvent = raiseErrorOn == null ? null : new AutoResetEvent(false);
+            int errorCount = 0;
+            int expectedErrorCount = CalculateExpectedErrorCount(raiseErrorOn); ;
             int stateChangedCount = 0;
             int expectedFinalCount = 2;
             List<ConnectionState> stateChangeLog = new List<ConnectionState>(expectedFinalCount);
@@ -387,12 +433,18 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.IsNull(pusher.SocketID);
             pusher.Connected += sender =>
             {
-                connected = true;
-                if (raiseErrorOn != null && raiseErrorOn.Contains(ConnectionState.Connected))
+                try
                 {
-                    string errorMsg = $"Error raised in delegate {nameof(pusher.Connected)}.";
-                    Trace.TraceError(errorMsg);
-                    throw new InvalidOperationException(errorMsg);
+                    if (raiseErrorOn != null && raiseErrorOn.Contains(ConnectionState.Connected))
+                    {
+                        string errorMsg = $"Error raised in delegate {nameof(pusher.Connected)}.";
+                        Trace.TraceError(errorMsg);
+                        throw new InvalidOperationException(errorMsg);
+                    }
+                }
+                finally
+                {
+                    connectedEvent.Set();
                 }
             };
 
@@ -401,23 +453,43 @@ namespace PusherClient.Tests.AcceptanceTests
                 stateChangedCount++;
                 stateChangeLog.Add(state);
                 Trace.TraceInformation($"[{stateChangedCount}]: {state}");
-                if (raiseErrorOn != null && raiseErrorOn.Contains(state))
+                try
                 {
-                    string errorMsg = $"Error raised in delegate {nameof(pusher.ConnectionStateChanged)} for state change {state}.";
-                    Trace.TraceError(errorMsg);
-                    throw new InvalidOperationException(errorMsg);
+                    if (raiseErrorOn != null && raiseErrorOn.Contains(state))
+                    {
+                        string errorMsg = $"Error raised in delegate {nameof(pusher.ConnectionStateChanged)} for state change {state}.";
+                        Trace.TraceError(errorMsg);
+                        throw new InvalidOperationException(errorMsg);
+                    }
+                }
+                finally
+                {
+                    if (stateChangedCount == expectedFinalCount)
+                    {
+                        statusChangeEvent.Set();
+                    }
                 }
             };
 
             pusher.Error += (sender, error) =>
             {
-                errored = true;
+                errorCount++;
                 Trace.TraceInformation($"[Error]: {error.Message}");
-                if (raiseErrorOn != null && raiseErrorOn.Count > 0)
+                try
                 {
-                    string errorMsg = $"Error ({error.PusherCode}) raised in delegate {nameof(pusher.Error)}. Inner error is:{Environment.NewLine}{error.Message}";
-                    Trace.TraceError(errorMsg);
-                    throw new InvalidOperationException(errorMsg);
+                    if (raiseErrorOn != null && raiseErrorOn.Count > 0)
+                    {
+                        string errorMsg = $"Error ({error.PusherCode}) raised in delegate {nameof(pusher.Error)}. Inner error is:{Environment.NewLine}{error.Message}";
+                        Trace.TraceError(errorMsg);
+                        throw new InvalidOperationException(errorMsg);
+                    }
+                }
+                finally
+                {
+                    if (errorCount == expectedErrorCount)
+                    {
+                        errorEvent?.Set();
+                    }
                 }
             };
 
@@ -426,19 +498,16 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             Assert.AreEqual(ConnectionState.Connected, pusher.State, nameof(pusher.State));
-            Assert.IsTrue(connected, nameof(connected));
+            Assert.IsTrue(connectedEvent.WaitOne(TimeSpan.FromSeconds(5)));
+
+            statusChangeEvent.WaitOne(TimeSpan.FromSeconds(5));
+            errorEvent?.WaitOne(TimeSpan.FromSeconds(5));
+
             Assert.IsNotNull(pusher.SocketID);
             Assert.AreEqual(expectedFinalCount, stateChangeLog.Count, nameof(expectedFinalCount));
             Assert.AreEqual(ConnectionState.Connecting, stateChangeLog[0]);
             Assert.AreEqual(ConnectionState.Connected, stateChangeLog[1]);
-            if (raiseErrorOn != null && raiseErrorOn.Count > 0)
-            {
-                Assert.IsTrue(errored, nameof(errored));
-            }
-            else
-            {
-                Assert.IsFalse(errored, nameof(errored));
-            }
+            Assert.AreEqual(expectedErrorCount, errorCount, "# Errors");
 
             return pusher;
         }
@@ -446,42 +515,73 @@ namespace PusherClient.Tests.AcceptanceTests
         private static async Task<Pusher> DisconnectTestAsync(SortedSet<ConnectionState> raiseErrorOn = null)
         {
             // Arrange
-            bool disconnected = false;
-            bool errored = false;
+            var disconnectedEvent = new AutoResetEvent(false);
+            var statusChangeEvent = new AutoResetEvent(false);
+            var errorEvent = raiseErrorOn == null ? null : new AutoResetEvent(false);
+            int errorCount = 0;
+            int expectedErrorCount = CalculateExpectedErrorCount(raiseErrorOn); ;
+            int stateChangedCount = 0;
             int expectedFinalCount = 2;
             List<ConnectionState> stateChangeLog = new List<ConnectionState>(expectedFinalCount);
 
             var pusher = await ConnectTestAsync().ConfigureAwait(false);
             pusher.ConnectionStateChanged += (sender, state) =>
             {
+                stateChangedCount++;
                 stateChangeLog.Add(state);
-                if (raiseErrorOn != null && raiseErrorOn.Contains(state))
+                try
                 {
-                    string errorMsg = $"Error raised in delegate {nameof(pusher.ConnectionStateChanged)} for state change {state}.";
-                    Trace.TraceError(errorMsg);
-                    throw new InvalidOperationException(errorMsg);
+                    if (raiseErrorOn != null && raiseErrorOn.Contains(state))
+                    {
+                        string errorMsg = $"Error raised in delegate {nameof(pusher.ConnectionStateChanged)} for state change {state}.";
+                        Trace.TraceError(errorMsg);
+                        throw new InvalidOperationException(errorMsg);
+                    }
+                }
+                finally
+                {
+                    if (stateChangedCount == expectedFinalCount)
+                    {
+                        statusChangeEvent.Set();
+                    }
                 }
             };
 
             pusher.Disconnected += sender =>
             {
-                disconnected = true;
-                if (raiseErrorOn != null && raiseErrorOn.Contains(ConnectionState.Disconnected))
+                try
                 {
-                    string errorMsg = $"Error raised in delegate {nameof(pusher.Disconnected)}.";
-                    Trace.TraceError(errorMsg);
-                    throw new InvalidOperationException(errorMsg);
+                    if (raiseErrorOn != null && raiseErrorOn.Contains(ConnectionState.Disconnected))
+                    {
+                        string errorMsg = $"Error raised in delegate {nameof(pusher.Disconnected)}.";
+                        Trace.TraceError(errorMsg);
+                        throw new InvalidOperationException(errorMsg);
+                    }
+                }
+                finally
+                {
+                    disconnectedEvent.Set();
                 }
             };
 
             pusher.Error += (sender, error) =>
             {
-                errored = true;
-                if (raiseErrorOn != null && raiseErrorOn.Count > 0)
+                errorCount++;
+                try
                 {
-                    string errorMsg = $"Error ({error.PusherCode}) raised in delegate {nameof(pusher.Error)}. Inner error is:{Environment.NewLine}{error.Message}";
-                    Trace.TraceError(errorMsg);
-                    throw new InvalidOperationException(errorMsg);
+                    if (raiseErrorOn != null && raiseErrorOn.Count > 0)
+                    {
+                        string errorMsg = $"Error ({error.PusherCode}) raised in delegate {nameof(pusher.Error)}. Inner error is:{Environment.NewLine}{error.Message}";
+                        Trace.TraceError(errorMsg);
+                        throw new InvalidOperationException(errorMsg);
+                    }
+                }
+                finally
+                {
+                    if (errorCount == expectedErrorCount)
+                    {
+                        errorEvent?.Set();
+                    }
                 }
             };
 
@@ -490,18 +590,15 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             Assert.AreEqual(ConnectionState.Disconnected, pusher.State, nameof(pusher.State));
-            Assert.IsTrue(disconnected, nameof(disconnected));
+            Assert.IsTrue(disconnectedEvent.WaitOne(TimeSpan.FromSeconds(5)));
+
+            statusChangeEvent.WaitOne(TimeSpan.FromSeconds(5));
+            errorEvent?.WaitOne(TimeSpan.FromSeconds(5));
+
             Assert.AreEqual(expectedFinalCount, stateChangeLog.Count, nameof(expectedFinalCount));
             Assert.AreEqual(ConnectionState.Disconnecting, stateChangeLog[0]);
             Assert.AreEqual(ConnectionState.Disconnected, stateChangeLog[1]);
-            if (raiseErrorOn != null && raiseErrorOn.Count > 0)
-            {
-                Assert.IsTrue(errored, nameof(errored));
-            }
-            else
-            {
-                Assert.IsFalse(errored, nameof(errored));
-            }
+            Assert.AreEqual(expectedErrorCount, errorCount, "# Errors");
 
             return pusher;
         }

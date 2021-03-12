@@ -32,7 +32,7 @@ namespace AuthHost
                     var channelData = new PresenceChannelData
                     {
                         user_id = socketId,
-                        user_info = new {name = _.username}
+                        user_info = new {name = _.username.ToString()}
                     };
 
                     authData = provider.Authenticate(channelName, socketId, channelData).ToJson();

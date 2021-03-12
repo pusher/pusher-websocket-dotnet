@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using System.Web;
 using PusherClient;
@@ -12,7 +12,7 @@ namespace ExampleApplication
     {
         private static Pusher _pusher;
         private static Channel _chatChannel;
-        private static PresenceChannel _presenceChannel;
+        private static GenericPresenceChannel<dynamic> _presenceChannel;
         private static string _name;
             
         static void Main()
@@ -45,14 +45,15 @@ namespace ExampleApplication
 
         static void ListMembers()
         {
-            var names = new List<string>();
-
-            foreach (var mem in _presenceChannel.Members)
+            StringBuilder builder = new StringBuilder($"{Environment.NewLine}[MEMBERS]{Environment.NewLine}");
+            int count = 1;
+            foreach (var mem in _presenceChannel.GetMembers())
             {
-                names.Add((string)mem.Value.name.Value);
+                builder.AppendLine($"{count}: {(string)mem.Value.name.Value}");
+                count++;
             }
 
-            Console.WriteLine($"{Environment.NewLine}[MEMBERS] " + names.Aggregate((i, j) => i + ", " + j));
+            Console.WriteLine(builder.ToString());
         }
 
         // Pusher Initiation / Connection
@@ -95,7 +96,7 @@ namespace ExampleApplication
                     ListMembers();
                 }
             };
-            _presenceChannel = (PresenceChannel)(await _pusher.SubscribeAsync(presenceChannelName).ConfigureAwait(false));
+            _presenceChannel = (GenericPresenceChannel<dynamic>)(await _pusher.SubscribePresenceAsync<dynamic>(presenceChannelName).ConfigureAwait(false));
             _presenceChannel.MemberAdded += PresenceChannel_MemberAdded;
             _presenceChannel.MemberRemoved += PresenceChannel_MemberRemoved;
 
@@ -112,14 +113,15 @@ namespace ExampleApplication
             Console.WriteLine("Connection state: " + state);
         }
 
-        static void PresenceChannel_MemberRemoved(object sender)
+        static void PresenceChannel_MemberRemoved(object sender, KeyValuePair<string, dynamic> member)
         {
+            Console.WriteLine($"Member {member.Value.name.Value} has left");
             ListMembers();
         }
 
         static void PresenceChannel_MemberAdded(object sender, KeyValuePair<string, dynamic> member)
         {
-            Console.WriteLine((string)member.Value.name.Value + " has joined");
+            Console.WriteLine($"Member {member.Value.name.Value} has joined");
             ListMembers();
         }
     }

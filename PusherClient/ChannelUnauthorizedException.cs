@@ -1,7 +1,7 @@
 ﻿namespace PusherClient
 {
     /// <summary>
-    /// This exception is raised when calling <c>Authorize</c> or <c>AuthorizeAsync</c> on <see cref="HttpAuthorizer"/> and access to the channel is forbidden.
+    /// This exception is raised when calling <c>Authorize</c> or <c>AuthorizeAsync</c> on <see cref="HttpAuthorizer"/> and access to the channel is forbidden (403).
     /// </summary>
     public class ChannelUnauthorizedException : PusherException
     {
@@ -11,7 +11,7 @@
         /// <param name="channelName">The name of the channel for which access is forbidden.</param>
         /// <param name="socketId">the socket ID used in the authorization attempt.</param>
         public ChannelUnauthorizedException(string channelName, string socketId)
-            : base($"The channel subscription is unauthorized.", ErrorCodes.SubscriptionError)
+            : base($"The channel subscription is unauthorized.", ErrorCodes.ChannelUnauthorized)
         {
             this.ChannelName = channelName;
             this.SocketID = socketId;
@@ -28,7 +28,7 @@
         public string SocketID { get; private set; }
 
         /// <summary>
-        /// Gets or sets the <see cref="Channel"/> that failed authorization.
+        /// Gets or sets the <see cref="Channel"/> that failed authorization. Note that this value can be null.
         /// </summary>
         public Channel Channel { get; set; }
     }

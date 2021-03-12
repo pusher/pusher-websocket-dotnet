@@ -3,9 +3,12 @@
 namespace PusherClient
 {
     /// <summary>
-    /// The Event Handler for the Member Added Event on the <see cref="PresenceChannel"/>
+    /// The event handler for when a member is added to a <see cref="GenericPresenceChannel{T}"/> or a <see cref="PresenceChannel"/>.
     /// </summary>
-    /// <param name="sender">The Channel that had the member added</param>
-    /// <param name="member">The added member information</param>
+    /// <typeparam name="T">The detail of the member added.</typeparam>
+    /// The <see cref="GenericPresenceChannel{T}"/> or <see cref="PresenceChannel"/> that had the member added.
+    /// <param name="member">
+    /// A <see cref="KeyValuePair{TKey, TValue}"/> where <c>TKey</c> is the user ID and <c>TValue</c> is the member detail added.
+    /// </param>
     public delegate void MemberAddedEventHandler<T>(object sender, KeyValuePair<string, T> member);
 }

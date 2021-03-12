@@ -109,37 +109,53 @@ namespace PusherClient
             if (state == ConnectionState.Connected)
             {
                 SubscribeExistingChannels();
-
-                try
+                if (Connected != null)
                 {
-                    Connected?.Invoke(this);
-                }
-                catch (Exception error)
-                {
-                    RaiseError(new ConnectedDelegateException(error));
+                    Task.Run(() =>
+                    {
+                        try
+                        {
+                            Connected.Invoke(this);
+                        }
+                        catch (Exception error)
+                        {
+                            InvokeErrorHandler(new ConnectedDelegateException(error));
+                        }
+                    });
                 }
             }
             else if (state == ConnectionState.Disconnected)
             {
                 MarkChannelsAsUnsubscribed();
-
-                try
+                if (Disconnected != null)
                 {
-                    Disconnected?.Invoke(this);
-                }
-                catch (Exception error)
-                {
-                    RaiseError(new DisconnectedDelegateException(error));
+                    Task.Run(() =>
+                    {
+                        try
+                        {
+                            Disconnected.Invoke(this);
+                        }
+                        catch (Exception error)
+                        {
+                            InvokeErrorHandler(new DisconnectedDelegateException(error));
+                        }
+                    });
                 }
             }
 
-            try
+            if (ConnectionStateChanged != null)
             {
-                ConnectionStateChanged?.Invoke(this, state);
-            }
-            catch (Exception error)
-            {
-                RaiseError(new ConnectionStateChangedDelegateException(state, error));
+                Task.Run(() =>
+                {
+                    try
+                    {
+                        ConnectionStateChanged.Invoke(this, state);
+                    }
+                    catch (Exception error)
+                    {
+                        InvokeErrorHandler(new ConnectionStateChangedDelegateException(state, error));
+                    }
+                });
             }
         }
 
@@ -163,17 +179,23 @@ namespace PusherClient
 
         void IPusher.AddMember(string channelName, string member)
         {
-            if (Channels.TryGetValue(channelName, out Channel channel) && channel is PresenceChannel presenceChannel)
+            if (Channels.TryGetValue(channelName, out Channel channel))
             {
-                presenceChannel.AddMember(member);
+                if (channel is IPresenceChannelManagement presenceChannel)
+                {
+                    presenceChannel.AddMember(member);
+                }
             }
         }
 
         void IPusher.RemoveMember(string channelName, string member)
         {
-            if (Channels.TryGetValue(channelName, out Channel channel) && channel is PresenceChannel presenceChannel)
+            if (Channels.TryGetValue(channelName, out Channel channel))
             {
-                presenceChannel.RemoveMember(member);
+                if (channel is IPresenceChannelManagement presenceChannel)
+                {
+                    presenceChannel.RemoveMember(member);
+                }
             }
         }
 
@@ -182,13 +204,19 @@ namespace PusherClient
             if (Channels.TryGetValue(channelName, out Channel channel))
             {
                 channel.SubscriptionSucceeded(data);
-                try
+                if (Subscribed != null)
                 {
-                    Subscribed?.Invoke(this, channel);
-                }
-                catch (Exception error)
-                {
-                    RaiseError(new SubscribedDelegateException(channel, error, data));
+                    Task.Run(() =>
+                    {
+                        try
+                        {
+                            Subscribed.Invoke(this, channel);
+                        }
+                        catch (Exception error)
+                        {
+                            InvokeErrorHandler(new SubscribedDelegateException(channel, error, data));
+                        }
+                    });
                 }
 
                 channel._subscribeCompleted?.Release();
@@ -198,12 +226,13 @@ namespace PusherClient
         void IPusher.SubscriptionFailed(string channelName, string data)
         {
             SubscriptionException error = new SubscriptionException(channelName, data);
-            RaiseError(error);
             if (Channels.TryGetValue(channelName, out Channel channel))
             {
                 channel._subscriptionError = error;
                 channel._subscribeCompleted?.Release();
             }
+
+            RaiseError(error);
         }
 
         /// <summary>
@@ -317,7 +346,9 @@ namespace PusherClient
         /// If Pusher is not connected when calling this method, <c>channel.IsSubscribed == false</c> and 
         /// the channel will only be subscribed after calling <c>Pusher.ConnectAsync</c>.
         /// </remarks>
-        public async Task<GenericPresenceChannel<MemberT>> SubscribePresenceAsync<MemberT>(string channelName, SubscriptionEventHandler subscribedEventHandler = null)
+        public async Task<GenericPresenceChannel<MemberT>> SubscribePresenceAsync<MemberT>(
+            string channelName,
+            SubscriptionEventHandler subscribedEventHandler = null)
         {
             Guard.ChannelName(channelName);
 
@@ -420,7 +451,7 @@ namespace PusherClient
                         try
                         {
                             string message;
-                            if (channel.ChannelType == ChannelTypes.Presence || channel.ChannelType == ChannelTypes.Private)
+                            if (channel.ChannelType != ChannelTypes.Public)
                             {
                                 try
                                 {
@@ -590,6 +621,17 @@ namespace PusherClient
         }
 
         private void RaiseError(PusherException error)
+        {
+            if (Error != null)
+            {
+                Task.Run(() =>
+                {
+                    InvokeErrorHandler(error);
+                });
+            }
+        }
+
+        private void InvokeErrorHandler(PusherException error)
         {
             if (Error != null)
             {

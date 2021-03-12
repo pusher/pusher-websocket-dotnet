@@ -15,13 +15,13 @@
             return new Pusher(Config.AppKey, options);
         }
 
-        public static Pusher GetPusher(ChannelTypes channelType)
+        public static Pusher GetPusher(ChannelTypes channelType, string username = null)
         {
             switch (channelType)
             {
                 case ChannelTypes.Private:
                 case ChannelTypes.Presence:
-                    return GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
+                    return GetPusher(new FakeAuthoriser(username ?? UserNameFactory.CreateUniqueUserName()));
                 default:
                     return GetPusher(authorizer: null);
             }
