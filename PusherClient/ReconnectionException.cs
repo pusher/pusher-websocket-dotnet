@@ -16,7 +16,7 @@ namespace PusherClient
         /// </summary>
         /// <param name="innerException">The exception that is the cause of the current exception.</param>
         public ReconnectionException(Exception innerException)
-            : base($"Error trying to reconnect the Pusher client:{Environment.NewLine}{innerException.Message}", ErrorCodes.Unkown, innerException)
+            : base($"Error trying to reconnect the Pusher client:{Environment.NewLine}{innerException.Message}", ErrorCodes.Unknown, innerException)
         {
         }
     }

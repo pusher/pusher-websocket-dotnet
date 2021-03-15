@@ -69,13 +69,13 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.AreEqual(expectedChannelType, actualChannel.ChannelType, nameof(Channel.ChannelType));
         }
 
-        private static void ValidateSubscribedExceptions(string mockChannelName, SubscribedDelegateException[] errors)
+        private static void ValidateSubscribedExceptions(string mockChannelName, SubscribedEventHandlerException[] errors)
         {
             foreach (var error in errors)
             {
                 Assert.IsNotNull(error, "Expected a SubscribedDelegateException error to be raised.");
-                Assert.IsNotNull(error.MessageData, nameof(SubscribedDelegateException.MessageData));
-                Assert.IsNotNull(error.Channel, nameof(SubscribedDelegateException.Channel));
+                Assert.IsNotNull(error.MessageData, nameof(SubscribedEventHandlerException.MessageData));
+                Assert.IsNotNull(error.Channel, nameof(SubscribedEventHandlerException.Channel));
                 Assert.AreEqual(mockChannelName, error.Channel.Name, nameof(Channel.Name));
             }
         }
@@ -142,7 +142,7 @@ namespace PusherClient.Tests.AcceptanceTests
                 }
             };
 
-            SubscribedDelegateException[] errors = { null, null };
+            SubscribedEventHandlerException[] errors = { null, null };
             if (raiseSubscribedError)
             {
                 errorEvent[0] = new AutoResetEvent(false);
@@ -151,12 +151,12 @@ namespace PusherClient.Tests.AcceptanceTests
                 {
                     if (error.ToString().Contains($"{nameof(Pusher)}.{nameof(Pusher.Subscribed)}"))
                     {
-                        errors[0] = error as SubscribedDelegateException;
+                        errors[0] = error as SubscribedEventHandlerException;
                         errorEvent[0].Set();
                     }
                     else if (error.ToString().Contains($"{nameof(Channel)}.{nameof(Pusher.Subscribed)}"))
                     {
-                        errors[1] = error as SubscribedDelegateException;
+                        errors[1] = error as SubscribedEventHandlerException;
                         errorEvent[1].Set();
                     }
                 };
@@ -326,5 +326,273 @@ namespace PusherClient.Tests.AcceptanceTests
             AssertIsSubscribed(pusher, channelNames);
         }
 
+        private static async Task SubscribeUnauthorizedChannelsAsync(bool connectBeforeSubscribing)
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusher(new FakeUnauthoriser());
+            AutoResetEvent subscribedEvent = new AutoResetEvent(false);
+            var errorEvent = new AutoResetEvent(false);
+            int errorCount = 0;
+            List<string> channelNames = new List<string>
+            {
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private) + FakeUnauthoriser.UnauthoriseToken,
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence) + FakeUnauthoriser.UnauthoriseToken,
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
+            };
+
+            int expectedExceptionCount = 0;
+            int exceptionCount = 0;
+            int expectedErrorCount = 0;
+            foreach (string name in channelNames)
+            {
+                if (Channel.GetChannelType(name) != ChannelTypes.Public)
+                {
+                    expectedErrorCount++;
+                    if (connectBeforeSubscribing)
+                    {
+                        expectedExceptionCount++;
+                    }
+                }
+            }
+
+            pusher.Error += (sender, error) =>
+            {
+                if (error is ChannelUnauthorizedException)
+                {
+                    errorCount++;
+                    if (errorCount == expectedErrorCount)
+                    {
+                        errorEvent.Set();
+                    }
+                }
+            };
+
+            pusher.Subscribed += (sender, channel) =>
+            {
+                if (channel.ChannelType == ChannelTypes.Public)
+                {
+                    subscribedEvent.Set();
+                }
+            };
+
+            // Act
+            if (connectBeforeSubscribing)
+            {
+                await pusher.ConnectAsync().ConfigureAwait(false);
+                foreach (string channelName in channelNames)
+                {
+                    try
+                    {
+                        await pusher.SubscribeAsync(channelName).ConfigureAwait(false);
+                    }
+                    catch (ChannelUnauthorizedException e)
+                    {
+                        exceptionCount++;
+                        Assert.IsNotNull(e.AuthorizationEndpoint);
+                        Assert.IsNotNull(e.ChannelName);
+                        Assert.IsNotNull(e.SocketID);
+                        Channel channel = e.Channel;
+                        Assert.IsNotNull(channel);
+                        Assert.IsFalse(channel.IsSubscribed);
+                    }
+                }
+            }
+            else
+            {
+                foreach (string channelName in channelNames)
+                {
+                    await pusher.SubscribeAsync(channelName).ConfigureAwait(false);
+                }
+
+                await pusher.ConnectAsync().ConfigureAwait(false);
+            }
+
+            subscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
+            errorEvent.WaitOne(TimeSpan.FromSeconds(5));
+
+            // Assert
+            Assert.AreEqual(expectedExceptionCount, exceptionCount, "Number of exceptions expected");
+            Assert.AreEqual(expectedErrorCount, errorCount, "# Errors expected");
+            AssertUnauthorized(pusher, channelNames);
+        }
+
+        private static async Task SubscribeAuthorizationFailureChannelsAsync(bool connectBeforeSubscribing)
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusher(new FakeUnauthoriser());
+            AutoResetEvent subscribedEvent = new AutoResetEvent(false);
+            var errorEvent = new AutoResetEvent(false);
+            int errorCount = 0;
+            List<string> channelNames = new List<string>
+            {
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private) + "-error",
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence) + "-error",
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
+            };
+
+            int expectedExceptionCount = 0;
+            int exceptionCount = 0;
+            int expectedErrorCount = 0;
+            foreach (string name in channelNames)
+            {
+                if (Channel.GetChannelType(name) != ChannelTypes.Public)
+                {
+                    expectedErrorCount++;
+                    if (connectBeforeSubscribing)
+                    {
+                        expectedExceptionCount++;
+                    }
+                }
+            }
+
+            pusher.Error += (sender, error) =>
+            {
+                if (error is ChannelAuthorizationFailureException)
+                {
+                    errorCount++;
+                    if (errorCount == expectedErrorCount)
+                    {
+                        errorEvent.Set();
+                    }
+                }
+            };
+
+            pusher.Subscribed += (sender, channel) =>
+            {
+                if (channel.ChannelType == ChannelTypes.Public)
+                {
+                    subscribedEvent.Set();
+                }
+            };
+
+            // Act
+            if (connectBeforeSubscribing)
+            {
+                await pusher.ConnectAsync().ConfigureAwait(false);
+                foreach (string channelName in channelNames)
+                {
+                    try
+                    {
+                        await pusher.SubscribeAsync(channelName).ConfigureAwait(false);
+                    }
+                    catch (ChannelAuthorizationFailureException e)
+                    {
+                        exceptionCount++;
+                        Assert.IsNotNull(e.AuthorizationEndpoint);
+                        Assert.IsNotNull(e.ChannelName);
+                        Assert.IsNotNull(e.SocketID);
+                        Channel channel = e.Channel;
+                        Assert.IsNotNull(channel);
+                        Assert.IsFalse(channel.IsSubscribed);
+                    }
+                }
+            }
+            else
+            {
+                foreach (string channelName in channelNames)
+                {
+                    await pusher.SubscribeAsync(channelName).ConfigureAwait(false);
+                }
+
+                await pusher.ConnectAsync().ConfigureAwait(false);
+            }
+
+            subscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
+            errorEvent.WaitOne(TimeSpan.FromSeconds(5));
+
+            // Assert
+            Assert.AreEqual(expectedExceptionCount, exceptionCount, "Number of exceptions expected");
+            Assert.AreEqual(expectedErrorCount, errorCount, "# Errors expected");
+            AssertUnauthorized(pusher, channelNames);
+        }
+
+        private static async Task SubscribeFailureChannelsAsync(bool connectBeforeSubscribing)
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser("SabotagedUser"));
+            AutoResetEvent subscribedEvent = new AutoResetEvent(false);
+            var errorEvent = new AutoResetEvent(false);
+            int errorCount = 0;
+            List<string> channelNames = new List<string>
+            {
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private) + FakeAuthoriser.SabotageToken,
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence) + FakeAuthoriser.SabotageToken,
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
+            };
+
+            int expectedExceptionCount = 0;
+            int exceptionCount = 0;
+            int expectedErrorCount = 0;
+            foreach (string name in channelNames)
+            {
+                if (Channel.GetChannelType(name) != ChannelTypes.Public)
+                {
+                    expectedErrorCount++;
+                    if (connectBeforeSubscribing)
+                    {
+                        expectedExceptionCount++;
+                    }
+                }
+            }
+
+            pusher.Error += (sender, error) =>
+            {
+                if (error is ChannelException)
+                {
+                    errorCount++;
+                    if (errorCount == expectedErrorCount)
+                    {
+                        errorEvent.Set();
+                    }
+                }
+            };
+
+            pusher.Subscribed += (sender, channel) =>
+            {
+                if (channel.ChannelType == ChannelTypes.Public)
+                {
+                    subscribedEvent.Set();
+                }
+            };
+
+            // Act
+            if (connectBeforeSubscribing)
+            {
+                await pusher.ConnectAsync().ConfigureAwait(false);
+                foreach (string channelName in channelNames)
+                {
+                    try
+                    {
+                        await pusher.SubscribeAsync(channelName).ConfigureAwait(false);
+                    }
+                    catch (ChannelException e)
+                    {
+                        exceptionCount++;
+                        Assert.IsNotNull(e.ChannelName);
+                        Assert.IsNotNull(e.SocketID);
+                        Channel channel = e.Channel;
+                        Assert.IsNotNull(channel);
+                        Assert.IsFalse(channel.IsSubscribed);
+                    }
+                }
+            }
+            else
+            {
+                foreach (string channelName in channelNames)
+                {
+                    await pusher.SubscribeAsync(channelName).ConfigureAwait(false);
+                }
+
+                await pusher.ConnectAsync().ConfigureAwait(false);
+            }
+
+            subscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
+            errorEvent.WaitOne(TimeSpan.FromSeconds(5));
+
+            // Assert
+            Assert.AreEqual(expectedExceptionCount, exceptionCount, "Number of exceptions expected");
+            Assert.AreEqual(expectedErrorCount, errorCount, "# Errors expected");
+            AssertUnauthorized(pusher, channelNames);
+        }
     }
 }

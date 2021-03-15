@@ -12,16 +12,18 @@ namespace PusherClient.Tests.AcceptanceTests
     [TestFixture]
     public class PresenceChannelTest
     {
+        #region Connect first tests
+
         [Test]
         public async Task ConnectThenSubscribeChannelAsync()
         {
-            await ConnectThenSubscribeTestAsync().ConfigureAwait(false);
+            await ConnectThenSubscribeAsync().ConfigureAwait(false);
         }
 
         [Test]
         public async Task ConnectThenSubscribeChannelWithSubscribedErrorAsync()
         {
-            await ConnectThenSubscribeTestAsync(raiseSubscribedError: true).ConfigureAwait(false);
+            await ConnectThenSubscribeAsync(raiseSubscribedError: true).ConfigureAwait(false);
         }
 
         [Test]
@@ -44,34 +46,22 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         [Test]
+        public async Task ConnectThenSubscribeChannelMultipleMembersWithMemberAddedErrorAsync()
+        {
+            string channelName = ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence);
+            await ConnectThenSubscribeMultipleMembersAsync(3, channelName, raiseMemberAddedError: true).ConfigureAwait(false);
+        }
+
+        [Test]
         public async Task ConnectThenSubscribeChannelRemoveMemberAsync()
         {
-            // Arrange
-            int numberOfMembers = 4;
-            int numMembersRemovedEvents = 0;
-            int expectedNumMembersRemovedEvents = numberOfMembers - 1;
-            string channelName = ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence);
-            AutoResetEvent memberRemovedEvent = new AutoResetEvent(false);
+            await RemoveMemberAsync(connectBeforeSubscribing: true).ConfigureAwait(false);
+        }
 
-            // Act
-            IList<Pusher> pusherMembers = await ConnectThenSubscribeMultipleMembersAsync(numberOfMembers, channelName).ConfigureAwait(false);
-            for (int i = 0; i < pusherMembers.Count; i++)
-            {
-                var presenceChannel = await pusherMembers[i].SubscribePresenceAsync<FakeUserInfo>(channelName).ConfigureAwait(false);
-                presenceChannel.MemberRemoved += (sender, member) =>
-                {
-                    numMembersRemovedEvents++;
-                    if (numMembersRemovedEvents == expectedNumMembersRemovedEvents)
-                    {
-                        memberRemovedEvent.Set();
-                    }
-                };
-            }
-
-            await pusherMembers[0].DisconnectAsync().ConfigureAwait(false);
-
-            // Assert
-            Assert.IsTrue(memberRemovedEvent.WaitOne(TimeSpan.FromSeconds(5)));
+        [Test]
+        public async Task ConnectThenSubscribeChannelRemoveMemberWithMemberRemovedErrorAsync()
+        {
+            await RemoveMemberAsync(connectBeforeSubscribing: true, numberOfMembers: 3, raiseMemberRemovedError: true).ConfigureAwait(false);
         }
 
         [Test]
@@ -84,7 +74,7 @@ namespace PusherClient.Tests.AcceptanceTests
             // Act
             try
             {
-                await ConnectThenSubscribeTestAsync(pusher: pusher).ConfigureAwait(false);
+                await ConnectThenSubscribeAsync(pusher: pusher).ConfigureAwait(false);
             }
             catch (PusherException ex)
             {
@@ -96,16 +86,20 @@ namespace PusherClient.Tests.AcceptanceTests
             StringAssert.Contains("An Authorizer needs to be provided when subscribing to a private or presence channel.", caughtException.Message);
         }
 
+        #endregion
+
+        #region Subscribe first
+
         [Test]
         public async Task SubscribeThenConnectChannelAsync()
         {
-            await SubscribeThenConnectTestAsync().ConfigureAwait(false);
+            await SubscribeThenConnectAsync().ConfigureAwait(false);
         }
 
         [Test]
         public async Task SubscribeThenConnectChannelWithSubscribedErrorAsync()
         {
-            await SubscribeThenConnectTestAsync(raiseSubscribedError: true).ConfigureAwait(false);
+            await SubscribeThenConnectAsync(raiseSubscribedError: true).ConfigureAwait(false);
         }
 
         [Test]
@@ -127,9 +121,56 @@ namespace PusherClient.Tests.AcceptanceTests
             await SubscribeThenConnectMultipleMembersAsync(4, channelName).ConfigureAwait(false);
         }
 
-        private static async Task SubscribeTestAsync(bool connectBeforeSubscribing, Pusher pusher = null, bool raiseSubscribedError = false)
+        [Test]
+        public async Task SubscribeThenConnectChannelMultipleMembersWithMemberAddedErrorAsync()
+        {
+            string channelName = ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence);
+            await SubscribeThenConnectMultipleMembersAsync(3, channelName, raiseMemberAddedError: true).ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task SubscribeThenConnectChannelRemoveMemberAsync()
+        {
+            await RemoveMemberAsync(connectBeforeSubscribing: false).ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task SubscribeThenConnectChannelRemoveMemberWithMemberRemovedErrorAsync()
+        {
+            await RemoveMemberAsync(connectBeforeSubscribing: false, numberOfMembers: 3, raiseMemberRemovedError: true).ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task SubscribeThenConnectChannelWithoutAuthorizerAsync()
         {
             // Arrange
+            var pusher = PusherFactory.GetPusher();
+            PusherException caughtException = null;
+
+            // Act
+            try
+            {
+                await SubscribeThenConnectAsync(pusher: pusher).ConfigureAwait(false);
+            }
+            catch (PusherException ex)
+            {
+                caughtException = ex;
+            }
+
+            // Assert
+            Assert.IsNotNull(caughtException);
+            StringAssert.Contains("An Authorizer needs to be provided when subscribing to a private or presence channel.", caughtException.Message);
+        }
+
+        #endregion
+
+        #region Private helpers
+
+        private static async Task SubscribeAsync(bool connectBeforeSubscribing, Pusher pusher = null, bool raiseError = false)
+        {
+            // Arrange
+            const int PusherSubcribedIndex = 0;
+            const int ChannelSubcribedIndex = 1;
             ChannelTypes channelType = ChannelTypes.Presence;
             AutoResetEvent subscribedEvent = new AutoResetEvent(false);
             AutoResetEvent[] errorEvent = { null, null };
@@ -139,50 +180,51 @@ namespace PusherClient.Tests.AcceptanceTests
                 pusher = PusherFactory.GetPusher(channelType: channelType);
             }
 
-            bool[] channelSubscribed = { false, false };
+            bool[] subscribed = { false, false };
             pusher.Subscribed += (sender, channel) =>
             {
                 if (channel.Name == mockChannelName)
                 {
-                    channelSubscribed[0] = true;
+                    subscribed[PusherSubcribedIndex] = true;
                     subscribedEvent.Set();
-                    if (raiseSubscribedError)
+                    if (raiseError)
                     {
                         throw new InvalidOperationException($"Simulated error for {nameof(Pusher)}.{nameof(Pusher.Subscribed)} {channel.Name}.");
                     }
                 }
             };
 
-            SubscribedDelegateException[] errors = { null, null };
-            if (raiseSubscribedError)
+            SubscribedEventHandlerException[] errors = { null, null };
+            if (raiseError)
             {
-                errorEvent[0] = new AutoResetEvent(false);
-                errorEvent[1] = new AutoResetEvent(false);
+                errorEvent[PusherSubcribedIndex] = new AutoResetEvent(false);
+                errorEvent[ChannelSubcribedIndex] = new AutoResetEvent(false);
                 pusher.Error += (sender, error) =>
                 {
                     if (error.ToString().Contains($"{nameof(Pusher)}.{nameof(Pusher.Subscribed)}"))
                     {
-                        errors[0] = error as SubscribedDelegateException;
-                        errorEvent[0].Set();
+                        errors[PusherSubcribedIndex] = error as SubscribedEventHandlerException;
+                        errorEvent[PusherSubcribedIndex].Set();
                     }
                     else if (error.ToString().Contains($"{nameof(Channel)}.{nameof(Pusher.Subscribed)}"))
                     {
-                        errors[1] = error as SubscribedDelegateException;
-                        errorEvent[1].Set();
+                        errors[ChannelSubcribedIndex] = error as SubscribedEventHandlerException;
+                        errorEvent[ChannelSubcribedIndex].Set();
                     }
                 };
             }
 
             SubscriptionEventHandler subscribedEventHandler = (sender) =>
             {
-                channelSubscribed[1] = true;
-                if (raiseSubscribedError)
+                subscribed[ChannelSubcribedIndex] = true;
+                if (raiseError)
                 {
                     throw new InvalidOperationException($"Simulated error for {nameof(Channel)}.{nameof(Pusher.Subscribed)} {mockChannelName}.");
                 }
             };
 
-            Channel presenceChannel;
+
+            GenericPresenceChannel<FakeUserInfo> presenceChannel;
 
             // Act
             if (connectBeforeSubscribing)
@@ -197,27 +239,27 @@ namespace PusherClient.Tests.AcceptanceTests
             }
 
             subscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
-            errorEvent[0]?.WaitOne(TimeSpan.FromSeconds(5));
-            errorEvent[1]?.WaitOne(TimeSpan.FromSeconds(5));
+            errorEvent[PusherSubcribedIndex]?.WaitOne(TimeSpan.FromSeconds(5));
+            errorEvent[ChannelSubcribedIndex]?.WaitOne(TimeSpan.FromSeconds(5));
 
             // Assert
             ValidateSubscribedChannel(pusher, mockChannelName, presenceChannel);
-            Assert.IsTrue(channelSubscribed[0]);
-            Assert.IsTrue(channelSubscribed[1]);
-            if (raiseSubscribedError)
+            Assert.IsTrue(subscribed[PusherSubcribedIndex]);
+            Assert.IsTrue(subscribed[ChannelSubcribedIndex]);
+            if (raiseError)
             {
                 ValidateSubscribedExceptions(mockChannelName, errors);
             }
         }
 
-        private static async Task ConnectThenSubscribeTestAsync(Pusher pusher = null, bool raiseSubscribedError = false)
+        private static async Task ConnectThenSubscribeAsync(Pusher pusher = null, bool raiseSubscribedError = false)
         {
-            await SubscribeTestAsync(connectBeforeSubscribing: true, pusher, raiseSubscribedError).ConfigureAwait(false);
+            await SubscribeAsync(connectBeforeSubscribing: true, pusher, raiseSubscribedError).ConfigureAwait(false);
         }
 
-        private static async Task SubscribeThenConnectTestAsync(Pusher pusher = null, bool raiseSubscribedError = false)
+        private static async Task SubscribeThenConnectAsync(Pusher pusher = null, bool raiseSubscribedError = false)
         {
-            await SubscribeTestAsync(connectBeforeSubscribing: false, pusher, raiseSubscribedError).ConfigureAwait(false);
+            await SubscribeAsync(connectBeforeSubscribing: false, pusher, raiseSubscribedError).ConfigureAwait(false);
         }
 
         private static async Task SubscribeSameChannelTwiceAsync(bool connectBeforeSubscribing)
@@ -310,26 +352,56 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.AreEqual(1, numberOfCalls);
         }
 
-        private static async Task<IList<Pusher>> SubscribeMultipleMembersAsync(bool connectBeforeSubscribing, int numberOfMembers, string channelName)
+        private static void CheckIfAllMembersAdded(int numberOfMembers, ConcurrentDictionary<int, int> membersAddedCounter, AutoResetEvent memberAddedEvent, GenericPresenceChannel<FakeUserInfo> presenceChannel)
+        {
+            int channelId = presenceChannel.GetHashCode();
+            Dictionary<string, FakeUserInfo> members = presenceChannel.GetMembers();
+            int savedCount = 0;
+            if (!membersAddedCounter.TryAdd(channelId, members.Count))
+            {
+                savedCount = membersAddedCounter[channelId];
+            }
+
+            if (members.Count > savedCount)
+            {
+                membersAddedCounter[channelId] = members.Count;
+                if (members.Count == numberOfMembers)
+                {
+                    bool done = true;
+                    foreach (int memberCount in membersAddedCounter.Values)
+                    {
+                        if (memberCount != numberOfMembers)
+                        {
+                            done = false;
+                            break;
+                        }
+                    }
+
+                    if (done)
+                    {
+                        memberAddedEvent.Set();
+                    }
+                }
+            }
+        }
+
+        private static async Task<IList<Pusher>> SubscribeMultipleMembersAsync(bool connectBeforeSubscribing, int numberOfMembers, string channelName, bool raiseMemberAddedError = false)
         {
             // Arrange
             ChannelTypes channelType = ChannelTypes.Presence;
             AutoResetEvent subscribedEvent = new AutoResetEvent(false);
             List<Pusher> pusherMembers = new List<Pusher>(numberOfMembers);
-            ConcurrentDictionary<string, AutoResetEvent> memberAddedEvents = new ConcurrentDictionary<string, AutoResetEvent>();
+            ConcurrentDictionary<int, int> membersAddedCounter = new ConcurrentDictionary<int, int>();
+            AutoResetEvent memberAddedEvent = new AutoResetEvent(false);
             int subscribedCount = 0;
             int expectedSubscribedCount = numberOfMembers;
             for (int i = 1; i <= numberOfMembers; i++)
             {
                 Pusher pusher = PusherFactory.GetPusher(channelType: channelType, $"User{i}");
                 pusherMembers.Add(pusher);
-                pusher.Connected += (sender) =>
-                {
-                    memberAddedEvents[((Pusher)sender).SocketID] = new AutoResetEvent(false);
-                };
-
                 pusher.Subscribed += (sender, channel) =>
                 {
+                    CheckIfAllMembersAdded(numberOfMembers, membersAddedCounter, memberAddedEvent, channel as GenericPresenceChannel<FakeUserInfo>);
                     subscribedCount++;
                     if (subscribedCount == expectedSubscribedCount)
                     {
@@ -339,9 +411,6 @@ namespace PusherClient.Tests.AcceptanceTests
             }
 
             List<GenericPresenceChannel<FakeUserInfo>> presenceChannels = new List<GenericPresenceChannel<FakeUserInfo>>(pusherMembers.Count);
-            AutoResetEvent memberAddedEvent = new AutoResetEvent(false);
-            int addedCount = 0;
-            int expectedAddedCount = Factorial(pusherMembers.Count - 1);
 
             // Act
             if (connectBeforeSubscribing)
@@ -352,15 +421,33 @@ namespace PusherClient.Tests.AcceptanceTests
                 }
             }
 
+            AutoResetEvent memberAddedErrorEvent = raiseMemberAddedError ? new AutoResetEvent(false) : null;
             for (int i = 0; i < pusherMembers.Count; i++)
             {
+                pusherMembers[i].Error += (sender, error) =>
+                {
+                    System.Diagnostics.Trace.TraceError($"Pusher.Error handled:{Environment.NewLine}{error}");
+                    ValidateMemberAddedEventHandlerException(error, memberAddedErrorEvent);
+                };
+
                 var presenceChannel = await pusherMembers[i].SubscribePresenceAsync<FakeUserInfo>(channelName).ConfigureAwait(false);
                 presenceChannel.MemberAdded += (object sender, KeyValuePair<string, FakeUserInfo> member) =>
                 {
-                    addedCount++;
-                    if (addedCount == expectedAddedCount)
+                    string memberName = "Unknown";
+                    bool memberValid = ValidateMember(member);
+                    if (memberValid)
                     {
-                        memberAddedEvent.Set();
+                        memberName = member.Value.name;
+                    }
+
+                    if (memberValid)
+                    {
+                        CheckIfAllMembersAdded(numberOfMembers, membersAddedCounter, memberAddedEvent, sender as GenericPresenceChannel<FakeUserInfo>);
+                    }
+
+                    if (raiseMemberAddedError)
+                    {
+                        throw new InvalidOperationException($"Simulated error for member '{memberName}' when calling GenericPresenceChannel.MemberAdded.");
                     }
                 };
                 presenceChannels.Add(presenceChannel);
@@ -375,24 +462,95 @@ namespace PusherClient.Tests.AcceptanceTests
             }
 
             // Assert
-            Assert.IsTrue(subscribedEvent.WaitOne(TimeSpan.FromSeconds(10)));
-            Assert.IsTrue(memberAddedEvent.WaitOne(TimeSpan.FromSeconds(10)));
+            Assert.IsTrue(subscribedEvent.WaitOne(TimeSpan.FromMilliseconds(FakeAuthoriser.MaxLatency * numberOfMembers)));
+            Assert.IsTrue(memberAddedEvent.WaitOne(TimeSpan.FromMilliseconds(FakeAuthoriser.MaxLatency * numberOfMembers)));
             for (int i = 0; i < pusherMembers.Count; i++)
             {
                 ValidateSubscribedChannel(pusherMembers[i], channelName, presenceChannels[i], numMembersExpected: pusherMembers.Count);
             }
 
+            if (raiseMemberAddedError)
+            {
+                Assert.IsTrue(memberAddedErrorEvent.WaitOne(TimeSpan.FromSeconds(5)));
+            }
+
             return pusherMembers;
         }
 
-        private static async Task<IList<Pusher>> ConnectThenSubscribeMultipleMembersAsync(int numberOfMembers, string channelName)
+        private static async Task<IList<Pusher>> ConnectThenSubscribeMultipleMembersAsync(int numberOfMembers, string channelName, bool raiseMemberAddedError = false)
         {
-            return await SubscribeMultipleMembersAsync(connectBeforeSubscribing: true, numberOfMembers, channelName).ConfigureAwait(false);
+            return await SubscribeMultipleMembersAsync(connectBeforeSubscribing: true, numberOfMembers, channelName, raiseMemberAddedError).ConfigureAwait(false);
         }
 
-        private static async Task<IList<Pusher>> SubscribeThenConnectMultipleMembersAsync(int numberOfMembers, string channelName)
+        private static async Task<IList<Pusher>> SubscribeThenConnectMultipleMembersAsync(int numberOfMembers, string channelName, bool raiseMemberAddedError = false)
         {
-            return await SubscribeMultipleMembersAsync(connectBeforeSubscribing: false, numberOfMembers, channelName).ConfigureAwait(false);
+            return await SubscribeMultipleMembersAsync(connectBeforeSubscribing: false, numberOfMembers, channelName, raiseMemberAddedError).ConfigureAwait(false);
+        }
+
+        private static async Task RemoveMemberAsync(bool connectBeforeSubscribing, int numberOfMembers = 4, bool raiseMemberRemovedError = false)
+        {
+            // Arrange
+            int numMemberRemovedEvents = 0;
+            int expectedNumMemberRemovedEvents = numberOfMembers - 1;
+            int expectedNumMemberRemovedErrorEvents = raiseMemberRemovedError ? expectedNumMemberRemovedEvents : 0;
+            int numMemberRemovedErrors = 0;
+            string channelName = ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence);
+            AutoResetEvent memberRemovedEvent = new AutoResetEvent(false);
+            AutoResetEvent memberRemovedErrorEvent = raiseMemberRemovedError ? new AutoResetEvent(false) : null;
+
+            // Act
+            IList<Pusher> pusherMembers = await SubscribeMultipleMembersAsync(connectBeforeSubscribing: connectBeforeSubscribing, numberOfMembers, channelName).ConfigureAwait(false);
+            for (int i = 0; i < pusherMembers.Count; i++)
+            {
+                pusherMembers[i].Error += (sender, error) =>
+                {
+                    System.Diagnostics.Trace.TraceError($"Pusher.Error handled:{Environment.NewLine}{error}");
+                    numMemberRemovedErrors++;
+                    ValidateMemberRemovedEventHandlerException(error, expectedNumMemberRemovedErrorEvents, numMemberRemovedErrors, memberRemovedErrorEvent);
+                };
+
+                var presenceChannel = await pusherMembers[i].SubscribePresenceAsync<FakeUserInfo>(channelName).ConfigureAwait(false);
+                presenceChannel.MemberRemoved += (sender, member) =>
+                {
+                    string memberName = "Unknown";
+                    bool memberValid = ValidateMember(member);
+                    if (memberValid)
+                    {
+                        memberName = member.Value.name;
+                    }
+
+                    if (memberValid)
+                    {
+                        numMemberRemovedEvents++;
+                    }
+
+                    try
+                    {
+                        if (raiseMemberRemovedError)
+                        {
+                            throw new InvalidOperationException($"Simulated error for member '{memberName}' when calling GenericPresenceChannel.MemberRemoved.");
+                        }
+                    }
+                    finally
+                    {
+                        if (numMemberRemovedEvents == expectedNumMemberRemovedEvents)
+                        {
+                            memberRemovedEvent.Set();
+                        }
+                    }
+                };
+            }
+
+            await pusherMembers[0].DisconnectAsync().ConfigureAwait(false);
+
+            // Assert
+            Assert.IsTrue(memberRemovedEvent.WaitOne(TimeSpan.FromSeconds(5)));
+            if (raiseMemberRemovedError)
+            {
+                Assert.IsTrue(memberRemovedErrorEvent.WaitOne(TimeSpan.FromSeconds(5)));
+            }
+
+            Assert.AreEqual(expectedNumMemberRemovedErrorEvents, numMemberRemovedErrors, "# MemberRemoved errors");
         }
 
         private static void ValidateSubscribedChannel(Pusher pusher, string expectedChannelName, Channel channel, int numMembersExpected = 1)
@@ -444,21 +602,60 @@ namespace PusherClient.Tests.AcceptanceTests
             }
         }
 
-        private static void ValidateSubscribedExceptions(string mockChannelName, SubscribedDelegateException[] errors)
+        private static void ValidateSubscribedExceptions(string mockChannelName, SubscribedEventHandlerException[] errors)
         {
             foreach (var error in errors)
             {
                 Assert.IsNotNull(error, "Expected a SubscribedDelegateException error to be raised.");
-                Assert.IsNotNull(error.MessageData, nameof(SubscribedDelegateException.MessageData));
-                Assert.IsNotNull(error.Channel, nameof(SubscribedDelegateException.Channel));
+                Assert.IsNotNull(error.MessageData, nameof(SubscribedEventHandlerException.MessageData));
+                Assert.IsNotNull(error.Channel, nameof(SubscribedEventHandlerException.Channel));
                 Assert.AreEqual(mockChannelName, error.Channel.Name, nameof(Channel.Name));
             }
         }
 
-        private static int Factorial(int i)
+        private static bool ValidateMember(KeyValuePair<string, FakeUserInfo> member)
         {
-            if (i <= 1) return 1;
-            return i * Factorial(i - 1);
+            bool memberValid = !string.IsNullOrWhiteSpace(member.Key);
+            if (memberValid && member.Value == null) memberValid = false;
+            if (memberValid && string.IsNullOrWhiteSpace(member.Value.name)) memberValid = false;
+            return memberValid;
         }
+
+        private static void ValidateMemberAddedEventHandlerException(PusherException error, AutoResetEvent memberAddedErrorEvent)
+        {
+            if (error is MemberAddedEventHandlerException<FakeUserInfo> memberAddedException)
+            {
+                bool errorValid = memberAddedException.InnerException is InvalidOperationException;
+                if (errorValid && string.IsNullOrWhiteSpace(memberAddedException.MemberKey)) errorValid = false;
+                if (errorValid && memberAddedException.Member == null) errorValid = false;
+                if (errorValid && memberAddedException.Member.name == null) errorValid = false;
+                if (errorValid && memberAddedException.PusherCode != ErrorCodes.MemberAddedEventHandlerError) errorValid = false;
+                if (errorValid)
+                {
+                    memberAddedErrorEvent.Set();
+                }
+            }
+        }
+
+        private static void ValidateMemberRemovedEventHandlerException(PusherException error, int expectedNumMemberRemovedErrorEvents, int numMemberRemovedErrors, AutoResetEvent memberRemovedErrorEvent)
+        {
+            if (error is MemberRemovedEventHandlerException<FakeUserInfo> memberRemovedException)
+            {
+                bool errorValid = memberRemovedException.InnerException is InvalidOperationException;
+                if (errorValid && string.IsNullOrWhiteSpace(memberRemovedException.MemberKey)) errorValid = false;
+                if (errorValid && memberRemovedException.Member == null) errorValid = false;
+                if (errorValid && memberRemovedException.Member.name == null) errorValid = false;
+                if (errorValid && memberRemovedException.PusherCode != ErrorCodes.MemberRemovedEventHandlerError) errorValid = false;
+                if (errorValid)
+                {
+                    if (numMemberRemovedErrors == expectedNumMemberRemovedErrorEvents)
+                    {
+                        memberRemovedErrorEvent.Set();
+                    }
+                }
+            }
+        }
+
+        #endregion
     }
 }

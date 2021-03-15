@@ -1,15 +1,15 @@
 ﻿namespace PusherClient
 {
     /// <summary>
-    /// An enum representing the different error codes. Errors 4000 - 5003 are received back from the Pusher cluster.
-    /// Error codes above 7500 are for errors detected in the client.
+    /// An enum representing the different error codes. Errors 4000 - 4999 are received back from the Pusher cluster.
+    /// Error codes 5000 and above are for errors detected in the client.
     /// </summary>
     public enum ErrorCodes
     {
         /// <summary>
         /// Unknown error.
         /// </summary>
-        Unkown = 0,
+        Unknown = 0,
 
         /// <summary>
         /// The connection must be established over SSL.
@@ -57,8 +57,43 @@
         ChannelAuthorizerNotSet = 7500,
 
         /// <summary>
+        /// An error was caught when attempting to authorize a presence or private channel. For example; a 404 Not Found HTTP error was raised by the Authorizer.
+        /// </summary>
+        ChannelAuthorizationError = 7501,
+
+        /// <summary>
         /// The presence or private channel is unauthorized. Received a 403 Forbidden HTTP error from the Authorizer.
         /// </summary>
-        ChannelUnauthorized = 7501,
+        ChannelUnauthorized = 7502,
+
+        /// <summary>
+        /// An error was caught when emitting an event to the Pusher.Connected event handler.
+        /// </summary>
+        ConnectedEventHandlerError = 7601,
+
+        /// <summary>
+        /// An error was caught when emitting an event to the Pusher.ConnectionStateChanged event handler.
+        /// </summary>
+        ConnectionStateChangedEventHandlerError = 7602,
+
+        /// <summary>
+        /// An error was caught when emitting an event to the Pusher.Disconnected event handler.
+        /// </summary>
+        DisconnectedEventHandlerError = 7603,
+
+        /// <summary>
+        /// An error was caught when emitting an event to the GenericPresenceChannel.MemberAdded event handler.
+        /// </summary>
+        MemberAddedEventHandlerError = 7604,
+
+        /// <summary>
+        /// An error was caught when emitting an event to the GenericPresenceChannel.MemberRemoved event handler.
+        /// </summary>
+        MemberRemovedEventHandlerError = 7605,
+
+        /// <summary>
+        /// An error was caught when emitting an event to the Pusher.Subscribed or Channel.Subscribed event handlers.
+        /// </summary>
+        SubscribedEventHandlerError = 7606,
     }
 }

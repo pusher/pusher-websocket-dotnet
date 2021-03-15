@@ -72,6 +72,7 @@ namespace PusherClient.Tests.UnitTests
             Assert.IsNotNull(exception, $"Expecting a {nameof(ChannelUnauthorizedException)}");
             Assert.AreEqual(channelName, exception.ChannelName, nameof(ChannelUnauthorizedException.ChannelName));
             Assert.AreEqual(socketId, exception.SocketID, nameof(ChannelUnauthorizedException.SocketID));
+            Assert.AreEqual(ErrorCodes.ChannelUnauthorized, exception.PusherCode);
         }
 
         [Test]
@@ -95,20 +96,21 @@ namespace PusherClient.Tests.UnitTests
                         .WithBody(FakeTokenAuth)
                 );
 
-            HttpRequestException exception = null;
+            ChannelAuthorizationFailureException exception = null;
             var testHttpAuthorizer = new PusherClient.HttpAuthorizer(hostUrl + "/notfound");
 
             try
             {
                 await testHttpAuthorizer.AuthorizeAsync(channelName, socketId).ConfigureAwait(false);
             }
-            catch (HttpRequestException e)
+            catch (ChannelAuthorizationFailureException e)
             {
                 exception = e;
             }
 
             Assert.IsNotNull(exception, $"Expecting a {nameof(HttpRequestException)}");
             Assert.IsTrue(exception.Message.Contains("404"));
+            Assert.AreEqual(ErrorCodes.ChannelAuthorizationError, exception.PusherCode);
         }
     }
 }

@@ -8,11 +8,6 @@ namespace PusherClient
     public class PusherException : Exception
     {
         /// <summary>
-        /// Gets the Pusher error code
-        /// </summary>
-        public ErrorCodes PusherCode { get; }
-
-        /// <summary>
         /// Creates a new instance of a <see cref="PusherException"/> class.
         /// </summary>
         /// <param name="message">The exception message.</param>
@@ -34,5 +29,16 @@ namespace PusherClient
         {
             PusherCode = code;
         }
+
+        /// <summary>
+        /// Gets the Pusher error code
+        /// </summary>
+        public ErrorCodes PusherCode { get; }
+
+        /// <summary>
+        /// Gets or sets whether this exception has been emitted to the Pusher.Error event handler.
+        /// </summary>
+        /// <remarks>This property helps prevent duplicate error events from being emitted.</remarks>
+        public bool EmittedToErrorHandler { get; set; }
     }
 }

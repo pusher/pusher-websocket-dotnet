@@ -8,6 +8,6 @@ namespace PusherClient
 
         Task SendUnsubscribe(Channel channel);
 
-        void RaiseSubscribedError(PusherException error);
+        void RaiseChannelError(PusherException error);
     }
 }

@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
@@ -73,15 +74,35 @@ namespace PusherClient
         {
             var member = ParseMember(data);
             Members[member.Key] = member.Value;
-            MemberAdded?.Invoke(this, member);
+            if (MemberAdded != null)
+            {
+                try
+                {
+                    MemberAdded.Invoke(this, member);
+                }
+                catch(Exception e)
+                {
+                    _pusher.RaiseChannelError(new MemberAddedEventHandlerException<T>(member.Key, member.Value, e));
+                }
+            }
         }
 
         void IPresenceChannelManagement.RemoveMember(string data)
         {
-            var member = ParseMember(data);
-            if (Members.TryRemove(member.Key, out T _) && MemberRemoved != null)
+            var parsedMember = ParseMember(data);
+            if (Members.TryRemove(parsedMember.Key, out T member))
             {
-                MemberRemoved.Invoke(this, member);
+                if (MemberRemoved != null)
+                {
+                    try
+                    {
+                        MemberRemoved.Invoke(this, new KeyValuePair<string, T>(parsedMember.Key, member));
+                    }
+                    catch (Exception e)
+                    {
+                        _pusher.RaiseChannelError(new MemberRemovedEventHandlerException<T>(parsedMember.Key, member, e));
+                    }
+                }
             }
         }
 

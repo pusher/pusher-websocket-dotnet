@@ -250,57 +250,19 @@ namespace PusherClient.Tests.AcceptanceTests
         [Test]
         public async Task ConnectThenSubscribeUnauthorizedChannelsAsync()
         {
-            // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeUnauthoriser());
-            var subscribedEvent = new AutoResetEvent(false);
-            List<string> channelNames = new List<string>
-            {
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private) + "-unauth",
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence) + "-unauth",
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
-            };
+            await SubscribeUnauthorizedChannelsAsync(connectBeforeSubscribing: true).ConfigureAwait(false);
+        }
 
-            pusher.Subscribed += (sender, channel) =>
-            {
-                if (channel.Name == channelNames[2])
-                {
-                    subscribedEvent.Set();
-                }
-            };
+        [Test]
+        public async Task ConnectThenSubscribeAuthorizationFailureChannelsAsync()
+        {
+            await SubscribeAuthorizationFailureChannelsAsync(connectBeforeSubscribing: true).ConfigureAwait(false);
+        }
 
-            int exceptionCount = 0;
-            int errorCount = 0;
-            pusher.Error += (sender, error) =>
-            {
-                if (error is ChannelUnauthorizedException)
-                {
-                    errorCount++;
-                }
-            };
-
-            // Act
-            await pusher.ConnectAsync().ConfigureAwait(false);
-            foreach (string channelName in channelNames)
-            {
-                try
-                {
-                    await pusher.SubscribeAsync(channelName).ConfigureAwait(false);
-                }
-                catch (ChannelUnauthorizedException e)
-                {
-                    exceptionCount++;
-                    Channel channel = e.Channel;
-                    Assert.IsNotNull(channel);
-                    Assert.IsFalse(channel.IsSubscribed);
-                }
-            }
-
-            subscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
-
-            // Assert
-            Assert.AreEqual(2, exceptionCount, "Number of exceptions expected");
-            Assert.AreEqual(2, errorCount, "Number of errors expected");
-            AssertUnauthorized(pusher, channelNames);
+        [Test]
+        public async Task ConnectThenSubscribeFailureChannelsAsync()
+        {
+            await SubscribeFailureChannelsAsync(connectBeforeSubscribing: true).ConfigureAwait(false);
         }
 
         #endregion

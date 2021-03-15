@@ -13,7 +13,7 @@ namespace PusherClient
         /// <param name="state">The state of the connection at the time the error.</param>
         /// <param name="innerException">The exception that is the cause of the error.</param>
         public WebsocketException(ConnectionState state, Exception innerException)
-            : base($"Webstocket Error emitted:{Environment.NewLine}{innerException.Message}", ErrorCodes.Unkown, innerException)
+            : base($"Webstocket Error emitted:{Environment.NewLine}{innerException.Message}", ErrorCodes.Unknown, innerException)
         {
             this.State = state;
         }

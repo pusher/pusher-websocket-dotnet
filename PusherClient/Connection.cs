@@ -82,21 +82,24 @@ namespace PusherClient
 
         public async Task DisconnectAsync()
         {
-            if (_websocket != null && State != ConnectionState.Disconnected)
+            if (_websocket != null)
             {
-                if (_pusher.IsTracingEnabled)
+                if (State != ConnectionState.Disconnected)
                 {
-                    Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Disconnecting from: {_url}");
+                    if (_pusher.IsTracingEnabled)
+                    {
+                        Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Disconnecting from: {_url}");
+                    }
+
+                    ChangeState(ConnectionState.Disconnecting);
+
+                    await Task.Run(() =>
+                    {
+                        _websocket.Close();
+                    }).ConfigureAwait(false);
+
+                    DisposeWebsocket();
                 }
-
-                ChangeState(ConnectionState.Disconnecting);
-
-                await Task.Run(() =>
-                {
-                    _websocket.Close();
-                }).ConfigureAwait(false);
-
-                DisposeWebsocket();
             }
         }
 
@@ -147,8 +150,13 @@ namespace PusherClient
 
             var jObject = JObject.Parse(e.Message);
 
-            if (jObject["data"] != null && jObject["data"].Type != JTokenType.String)
-                jObject["data"] = jObject["data"].ToString(Formatting.None);
+            if (jObject["data"] != null)
+            {
+                if (jObject["data"].Type != JTokenType.String)
+                {
+                    jObject["data"] = jObject["data"].ToString(Formatting.None);
+                }
+            }
 
             var jsonMessage = jObject.ToString(Formatting.None);
             var template = new { @event = string.Empty, data = string.Empty, channel = string.Empty };
@@ -256,21 +264,24 @@ namespace PusherClient
                     ChangeState(ConnectionState.WaitingToReconnect);
                     Task.WaitAll(Task.Delay(_backOffMillis));
 
-                    if (_websocket != null && State != ConnectionState.Disconnected)
+                    if (_websocket != null)
                     {
-                        if (_pusher.IsTracingEnabled)
+                        if (State != ConnectionState.Disconnected)
                         {
-                            Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Attempting websocket reconnection");
-                        }
+                            if (_pusher.IsTracingEnabled)
+                            {
+                                Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Attempting websocket reconnection");
+                            }
 
-                        ChangeState(ConnectionState.Connecting);
-                        _websocket.MessageReceived += WebsocketMessageReceived;
-                        _websocket.Closed += WebsocketAutoReconnect;
-                        _websocket.Error += WebsocketError;
-                        _websocket.Open();
+                            ChangeState(ConnectionState.Connecting);
+                            _websocket.MessageReceived += WebsocketMessageReceived;
+                            _websocket.Closed += WebsocketAutoReconnect;
+                            _websocket.Error += WebsocketError;
+                            _websocket.Open();
+                        }
                     }
                 }
-                catch(Exception error)
+                catch (Exception error)
                 {
                     RaiseError(new ReconnectionException(error));
                 }
@@ -282,11 +293,14 @@ namespace PusherClient
             var template = new { message = string.Empty, code = (int?)null };
             var parsed = JsonConvert.DeserializeAnonymousType(data, template);
 
-            ErrorCodes error = ErrorCodes.Unkown;
+            ErrorCodes error = ErrorCodes.Unknown;
 
-            if (parsed.code != null && Enum.IsDefined(typeof(ErrorCodes), parsed.code))
+            if (parsed.code.HasValue)
             {
-                error = (ErrorCodes)parsed.code;
+                if (Enum.IsDefined(typeof(ErrorCodes), parsed.code))
+                {
+                    error = (ErrorCodes)parsed.code;
+                }
             }
 
             RaiseError(new PusherException(parsed.message, error));
@@ -302,7 +316,10 @@ namespace PusherClient
         {
             _currentError = error;
             _pusher.ErrorOccured(error);
-            _connectionSemaphore?.Release();
+            if (_connectionSemaphore != null)
+            {
+                _connectionSemaphore.Release();
+            }
         }
     }
 }

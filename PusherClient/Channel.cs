@@ -9,7 +9,7 @@ namespace PusherClient
     /// </summary>
     public class Channel : EventEmitter
     {
-        private readonly ITriggerChannels _pusher;
+        internal readonly ITriggerChannels _pusher;
 
         /// <summary>
         /// Fired when the Channel has successfully been subscribed to.
@@ -57,13 +57,16 @@ namespace PusherClient
             if (!IsSubscribed)
             {
                 IsSubscribed = true;
-                try
+                if (Subscribed != null)
                 {
-                    Subscribed?.Invoke(this);
-                }
-                catch (Exception error)
-                {
-                    _pusher.RaiseSubscribedError(new SubscribedDelegateException(this, error, data));
+                    try
+                    {
+                        Subscribed.Invoke(this);
+                    }
+                    catch (Exception error)
+                    {
+                        _pusher.RaiseChannelError(new SubscribedEventHandlerException(this, error, data));
+                    }
                 }
             }
         }

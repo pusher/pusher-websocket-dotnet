@@ -119,7 +119,7 @@ namespace PusherClient
                         }
                         catch (Exception error)
                         {
-                            InvokeErrorHandler(new ConnectedDelegateException(error));
+                            InvokeErrorHandler(new ConnectedEventHandlerException(error));
                         }
                     });
                 }
@@ -137,7 +137,7 @@ namespace PusherClient
                         }
                         catch (Exception error)
                         {
-                            InvokeErrorHandler(new DisconnectedDelegateException(error));
+                            InvokeErrorHandler(new DisconnectedEventHandlerException(error));
                         }
                     });
                 }
@@ -153,7 +153,7 @@ namespace PusherClient
                     }
                     catch (Exception error)
                     {
-                        InvokeErrorHandler(new ConnectionStateChangedDelegateException(state, error));
+                        InvokeErrorHandler(new ConnectionStateChangedEventHandlerException(state, error));
                     }
                 });
             }
@@ -214,20 +214,27 @@ namespace PusherClient
                         }
                         catch (Exception error)
                         {
-                            InvokeErrorHandler(new SubscribedDelegateException(channel, error, data));
+                            InvokeErrorHandler(new SubscribedEventHandlerException(channel, error, data));
                         }
                     });
                 }
 
-                channel._subscribeCompleted?.Release();
+                if (channel._subscribeCompleted != null)
+                {
+                    channel._subscribeCompleted.Release();
+                }
             }
         }
 
         void IPusher.SubscriptionFailed(string channelName, string data)
         {
-            SubscriptionException error = new SubscriptionException(channelName, data);
+            ChannelException error = new ChannelException($"Unexpected error subscribing to channel {channelName}", ErrorCodes.SubscriptionError, channelName, _connection.SocketId)
+            {
+                MessageData = data,
+            };
             if (Channels.TryGetValue(channelName, out Channel channel))
             {
+                error.Channel = channel;
                 channel._subscriptionError = error;
                 channel._subscribeCompleted?.Release();
             }
@@ -288,10 +295,13 @@ namespace PusherClient
 
             try
             {
-                if (_connection != null && State != ConnectionState.Disconnected)
+                if (_connection != null)
                 {
-                    MarkChannelsAsUnsubscribed();
-                    await _connection.DisconnectAsync().ConfigureAwait(false);
+                    if (State != ConnectionState.Disconnected)
+                    {
+                        MarkChannelsAsUnsubscribed();
+                        await _connection.DisconnectAsync().ConfigureAwait(false);
+                    }
                 }
             }
             finally
@@ -441,68 +451,20 @@ namespace PusherClient
 
             if (State == ConnectionState.Connected)
             {
-                bool raiseError = true;
                 await channel._subscribeLock.WaitAsync().ConfigureAwait(false);
                 try
                 {
-                    if (!channel.IsSubscribed && Channels.ContainsKey(channelName))
+                    if (!channel.IsSubscribed)
                     {
-                        channel._subscribeCompleted = new SemaphoreSlim(0, 1);
-                        try
+                        if (Channels.ContainsKey(channelName))
                         {
-                            string message;
-                            if (channel.ChannelType != ChannelTypes.Public)
-                            {
-                                try
-                                {
-                                    string jsonAuth;
-                                    if (_options.Authorizer is IAuthorizerAsync asyncAuthorizer)
-                                    {
-                                        jsonAuth = await asyncAuthorizer.AuthorizeAsync(channelName, _connection.SocketId).ConfigureAwait(false);
-                                    }
-                                    else
-                                    {
-                                        jsonAuth = _options.Authorizer.Authorize(channelName, _connection.SocketId);
-                                    }
-
-                                    message = CreateAuthorizedChannelSubscribeMessage(channelName, jsonAuth);
-                                }
-                                catch (ChannelUnauthorizedException unauthorizedEx)
-                                {
-                                    if (Channels.TryRemove(channelName, out Channel unauthorizedChannel))
-                                    {
-                                        unauthorizedChannel.IsSubscribed = false;
-                                        unauthorizedEx.Channel = unauthorizedChannel;
-                                    }
-
-                                    throw unauthorizedEx;
-                                }
-                            }
-                            else
-                            {
-                                message = CreateChannelSubscribeMessage(channelName);
-                            }
-
-                            await _connection.SendAsync(message).ConfigureAwait(false);
-
-                            await channel._subscribeCompleted.WaitAsync().ConfigureAwait(false);
-                            if (channel._subscriptionError != null)
-                            {
-                                // Error already raised in IPusher.SubscriptionFailed
-                                raiseError = false;
-                                throw channel._subscriptionError;
-                            }
-                        }
-                        finally
-                        {
-                            channel._subscribeCompleted.Dispose();
-                            channel._subscribeCompleted = null;
+                            await SubscribeChannelAsync(channel).ConfigureAwait(false);
                         }
                     }
                 }
                 catch (PusherException pusherError)
                 {
-                    if (raiseError) RaiseError(pusherError);
+                    HandleSubscribeChannelError(channel, pusherError);
                     throw;
                 }
                 finally
@@ -512,6 +474,79 @@ namespace PusherClient
             }
 
             return channel;
+        }
+
+        private async Task SubscribeChannelAsync(Channel channel)
+        {
+            string channelName = channel.Name;
+            ErrorEventHandler errorHandler = null;
+            channel._subscribeCompleted = new SemaphoreSlim(0, 1);
+            try
+            {
+                channel._subscriptionError = null;
+                errorHandler = (sender, error) =>
+                {
+                    if ((int)error.PusherCode < 5000)
+                    {
+                        // If we receive an error from the Pusher cluster then we need to raise a channel subscription error
+                        channel._subscriptionError = new ChannelException(ErrorCodes.SubscriptionError, channel.Name, _connection.SocketId, error);
+                        if (channel._subscribeCompleted != null)
+                        {
+                            channel._subscribeCompleted.Release();
+                        }
+                    }
+                };
+                Error += errorHandler;
+                string message;
+                if (channel.ChannelType != ChannelTypes.Public)
+                {
+                    string jsonAuth;
+                    if (_options.Authorizer is IAuthorizerAsync asyncAuthorizer)
+                    {
+                        jsonAuth = await asyncAuthorizer.AuthorizeAsync(channelName, _connection.SocketId).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        jsonAuth = _options.Authorizer.Authorize(channelName, _connection.SocketId);
+                    }
+
+                    message = CreateAuthorizedChannelSubscribeMessage(channelName, jsonAuth);
+                }
+                else
+                {
+                    message = CreateChannelSubscribeMessage(channelName);
+                }
+
+                await _connection.SendAsync(message).ConfigureAwait(false);
+
+                await channel._subscribeCompleted.WaitAsync().ConfigureAwait(false);
+                if (channel._subscriptionError != null)
+                {
+                    throw channel._subscriptionError;
+                }
+            }
+            finally
+            {
+                if (errorHandler != null)
+                {
+                    Error -= errorHandler;
+                }
+
+                channel._subscribeCompleted.Dispose();
+                channel._subscribeCompleted = null;
+            }
+        }
+
+        private void HandleSubscribeChannelError(Channel channel, PusherException pusherError)
+        {
+            channel.IsSubscribed = false;
+            if (pusherError is ChannelException channelException)
+            {
+                channelException.Channel = channel;
+                Channels.TryRemove(channel.Name, out _);
+            }
+
+            RaiseError(pusherError);
         }
 
         private string CreateAuthorizedChannelSubscribeMessage(string channelName, string jsonAuth)
@@ -615,37 +650,58 @@ namespace PusherClient
             }
         }
 
-        void ITriggerChannels.RaiseSubscribedError(PusherException error)
+        void ITriggerChannels.RaiseChannelError(PusherException error)
         {
-            RaiseError(error);
+            RaiseError(error, runAsNewTask: false);
         }
 
-        private void RaiseError(PusherException error)
+        private void RaiseError(PusherException error, bool runAsNewTask = true)
         {
-            if (Error != null)
+            if (Error != null && !error.EmittedToErrorHandler)
             {
-                Task.Run(() =>
+                if (runAsNewTask)
+                {
+                    Task.Run(() =>
+                    {
+                        InvokeErrorHandler(error);
+                    });
+                }
+                else
                 {
                     InvokeErrorHandler(error);
-                });
+                }
+            }
+            else
+            {
+                error.EmittedToErrorHandler = true;
             }
         }
 
         private void InvokeErrorHandler(PusherException error)
         {
-            if (Error != null)
+            try
             {
-                try
+                if (Error != null)
                 {
-                    Error.Invoke(this, error);
-                }
-                catch (Exception e)
-                {
-                    if (Options.IsTracingEnabled)
+                    if (!error.EmittedToErrorHandler)
                     {
-                        Trace.TraceInformation($"Error caught invoking delegate Pusher.Error:{Environment.NewLine}{e}");
+                        try
+                        {
+                            Error.Invoke(this, error);
+                        }
+                        catch (Exception e)
+                        {
+                            if (Options.IsTracingEnabled)
+                            {
+                                Trace.TraceInformation($"Error caught invoking delegate Pusher.Error:{Environment.NewLine}{e}");
+                            }
+                        }
                     }
                 }
+            }
+            finally
+            {
+                error.EmittedToErrorHandler = true;
             }
         }
 

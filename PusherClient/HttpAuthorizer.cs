@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 
@@ -60,13 +61,20 @@ namespace PusherClient
                 using (HttpContent content = new FormUrlEncodedContent(data))
                 {
                     HttpResponseMessage response = await httpClient.PostAsync(_authEndpoint, content).ConfigureAwait(false);
-                    if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                    if (response.StatusCode == HttpStatusCode.Forbidden)
                     {
-                        throw new ChannelUnauthorizedException(channelName, socketId);
+                        throw new ChannelUnauthorizedException(_authEndpoint.OriginalString, channelName, socketId);
                     }
 
-                    response.EnsureSuccessStatusCode();
-                    authToken = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    try
+                    {
+                        response.EnsureSuccessStatusCode();
+                        authToken = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    }
+                    catch(Exception e)
+                    {
+                        throw new ChannelAuthorizationFailureException(ErrorCodes.ChannelAuthorizationError, _authEndpoint.OriginalString, channelName, socketId, e);
+                    }
                 }
             }
 
