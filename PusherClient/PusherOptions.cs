@@ -26,5 +26,7 @@
         public bool IsTracingEnabled { get; set; }
 
         internal string Host => $"ws-{Cluster}.pusher.com";
+
+        internal int MaxDegreeOfParallelism { get; } = 4;
     }
 }

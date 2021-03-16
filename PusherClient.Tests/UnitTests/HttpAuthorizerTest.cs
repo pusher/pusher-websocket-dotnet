@@ -108,7 +108,7 @@ namespace PusherClient.Tests.UnitTests
                 exception = e;
             }
 
-            Assert.IsNotNull(exception, $"Expecting a {nameof(HttpRequestException)}");
+            Assert.IsNotNull(exception, $"Expecting a {nameof(ChannelAuthorizationFailureException)}");
             Assert.IsTrue(exception.Message.Contains("404"));
             Assert.AreEqual(ErrorCodes.ChannelAuthorizationError, exception.PusherCode);
         }

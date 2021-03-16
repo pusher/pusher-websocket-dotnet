@@ -31,7 +31,7 @@ namespace PusherClient
         /// <param name="socketId">The socket ID used in the authorization attempt.</param>
         /// <param name="innerException">The exception that caused the current exception.</param>
         public ChannelAuthorizationFailureException(ErrorCodes code, string authorizationEndpoint, string channelName, string socketId, Exception innerException)
-            : base($"Error authorizing channel:{Environment.NewLine}{innerException.Message}", code, channelName, socketId, innerException)
+            : base($"Error authorizing channel {channelName}:{Environment.NewLine}{innerException.Message}", code, channelName, socketId, innerException)
         {
             this.AuthorizationEndpoint = authorizationEndpoint;
         }

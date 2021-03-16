@@ -4,9 +4,9 @@ namespace PusherClient
 {
     internal interface ITriggerChannels
     {
-        Task Trigger(string channelName, string eventName, object obj);
+        Task TriggerAsync(string channelName, string eventName, object obj);
 
-        Task SendUnsubscribe(Channel channel);
+        Task ChannelUnsubscribeAsync(string channelName);
 
         void RaiseChannelError(PusherException error);
     }

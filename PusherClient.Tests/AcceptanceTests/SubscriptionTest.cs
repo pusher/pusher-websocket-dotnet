@@ -11,15 +11,11 @@ namespace PusherClient.Tests.AcceptanceTests
     [TestFixture]
     public partial class SubscriptionTest
     {
-         [Test]
+        #region Public channel tests
+
+        [Test]
         public async Task PusherShouldUnsubscribeSuccessfullyWhenTheRequestIsMadeViaTheChannelAsync()
         {
-            /*
-             *  This test is for exisitng functionality that is wrong. 
-             *  Unsubscribe should really remove the subscription and not just mark IsSubscribed to false.
-             *  If you disconnect and then reconnect the channel will be subscribed again.
-             */
-
             // Arrange
             var pusher = PusherFactory.GetPusher();
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName();
@@ -30,7 +26,213 @@ namespace PusherClient.Tests.AcceptanceTests
             channel.Unsubscribe();
 
             // Assert
-            ValidateDisconnectedChannel(pusher, mockChannelName, channel, ChannelTypes.Public);
+            ValidateUnsubscribedChannel(pusher, channel);
+        }
+
+        [Test]
+        public async Task SubscribeWithoutConnectingPublicChannelAsync()
+        {
+            await SubscribeWithoutConnectingTestAsync(ChannelTypes.Public).ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task SubscribeThenUnsubscribeWithoutConnectingPublicChannelAsync()
+        {
+            await SubscribeThenUnsubscribeWithoutConnectingTestAsync(ChannelTypes.Public).ConfigureAwait(false);
+        }
+
+        #endregion
+
+        #region Private channel tests
+
+        [Test]
+        public async Task SubscribeWithoutConnectingPrivateChannelAsync()
+        {
+            await SubscribeWithoutConnectingTestAsync(ChannelTypes.Private).ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task SubscribeThenUnsubscribeWithoutConnectingPrivateChannelAsync()
+        {
+            await SubscribeThenUnsubscribeWithoutConnectingTestAsync(ChannelTypes.Private).ConfigureAwait(false);
+        }
+
+        #endregion
+
+        #region Presence channel tests
+
+        [Test]
+        public async Task SubscribeWithoutConnectingPresenceChannelAsync()
+        {
+            await SubscribeWithoutConnectingTestAsync(ChannelTypes.Presence).ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task SubscribeThenUnsubscribeWithoutConnectingPresenceChannelAsync()
+        {
+            await SubscribeThenUnsubscribeWithoutConnectingTestAsync(ChannelTypes.Presence).ConfigureAwait(false);
+        }
+
+        #endregion
+
+        #region Combination tests
+
+        [Test]
+        public async Task ConnectThenSubscribeThenUnsubscribeMultipleChannelsTest()
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
+            List<string> channelNames = CreateChannelNames();
+
+            // Act
+            await SubscribeMultipleChannelsTestAsync(connectBeforeSubscribing: true, pusher, channelNames).ConfigureAwait(false);
+            IList<Channel> channels = pusher.GetAllChannels();
+            foreach (string channelName in channelNames)
+            {
+                await pusher.UnsubscribeAsync(channelName).ConfigureAwait(false);
+            }
+
+            // Assert
+            foreach (Channel channel in channels)
+            {
+                ValidateUnsubscribedChannel(pusher, channel);
+            }
+        }
+
+        [Test]
+        public async Task ConnectThenSubscribeThenUnsubscribeAllMultipleChannelsTest()
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
+            List<string> channelNames = CreateChannelNames();
+
+            // Act
+            await SubscribeMultipleChannelsTestAsync(connectBeforeSubscribing: true, pusher, channelNames).ConfigureAwait(false);
+            IList<Channel> channels = pusher.GetAllChannels();
+            await pusher.UnsubscribeAllAsync().ConfigureAwait(false);
+
+            // Assert
+            foreach (Channel channel in channels)
+            {
+                ValidateUnsubscribedChannel(pusher, channel);
+            }
+        }
+
+        [Test]
+        public async Task SubscribeThenConnectThenUnsubscribeMultipleChannelsTest()
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
+            List<string> channelNames = CreateChannelNames();
+
+            // Act
+            foreach (string channelName in channelNames)
+            {
+                await pusher.SubscribeAsync(channelName).ConfigureAwait(false);
+            }
+
+            await pusher.ConnectAsync().ConfigureAwait(false);
+            IList<Channel> channels = pusher.GetAllChannels();
+            foreach (string channelName in channelNames)
+            {
+                await pusher.UnsubscribeAsync(channelName).ConfigureAwait(false);
+            }
+
+            // Assert
+            foreach (Channel channel in channels)
+            {
+                ValidateUnsubscribedChannel(pusher, channel);
+            }
+        }
+
+        [Test]
+        public async Task SubscribeThenConnectThenUnsubscribeAllMultipleChannelsTest()
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
+            List<string> channelNames = CreateChannelNames();
+
+            // Act
+            foreach (string channelName in channelNames)
+            {
+                await pusher.SubscribeAsync(channelName).ConfigureAwait(false);
+            }
+
+            await pusher.ConnectAsync().ConfigureAwait(false);
+            IList<Channel> channels = pusher.GetAllChannels();
+            await pusher.UnsubscribeAllAsync().ConfigureAwait(false);
+
+            // Assert
+            foreach (Channel channel in channels)
+            {
+                ValidateUnsubscribedChannel(pusher, channel);
+            }
+        }
+
+        [Test]
+        public async Task UnsubscribeWithBacklogTest()
+        {
+            /*
+             *  Test provides code coverage for Pusher.Backlog scenarios.
+             */
+
+            // Arrange
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
+            List<string> channelNames = CreateChannelNames();
+
+            // Act
+            await SubscribeMultipleChannelsTestAsync(connectBeforeSubscribing: true, pusher, channelNames).ConfigureAwait(false);
+            IList<Channel> channels = pusher.GetAllChannels();
+            await pusher.DisconnectAsync().ConfigureAwait(false);
+            foreach (string channelName in channelNames)
+            {
+                await pusher.UnsubscribeAsync(channelName).ConfigureAwait(false);
+            }
+
+            await pusher.ConnectAsync().ConfigureAwait(false);
+
+            // Assert
+            foreach (Channel channel in channels)
+            {
+                ValidateUnsubscribedChannel(pusher, channel);
+            }
+        }
+
+        [Test]
+        public async Task UnsubscribeAllWithBacklogTest()
+        {
+            /*
+             *  Test provides code coverage for Pusher.Backlog scenarios.
+             */
+
+            // Arrange
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
+            List<string> channelNames = CreateChannelNames();
+
+            // Act
+            await SubscribeMultipleChannelsTestAsync(connectBeforeSubscribing: true, pusher, channelNames).ConfigureAwait(false);
+            IList<Channel> channels = pusher.GetAllChannels();
+            await pusher.DisconnectAsync().ConfigureAwait(false);
+            await pusher.UnsubscribeAllAsync().ConfigureAwait(false);
+
+            await pusher.ConnectAsync().ConfigureAwait(false);
+
+            // Assert
+            foreach (Channel channel in channels)
+            {
+                ValidateUnsubscribedChannel(pusher, channel);
+            }
+        }
+
+        #endregion
+
+        #region Validation functions
+
+        private static void ValidateUnsubscribedChannel(Pusher pusher, Channel unsubscribedChannel)
+        {
+            Assert.IsNotNull(unsubscribedChannel);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(unsubscribedChannel.Name));
+            Assert.IsNull(pusher.GetChannel(unsubscribedChannel.Name), $"Channel {unsubscribedChannel.Name} should not exist.");
         }
 
         private static void ValidateSubscribedChannel(Pusher pusher, string expectedChannelName, Channel channel, ChannelTypes expectedChannelType)
@@ -115,6 +317,50 @@ namespace PusherClient.Tests.AcceptanceTests
                     Assert.IsNull(channel, $"Channel {channelName} should not be found");
                 }
             }
+        }
+
+        #endregion
+
+        #region Subscribe test methods
+
+        private static List<string> CreateChannelNames()
+        {
+            return new List<string>
+            {
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private),
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence),
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private),
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence),
+            };
+        }
+
+        private static async Task SubscribeWithoutConnectingTestAsync(ChannelTypes channelType)
+        {
+            // Arrange
+            Pusher pusher = PusherFactory.GetPusher(channelType: channelType);
+            string mockChannelName = ChannelNameFactory.CreateUniqueChannelName(channelType: channelType);
+
+            // Act
+            Channel subscribedChannel = await pusher.SubscribeAsync(mockChannelName).ConfigureAwait(false);
+
+            // Assert
+            ValidateDisconnectedChannel(pusher, mockChannelName, subscribedChannel, channelType);
+        }
+
+        private static async Task SubscribeThenUnsubscribeWithoutConnectingTestAsync(ChannelTypes channelType)
+        {
+            // Arrange
+            string mockChannelName = ChannelNameFactory.CreateUniqueChannelName(channelType: channelType);
+            Pusher pusher = PusherFactory.GetPusher(channelType: channelType);
+
+            // Act
+            Channel subscribedChannel = await pusher.SubscribeAsync(mockChannelName).ConfigureAwait(false);
+            await pusher.UnsubscribeAsync(subscribedChannel.Name).ConfigureAwait(false);
+
+            // Assert
+            ValidateUnsubscribedChannel(pusher, subscribedChannel);
         }
 
         private static async Task SubscribeTestAsync(bool connectBeforeSubscribing, ChannelTypes channelType, Pusher pusher = null, bool raiseSubscribedError = false)
@@ -594,5 +840,7 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.AreEqual(expectedErrorCount, errorCount, "# Errors expected");
             AssertUnauthorized(pusher, channelNames);
         }
+
+        #endregion
     }
 }

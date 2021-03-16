@@ -60,7 +60,6 @@ namespace PusherClient
         private static string Version { get; } = typeof(Pusher).GetTypeInfo().Assembly.GetName().Version.ToString(3);
 
         private readonly string _applicationKey;
-        private readonly PusherOptions _options;
 
         private IConnection _connection;
 
@@ -79,10 +78,12 @@ namespace PusherClient
         /// </summary>
         private ConcurrentDictionary<string, Channel> Channels { get; } = new ConcurrentDictionary<string, Channel>();
 
+        private ConcurrentBag<Channel> Backlog { get; } = new ConcurrentBag<Channel>();
+
         /// <summary>
         /// Gets the Options in use by the Client
         /// </summary>
-        internal PusherOptions Options => _options;
+        internal PusherOptions Options { get; private set; }
 
         private readonly SemaphoreSlim _mutexLock = new SemaphoreSlim(1);
 
@@ -98,8 +99,8 @@ namespace PusherClient
 
             _applicationKey = applicationKey;
 
-            _options = options ?? new PusherOptions();
-            ((IPusher)this).IsTracingEnabled = _options.IsTracingEnabled;
+            Options = options ?? new PusherOptions();
+            ((IPusher)this).IsTracingEnabled = Options.IsTracingEnabled;
         }
 
         bool IPusher.IsTracingEnabled { get; set; }
@@ -108,7 +109,7 @@ namespace PusherClient
         {
             if (state == ConnectionState.Connected)
             {
-                SubscribeExistingChannels();
+                UnsubscribeBacklog();
                 if (Connected != null)
                 {
                     Task.Run(() =>
@@ -123,6 +124,8 @@ namespace PusherClient
                         }
                     });
                 }
+
+                SubscribeExistingChannels();
             }
             else if (state == ConnectionState.Disconnected)
             {
@@ -276,9 +279,9 @@ namespace PusherClient
 
         private string ConstructUrl()
         {
-            var scheme = _options.Encrypted ? Constants.SECURE_SCHEMA : Constants.INSECURE_SCHEMA;
+            var scheme = Options.Encrypted ? Constants.SECURE_SCHEMA : Constants.INSECURE_SCHEMA;
 
-            return $"{scheme}{_options.Host}/app/{_applicationKey}?protocol=5&client=pusher-dotnet-client&version={Version}";
+            return $"{scheme}{Options.Host}/app/{_applicationKey}?protocol=5&client=pusher-dotnet-client&version={Version}";
         }
 
         /// <summary>
@@ -317,7 +320,8 @@ namespace PusherClient
         /// <param name="subscribedEventHandler">An optional <see cref="SubscriptionEventHandler"/>. Alternatively, use <c>Pusher.Subscribed</c>.</param>
         /// <exception cref="ArgumentNullException">If <paramref name="channelName"/> is <c>null</c> or whitespace.</exception>
         /// <exception cref="ChannelUnauthorizedException">Only for private or presence channels if authorization fails.</exception>
-        /// <exception cref="System.Net.Http.HttpRequestException">Only for private or presence channels if an HTTP call to the authorization URL fails.</exception>
+        /// <exception cref="ChannelAuthorizationFailureException">Only for private or presence channels if an HTTP call to the authorization URL fails; that is, the HTTP status code is outside of the range 200-299.</exception>
+        /// <exception cref="ChannelException">If the client receives an error (pusher:error) from the Pusher cluster while trying to subscribe.</exception>
         /// <returns>The channel identified by <paramref name="channelName"/>.</returns>
         /// <remarks>
         /// If Pusher is connected when calling this method, the channel will be subscribed when this method returns;
@@ -348,7 +352,8 @@ namespace PusherClient
         /// <param name="subscribedEventHandler">An optional <see cref="SubscriptionEventHandler"/>. Alternatively, use <c>Pusher.Subscribed</c>.</param>
         /// <exception cref="ArgumentNullException">If <paramref name="channelName"/> is <c>null</c> or whitespace.</exception>
         /// <exception cref="ChannelUnauthorizedException">If authorization fails.</exception>
-        /// <exception cref="System.Net.Http.HttpRequestException">If an HTTP call to the authorization URL fails.</exception>
+        /// <exception cref="ChannelAuthorizationFailureException">f an HTTP call to the authorization URL fails; that is, the HTTP status code is outside of the range 200-299.</exception>
+        /// <exception cref="ChannelException">If the client receives an error (pusher:error) from the Pusher cluster while trying to subscribe.</exception>
         /// <returns>A GenericPresenceChannel<MemberT> channel identified by <paramref name="channelName"/>.</returns>
         /// <remarks>
         /// If Pusher is connected when calling this method, the channel will be subscribed when this method returns;
@@ -436,6 +441,54 @@ namespace PusherClient
             return result;
         }
 
+        public async Task UnsubscribeAsync(string channelName)
+        {
+            Guard.ChannelName(channelName);
+            if (Channels.TryRemove(channelName, out Channel channel))
+            {
+                if (channel.IsServerSubscribed && !_connection.IsConnected)
+                {
+                    // No connection to send a pusher:unsubscribe message so add to the backlog until connected again.
+                    // If we do not do this we could still receive channel events later even though we unsubscribed.
+                    Backlog.Add(channel);
+                }
+                else
+                {
+                    await SendUnsubscribeAsync(channel).ConfigureAwait(false);
+                }
+            }
+        }
+
+        public async Task UnsubscribeAllAsync()
+        {
+            await Task.Run(() =>
+            {
+                /* 
+                 * Send unsubscribe messages at a rate of MaxDegreeOfParallelism (4) at a time.
+                 * Could have used Parallel.ForEach instead; Parallel not supported in .NET Standard 1.3.
+                 */
+                using (SemaphoreSlim limiter = new SemaphoreSlim(Options.MaxDegreeOfParallelism, Options.MaxDegreeOfParallelism))
+                {
+                    foreach (var channel in Channels.Values)
+                    {
+                        limiter.Wait();
+                        try
+                        {
+                            Task.WaitAll(Task.Run(() => UnsubscribeAsync(channel.Name)));
+                        }
+                        catch (AggregateException aggregateException)
+                        {
+                            HandleSubscriptionException("Unsubscribe", channel, aggregateException);
+                        }
+                        finally
+                        {
+                            limiter.Release();
+                        }
+                    }
+                }
+            }).ConfigureAwait(false);
+        }
+
         private async Task<Channel> SubscribeAsync(string channelName, Channel channel, SubscriptionEventHandler subscribedEventHandler = null)
         {
             if (channel == null)
@@ -501,13 +554,13 @@ namespace PusherClient
                 if (channel.ChannelType != ChannelTypes.Public)
                 {
                     string jsonAuth;
-                    if (_options.Authorizer is IAuthorizerAsync asyncAuthorizer)
+                    if (Options.Authorizer is IAuthorizerAsync asyncAuthorizer)
                     {
                         jsonAuth = await asyncAuthorizer.AuthorizeAsync(channelName, _connection.SocketId).ConfigureAwait(false);
                     }
                     else
                     {
-                        jsonAuth = _options.Authorizer.Authorize(channelName, _connection.SocketId);
+                        jsonAuth = Options.Authorizer.Authorize(channelName, _connection.SocketId);
                     }
 
                     message = CreateAuthorizedChannelSubscribeMessage(channelName, jsonAuth);
@@ -603,7 +656,7 @@ namespace PusherClient
 
         private void AuthEndpointCheck()
         {
-            if (_options.Authorizer == null)
+            if (Options.Authorizer == null)
             {
                 var pusherException = new PusherException("An Authorizer needs to be provided when subscribing to a private or presence channel.", ErrorCodes.ChannelAuthorizerNotSet);
                 RaiseError(pusherException);
@@ -611,7 +664,7 @@ namespace PusherClient
             }
         }
 
-        async Task ITriggerChannels.Trigger(string channelName, string eventName, object obj)
+        async Task ITriggerChannels.TriggerAsync(string channelName, string eventName, object obj)
         {
             string message = JsonConvert.SerializeObject(new
             {
@@ -622,32 +675,9 @@ namespace PusherClient
             await _connection.SendAsync(message).ConfigureAwait(false);
         }
 
-        async Task ITriggerChannels.SendUnsubscribe(Channel channel)
+        async Task ITriggerChannels.ChannelUnsubscribeAsync(string channelName)
         {
-            if (channel.IsSubscribed && _connection.IsConnected)
-            {
-                await channel._subscribeLock.WaitAsync().ConfigureAwait(false);
-                try
-                {
-                    if (channel.IsSubscribed)
-                    {
-                        channel.IsSubscribed = false;
-                        await _connection.SendAsync(JsonConvert.SerializeObject(new
-                        {
-                            @event = Constants.CHANNEL_UNSUBSCRIBE,
-                            data = new { channel = channel.Name },
-                        })).ConfigureAwait(false);
-                    }
-                }
-                finally
-                {
-                    channel._subscribeLock.Release();
-                }
-            }
-            else
-            {
-                channel.IsSubscribed = false;
-            }
+            await UnsubscribeAsync(channelName);
         }
 
         void ITriggerChannels.RaiseChannelError(PusherException error)
@@ -705,20 +735,174 @@ namespace PusherClient
             }
         }
 
+        private async Task SendUnsubscribeAsync(Channel channel)
+        {
+            if (channel.IsSubscribed && _connection.IsConnected)
+            {
+                await channel._subscribeLock.WaitAsync().ConfigureAwait(false);
+                try
+                {
+                    if (channel.IsSubscribed)
+                    {
+                        channel.IsSubscribed = false;
+                        await _connection.SendAsync(JsonConvert.SerializeObject(new
+                        {
+                            @event = Constants.CHANNEL_UNSUBSCRIBE,
+                            data = new { channel = channel.Name },
+                        })).ConfigureAwait(false);
+                    }
+                }
+                finally
+                {
+                    channel._subscribeLock.Release();
+                }
+            }
+            else
+            {
+                channel.IsSubscribed = false;
+            }
+        }
+
+        private void HandleSubscriptionException(string action, Channel channel, AggregateException aggregateException)
+        {
+            if (aggregateException.InnerException is PusherException pusherException)
+            {
+                RaiseError(pusherException);
+            }
+            else
+            {
+                ChannelException channelException = new ChannelException(
+                    $"{action} failed for channel '{channel.Name}':{Environment.NewLine}{aggregateException.Message}",
+                    ErrorCodes.SubscriptionError,
+                    channel.Name,
+                    SocketID,
+                    aggregateException.InnerException)
+                {
+                    Channel = channel,
+                };
+                RaiseError(channelException);
+            }
+        }
+
+        private void UnsubscribeBacklog()
+        {
+            Task.Run(() =>
+            {
+                /* 
+                 * Unsubscribe at a rate of MaxDegreeOfParallelism (4) at a time.
+                 * Could have used Parallel.ForEach instead; Parallel not supported in .NET Standard 1.3.
+                 */
+                using (SemaphoreSlim limiter = new SemaphoreSlim(Options.MaxDegreeOfParallelism, Options.MaxDegreeOfParallelism))
+                {
+                    while (!Backlog.IsEmpty)
+                    {
+                        if (Backlog.TryTake(out Channel channel))
+                        {
+                            if (!Channels.ContainsKey(channel.Name))
+                            {
+                                limiter.Wait();
+                                try
+                                {
+                                    channel.IsSubscribed = true;
+                                    Task.WaitAll(Task.Run(() => SendUnsubscribeAsync(channel)));
+                                }
+                                catch (AggregateException aggregateException)
+                                {
+                                    HandleSubscriptionException("Unsubscribe", channel, aggregateException);
+                                }
+                                finally
+                                {
+                                    limiter.Release();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         private void MarkChannelsAsUnsubscribed()
         {
-            foreach (var channel in Channels.Values)
+            List<Channel> candidates = new List<Channel>(Channels.Count);
+            bool connected = _connection.IsConnected;
+            foreach (Channel channel in Channels.Values)
             {
-                Task.Run(() => ((ITriggerChannels)this).SendUnsubscribe(channel));
+                if (channel.IsSubscribed)
+                {
+                    if (connected)
+                    {
+                        candidates.Add(channel);
+                    }
+                    else
+                    {
+                        channel.IsSubscribed = false;
+                    }
+                }
             }
+
+            if (candidates.Count == 0)
+            {
+                return;
+            }
+            
+            // Task needs to run asynchronously otherwise we get task deadlock
+            Task.Run(() =>
+            {
+                /* 
+                 * Send unsubscribe messages at a rate of MaxDegreeOfParallelism (4) at a time.
+                 * Could have used Parallel.ForEach instead; Parallel not supported in .NET Standard 1.3.
+                 */
+                using (SemaphoreSlim limiter = new SemaphoreSlim(Options.MaxDegreeOfParallelism, Options.MaxDegreeOfParallelism))
+                {
+                    foreach (Channel channel in candidates)
+                    {
+                        limiter.Wait();
+                        try
+                        {
+                            Task.WaitAll(Task.Run(() => SendUnsubscribeAsync(channel)));
+                        }
+                        catch (AggregateException aggregateException)
+                        {
+                            HandleSubscriptionException("Unsubscribe", channel, aggregateException);
+                        }
+                        finally
+                        {
+                            limiter.Release();
+                        }
+                    }
+                }
+            });
         }
 
         private void SubscribeExistingChannels()
         {
-            foreach (var channel in Channels)
+            // Task needs to run asynchronously otherwise we get task deadlock
+            Task.Run(() =>
             {
-                Task.Run(() => SubscribeAsync(channel.Key, channel.Value));
-            }
+                /* 
+                 * Send subscribe messages at a rate of MaxDegreeOfParallelism (4) at a time.
+                 * Could have used Parallel.ForEach instead; Parallel not supported in .NET Standard 1.3.
+                 */
+                using (SemaphoreSlim limiter = new SemaphoreSlim(Options.MaxDegreeOfParallelism, Options.MaxDegreeOfParallelism))
+                {
+                    foreach (var channel in Channels)
+                    {
+                        limiter.Wait();
+                        try
+                        {
+                            Task.WaitAll(Task.Run(() => SubscribeAsync(channel.Key, channel.Value)));
+                        }
+                        catch (AggregateException aggregateException)
+                        {
+                            HandleSubscriptionException("Subscribe", channel.Value, aggregateException);
+                        }
+                        finally
+                        {
+                            limiter.Release();
+                        }
+                    }
+                }
+            });
         }
     }
 }

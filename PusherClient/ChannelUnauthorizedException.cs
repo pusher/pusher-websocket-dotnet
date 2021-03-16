@@ -12,7 +12,7 @@
         /// <param name="channelName">The name of the channel for which access is forbidden.</param>
         /// <param name="socketId">the socket ID used in the authorization attempt.</param>
         public ChannelUnauthorizedException(string authorizationEndpoint, string channelName, string socketId)
-            : base($"The channel subscription is unauthorized.", ErrorCodes.ChannelUnauthorized, authorizationEndpoint, channelName, socketId)
+            : base($"Unauthorized subscription for channel {channelName}.", ErrorCodes.ChannelUnauthorized, authorizationEndpoint, channelName, socketId)
         {
         }
     }

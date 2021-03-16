@@ -10,6 +10,11 @@ namespace PusherClient
     public class Channel : EventEmitter
     {
         internal readonly ITriggerChannels _pusher;
+        internal SemaphoreSlim _subscribeLock = new SemaphoreSlim(1);
+        internal SemaphoreSlim _subscribeCompleted;
+        internal Exception _subscriptionError;
+
+        private bool _isSubscribed;
 
         /// <summary>
         /// Fired when the Channel has successfully been subscribed to.
@@ -19,7 +24,22 @@ namespace PusherClient
         /// <summary>
         /// Gets whether the Channel is currently Subscribed
         /// </summary>
-        public bool IsSubscribed { get; internal set; }
+        public bool IsSubscribed 
+        {
+            get
+            {
+                return _isSubscribed;
+            }
+
+            internal set
+            {
+                _isSubscribed = value;
+                if (value)
+                {
+                    IsServerSubscribed = true;
+                }
+            }
+        }
 
         /// <summary>
         /// Gets the name of the Channel
@@ -37,9 +57,10 @@ namespace PusherClient
             }
         }
 
-        internal SemaphoreSlim _subscribeLock = new SemaphoreSlim(1);
-        internal SemaphoreSlim _subscribeCompleted;
-        internal Exception _subscriptionError;
+        /// <summary>
+        /// Gets whether the channel ever received a pusher_internal:subscription_succeeded message.
+        /// </summary>
+        internal bool IsServerSubscribed { get; set; }
 
         /// <summary>
         /// Ctor
@@ -72,11 +93,11 @@ namespace PusherClient
         }
 
         /// <summary>
-        /// Unsubscribe from the Channel named channel, if currently subscribed
+        /// Removes the channel subscription.
         /// </summary>
         public void Unsubscribe()
         {
-            Task.WaitAll(_pusher.SendUnsubscribe(this));
+            Task.WaitAll(_pusher.ChannelUnsubscribeAsync(Name));
         }
 
         /// <summary>
@@ -86,7 +107,7 @@ namespace PusherClient
         /// <param name="obj">The object to send as the payload on the event</param>
         public void Trigger(string eventName, object obj)
         {
-            _pusher.Trigger(Name, eventName, obj);
+            _pusher.TriggerAsync(Name, eventName, obj);
         }
 
         /// <summary>
