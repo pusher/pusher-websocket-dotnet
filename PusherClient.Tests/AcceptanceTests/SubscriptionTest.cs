@@ -27,6 +27,8 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             ValidateUnsubscribedChannel(pusher, channel);
+
+            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         [Test]
@@ -97,6 +99,8 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 ValidateUnsubscribedChannel(pusher, channel);
             }
+
+            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         [Test]
@@ -116,6 +120,8 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 ValidateUnsubscribedChannel(pusher, channel);
             }
+
+            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         [Test]
@@ -143,6 +149,8 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 ValidateUnsubscribedChannel(pusher, channel);
             }
+
+            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         [Test]
@@ -167,6 +175,8 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 ValidateUnsubscribedChannel(pusher, channel);
             }
+
+            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         [Test]
@@ -196,6 +206,8 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 ValidateUnsubscribedChannel(pusher, channel);
             }
+
+            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         [Test]
@@ -222,6 +234,8 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 ValidateUnsubscribedChannel(pusher, channel);
             }
+
+            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         #endregion
@@ -330,6 +344,7 @@ namespace PusherClient.Tests.AcceptanceTests
                 ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
                 ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private),
                 ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence),
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
                 ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
                 ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private),
                 ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence),
@@ -488,6 +503,8 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.AreEqual(firstChannel.IsSubscribed, secondChannel.IsSubscribed);
             Assert.AreEqual(firstChannel.Name, secondChannel.Name);
             Assert.AreEqual(firstChannel.ChannelType, secondChannel.ChannelType);
+
+            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         private static async Task SubscribeSameChannelMultipleTimesTestAsync(bool connectBeforeSubscribing, ChannelTypes channelType)
@@ -532,6 +549,8 @@ namespace PusherClient.Tests.AcceptanceTests
             // Assert
             Assert.IsTrue(channelSubscribed);
             Assert.AreEqual(1, numberOfCalls);
+
+            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         private static async Task SubscribeMultipleChannelsTestAsync(bool connectBeforeSubscribing, Pusher pusher, IList<string> channelNames)
@@ -660,6 +679,8 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.AreEqual(expectedExceptionCount, exceptionCount, "Number of exceptions expected");
             Assert.AreEqual(expectedErrorCount, errorCount, "# Errors expected");
             AssertUnauthorized(pusher, channelNames);
+
+            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         private static async Task SubscribeAuthorizationFailureChannelsAsync(bool connectBeforeSubscribing)
@@ -750,6 +771,8 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.AreEqual(expectedExceptionCount, exceptionCount, "Number of exceptions expected");
             Assert.AreEqual(expectedErrorCount, errorCount, "# Errors expected");
             AssertUnauthorized(pusher, channelNames);
+
+            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         private static async Task SubscribeFailureChannelsAsync(bool connectBeforeSubscribing)
@@ -839,6 +862,8 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.AreEqual(expectedExceptionCount, exceptionCount, "Number of exceptions expected");
             Assert.AreEqual(expectedErrorCount, errorCount, "# Errors expected");
             AssertUnauthorized(pusher, channelNames);
+
+            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         #endregion

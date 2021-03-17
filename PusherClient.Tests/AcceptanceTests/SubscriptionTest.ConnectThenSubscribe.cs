@@ -168,6 +168,8 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Act and Assert
             await ConnectThenSubscribeMultipleChannelsTestAsync(pusher, channelNames).ConfigureAwait(false);
+
+            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         [Test]
@@ -198,6 +200,8 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             AssertIsDisconnected(pusher, channelNames);
+
+            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         [Test]
@@ -245,6 +249,8 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             AssertIsSubscribed(pusher, channelNames);
+
+            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         [Test]

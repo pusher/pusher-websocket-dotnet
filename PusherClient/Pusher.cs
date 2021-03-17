@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -461,32 +462,23 @@ namespace PusherClient
 
         public async Task UnsubscribeAllAsync()
         {
-            await Task.Run(() =>
+            IList<Channel> channels = GetAllChannels();
+            if (channels.Count > 0)
             {
-                /* 
-                 * Send unsubscribe messages at a rate of MaxDegreeOfParallelism (4) at a time.
-                 * Could have used Parallel.ForEach instead; Parallel not supported in .NET Standard 1.3.
-                 */
-                using (SemaphoreSlim limiter = new SemaphoreSlim(Options.MaxDegreeOfParallelism, Options.MaxDegreeOfParallelism))
+                // Unsubscribe in the following order - Presence, Private, Public
+                var sorted = channels.Select(c => c).OrderByDescending(c => c.ChannelType);
+                foreach (var channel in sorted)
                 {
-                    foreach (var channel in Channels.Values)
+                    try
                     {
-                        limiter.Wait();
-                        try
-                        {
-                            Task.WaitAll(Task.Run(() => UnsubscribeAsync(channel.Name)));
-                        }
-                        catch (AggregateException aggregateException)
-                        {
-                            HandleSubscriptionException("Unsubscribe", channel, aggregateException);
-                        }
-                        finally
-                        {
-                            limiter.Release();
-                        }
+                        await UnsubscribeAsync(channel.Name).ConfigureAwait(false);
+                    }
+                    catch (Exception exception)
+                    {
+                        HandleSubscriptionException("Unsubscribe", channel, exception);
                     }
                 }
-            }).ConfigureAwait(false);
+            }
         }
 
         private async Task<Channel> SubscribeAsync(string channelName, Channel channel, SubscriptionEventHandler subscribedEventHandler = null)
@@ -763,20 +755,26 @@ namespace PusherClient
             }
         }
 
-        private void HandleSubscriptionException(string action, Channel channel, AggregateException aggregateException)
+        private void HandleSubscriptionException(string action, Channel channel, Exception exception)
         {
-            if (aggregateException.InnerException is PusherException pusherException)
+            Exception innerException = exception;
+            if (exception is AggregateException aggregateException)
+            {
+                innerException = aggregateException.InnerException;
+            }
+
+            if (innerException is PusherException pusherException)
             {
                 RaiseError(pusherException);
             }
             else
             {
                 ChannelException channelException = new ChannelException(
-                    $"{action} failed for channel '{channel.Name}':{Environment.NewLine}{aggregateException.Message}",
+                    $"{action} failed for channel '{channel.Name}':{Environment.NewLine}{exception.Message}",
                     ErrorCodes.SubscriptionError,
                     channel.Name,
                     SocketID,
-                    aggregateException.InnerException)
+                    innerException)
                 {
                     Channel = channel,
                 };
@@ -788,32 +786,20 @@ namespace PusherClient
         {
             Task.Run(() =>
             {
-                /* 
-                 * Unsubscribe at a rate of MaxDegreeOfParallelism (4) at a time.
-                 * Could have used Parallel.ForEach instead; Parallel not supported in .NET Standard 1.3.
-                 */
-                using (SemaphoreSlim limiter = new SemaphoreSlim(Options.MaxDegreeOfParallelism, Options.MaxDegreeOfParallelism))
+                while (!Backlog.IsEmpty)
                 {
-                    while (!Backlog.IsEmpty)
+                    if (Backlog.TryTake(out Channel channel))
                     {
-                        if (Backlog.TryTake(out Channel channel))
+                        if (!Channels.ContainsKey(channel.Name))
                         {
-                            if (!Channels.ContainsKey(channel.Name))
+                            try
                             {
-                                limiter.Wait();
-                                try
-                                {
-                                    channel.IsSubscribed = true;
-                                    Task.WaitAll(Task.Run(() => SendUnsubscribeAsync(channel)));
-                                }
-                                catch (AggregateException aggregateException)
-                                {
-                                    HandleSubscriptionException("Unsubscribe", channel, aggregateException);
-                                }
-                                finally
-                                {
-                                    limiter.Release();
-                                }
+                                channel.IsSubscribed = true;
+                                Task.WaitAll(Task.Run(() => SendUnsubscribeAsync(channel)));
+                            }
+                            catch (AggregateException aggregateException)
+                            {
+                                HandleSubscriptionException("Unsubscribe", channel, aggregateException);
                             }
                         }
                     }
@@ -840,66 +826,46 @@ namespace PusherClient
                 }
             }
 
-            if (candidates.Count == 0)
+            if (candidates.Count > 0)
             {
-                return;
-            }
-            
-            // Task needs to run asynchronously otherwise we get task deadlock
-            Task.Run(() =>
-            {
-                /* 
-                 * Send unsubscribe messages at a rate of MaxDegreeOfParallelism (4) at a time.
-                 * Could have used Parallel.ForEach instead; Parallel not supported in .NET Standard 1.3.
-                 */
-                using (SemaphoreSlim limiter = new SemaphoreSlim(Options.MaxDegreeOfParallelism, Options.MaxDegreeOfParallelism))
+                // Unsubscribe in the following order - Presence, Private, Public
+                var sorted = candidates.Select(c => c).OrderByDescending(c => c.ChannelType);
+                foreach (Channel channel in sorted)
                 {
-                    foreach (Channel channel in candidates)
+                    try
                     {
-                        limiter.Wait();
-                        try
-                        {
-                            Task.WaitAll(Task.Run(() => SendUnsubscribeAsync(channel)));
-                        }
-                        catch (AggregateException aggregateException)
-                        {
-                            HandleSubscriptionException("Unsubscribe", channel, aggregateException);
-                        }
-                        finally
-                        {
-                            limiter.Release();
-                        }
+                        Task.WaitAll(Task.Run(() => SendUnsubscribeAsync(channel)));
+                    }
+                    catch (AggregateException aggregateException)
+                    {
+                        HandleSubscriptionException("Unsubscribe", channel, aggregateException);
                     }
                 }
-            });
+            }
         }
 
         private void SubscribeExistingChannels()
         {
+            IList<Channel> channels = GetAllChannels();
+            if (channels.Count == 0)
+            {
+                return;
+            }
+
             // Task needs to run asynchronously otherwise we get task deadlock
             Task.Run(() =>
             {
-                /* 
-                 * Send subscribe messages at a rate of MaxDegreeOfParallelism (4) at a time.
-                 * Could have used Parallel.ForEach instead; Parallel not supported in .NET Standard 1.3.
-                 */
-                using (SemaphoreSlim limiter = new SemaphoreSlim(Options.MaxDegreeOfParallelism, Options.MaxDegreeOfParallelism))
+                // Subscribe in the following order - Public, Private, Presence
+                var sorted = channels.Select(c => c).OrderBy(c => c.ChannelType);
+                foreach (var channel in sorted)
                 {
-                    foreach (var channel in Channels)
+                    try
                     {
-                        limiter.Wait();
-                        try
-                        {
-                            Task.WaitAll(Task.Run(() => SubscribeAsync(channel.Key, channel.Value)));
-                        }
-                        catch (AggregateException aggregateException)
-                        {
-                            HandleSubscriptionException("Subscribe", channel.Value, aggregateException);
-                        }
-                        finally
-                        {
-                            limiter.Release();
-                        }
+                        Task.WaitAll(Task.Run(() => SubscribeAsync(channel.Name, channel)));
+                    }
+                    catch (AggregateException aggregateException)
+                    {
+                        HandleSubscriptionException("Subscribe", channel, aggregateException);
                     }
                 }
             });

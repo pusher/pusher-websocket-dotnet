@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using PusherClient.Tests.Utilities;
+using WebSocket4Net;
 
 namespace PusherClient.Tests.AcceptanceTests
 {
@@ -109,6 +110,8 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Act and Assert
             await SubscribeThenConnectMultipleChannelsTestAsync(pusher, channelNames).ConfigureAwait(false);
+
+            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         [Test]
@@ -139,6 +142,8 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             AssertIsDisconnected(pusher, channelNames);
+
+            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         [Test]
@@ -186,6 +191,45 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             AssertIsSubscribed(pusher, channelNames);
+
+            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task SubscribeThenConnectAllChannelsThenReconnectWhenTheUnderlyingSocketIsClosedAsync()
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
+            var subscribedEvent = new AutoResetEvent(false);
+            List<string> channelNames = new List<string>
+            {
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private),
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence),
+            };
+
+            // Act
+            await SubscribeThenConnectMultipleChannelsTestAsync(pusher, channelNames).ConfigureAwait(false);
+            int subscribedCount = 0;
+            pusher.Subscribed += (sender, channelName) =>
+            {
+                subscribedCount++;
+                if (subscribedCount == channelNames.Count)
+                {
+                    subscribedEvent.Set();
+                }
+            };
+            await Task.Run(() =>
+            {
+                WebSocket socket = ConnectionTest.GetWebSocket(pusher);
+                socket.Close();
+            }).ConfigureAwait(false);
+
+            // Assert
+            Assert.IsTrue(subscribedEvent.WaitOne(TimeSpan.FromSeconds(5)));
+            AssertIsSubscribed(pusher, channelNames);
+
+            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         [Test]

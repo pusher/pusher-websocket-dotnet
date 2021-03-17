@@ -603,7 +603,7 @@ namespace PusherClient.Tests.AcceptanceTests
             return pusher;
         }
 
-        private static WebSocket GetWebSocket(Pusher pusher)
+        internal static WebSocket GetWebSocket(Pusher pusher)
         {
             var connection = pusher.GetType().GetField("_connection", BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.IsNotNull(connection);
