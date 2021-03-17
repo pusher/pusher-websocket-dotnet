@@ -11,5 +11,13 @@ namespace PusherClient
                 throw new ArgumentNullException(nameof(channelName));
             }
         }
+
+        internal static void EventName(string eventName)
+        {
+            if (string.IsNullOrWhiteSpace(eventName))
+            {
+                throw new ArgumentNullException(nameof(eventName));
+            }
+        }
     }
 }

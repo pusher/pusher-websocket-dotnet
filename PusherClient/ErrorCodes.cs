@@ -52,6 +52,11 @@
         SubscriptionError = 5003,
 
         /// <summary>
+        ///  An event emitter action error has occured.
+        /// </summary>
+        EventEmitterActionError = 5100,
+
+        /// <summary>
         /// The presence or private channel has not had its Authorizer set.
         /// </summary>
         ChannelAuthorizerNotSet = 7500,

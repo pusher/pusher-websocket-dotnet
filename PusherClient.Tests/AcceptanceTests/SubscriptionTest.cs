@@ -84,7 +84,7 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             // Arrange
             var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
-            List<string> channelNames = CreateChannelNames();
+            List<string> channelNames = CreateChannelNames(numberOfChannels: 6);
 
             // Act
             await SubscribeMultipleChannelsTestAsync(connectBeforeSubscribing: true, pusher, channelNames).ConfigureAwait(false);
@@ -108,7 +108,7 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             // Arrange
             var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
-            List<string> channelNames = CreateChannelNames();
+            List<string> channelNames = CreateChannelNames(numberOfChannels: 6);
 
             // Act
             await SubscribeMultipleChannelsTestAsync(connectBeforeSubscribing: true, pusher, channelNames).ConfigureAwait(false);
@@ -129,7 +129,7 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             // Arrange
             var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
-            List<string> channelNames = CreateChannelNames();
+            List<string> channelNames = CreateChannelNames(numberOfChannels: 6);
 
             // Act
             foreach (string channelName in channelNames)
@@ -158,7 +158,7 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             // Arrange
             var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
-            List<string> channelNames = CreateChannelNames();
+            List<string> channelNames = CreateChannelNames(numberOfChannels: 6);
 
             // Act
             foreach (string channelName in channelNames)
@@ -188,7 +188,7 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Arrange
             var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
-            List<string> channelNames = CreateChannelNames();
+            List<string> channelNames = CreateChannelNames(numberOfChannels: 6);
 
             // Act
             await SubscribeMultipleChannelsTestAsync(connectBeforeSubscribing: true, pusher, channelNames).ConfigureAwait(false);
@@ -219,7 +219,7 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Arrange
             var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
-            List<string> channelNames = CreateChannelNames();
+            List<string> channelNames = CreateChannelNames(numberOfChannels: 6);
 
             // Act
             await SubscribeMultipleChannelsTestAsync(connectBeforeSubscribing: true, pusher, channelNames).ConfigureAwait(false);
@@ -337,18 +337,15 @@ namespace PusherClient.Tests.AcceptanceTests
 
         #region Subscribe test methods
 
-        private static List<string> CreateChannelNames()
+        private static List<string> CreateChannelNames(int numberOfChannels = 3)
         {
-            return new List<string>
+            List<string> result = new List<string>(numberOfChannels);
+            for (int i = 0; i < numberOfChannels; i++)
             {
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private),
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence),
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private),
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence),
-            };
+                result.Add(ChannelNameFactory.CreateUniqueChannelName(channelType: (ChannelTypes)(i % 3)));
+            }
+
+            return result;
         }
 
         private static async Task SubscribeWithoutConnectingTestAsync(ChannelTypes channelType)

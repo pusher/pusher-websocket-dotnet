@@ -101,12 +101,7 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             // Arrange
             var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
-            List<string> channelNames = new List<string>
-            {
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private),
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence),
-            };
+            List<string> channelNames = CreateChannelNames();
 
             // Act and Assert
             await SubscribeThenConnectMultipleChannelsTestAsync(pusher, channelNames).ConfigureAwait(false);
@@ -119,17 +114,11 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             // Arrange
             var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
+            List<string> channelNames = CreateChannelNames();
             var disconnectedEvent = new AutoResetEvent(false);
             pusher.Disconnected += sender =>
             {
                 disconnectedEvent.Set();
-            };
-
-            List<string> channelNames = new List<string>
-            {
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private),
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence),
             };
 
             // Act
@@ -151,18 +140,12 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             // Arrange
             var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
+            List<string> channelNames = CreateChannelNames();
             var subscribedEvent = new AutoResetEvent(false);
             var disconnectedEvent = new AutoResetEvent(false);
             pusher.Disconnected += sender =>
             {
                 disconnectedEvent.Set();
-            };
-
-            List<string> channelNames = new List<string>
-            {
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private),
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence),
             };
 
             // Act
@@ -201,12 +184,7 @@ namespace PusherClient.Tests.AcceptanceTests
             // Arrange
             var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
             var subscribedEvent = new AutoResetEvent(false);
-            List<string> channelNames = new List<string>
-            {
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private),
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence),
-            };
+            List<string> channelNames = CreateChannelNames();
 
             // Act
             await SubscribeThenConnectMultipleChannelsTestAsync(pusher, channelNames).ConfigureAwait(false);
