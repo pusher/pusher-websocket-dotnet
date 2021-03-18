@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
@@ -10,14 +9,12 @@ namespace PusherClient
     /// </summary>
     public class EventEmitter
     {
-        private readonly ConcurrentDictionary<string, List<Action<dynamic>>> _eventListeners = new ConcurrentDictionary<string, List<Action<dynamic>>>();
-        private readonly ConcurrentStack<Action<string, dynamic>> _generalListeners = new ConcurrentStack<Action<string, dynamic>>();
-
-        private readonly ConcurrentDictionary<string, List<Action<string>>> _rawEventListeners = new ConcurrentDictionary<string, List<Action<string>>>(); 
-        private readonly ConcurrentStack<Action<string, string>> _rawGeneralListeners = new ConcurrentStack<Action<string, string>>();
-
-        private readonly ConcurrentDictionary<string, List<Action<PusherEvent>>> _pusherEventEventListeners = new ConcurrentDictionary<string, List<Action<PusherEvent>>>();
-        private readonly ConcurrentStack<Action<string, PusherEvent>> _pusherEventGeneralListeners = new ConcurrentStack<Action<string, PusherEvent>>();
+        private IDictionary<string, IEventBinder> Emitters { get; } = new SortedList<string, IEventBinder>
+        {
+            {nameof(PusherEventEmitter), new PusherEventEmitter() },
+            {nameof(TextEventEmitter), new TextEventEmitter() },
+            {nameof(DynamicEventEmitter), new DynamicEventEmitter() },
+        };
 
         /// <summary>
         /// Binds to a given event name
@@ -26,12 +23,7 @@ namespace PusherClient
         /// <param name="listener">The action to perform when the event occurs</param>
         public void Bind(string eventName, Action<dynamic> listener)
         {
-            var listeners = new List<Action<dynamic>> { listener };
-
-            if (!_eventListeners.TryAdd(eventName, listeners))
-            {
-                _eventListeners[eventName].Add(listener);
-            }
+            ((DynamicEventEmitter)Emitters[nameof(DynamicEventEmitter)]).Bind(eventName, listener);
         }
 
         /// <summary>
@@ -41,12 +33,7 @@ namespace PusherClient
         /// <param name="listener">The action to perform when the event occurs</param>
         public void Bind(string eventName, Action<string> listener)
         {
-            var listeners = new List<Action<string>> { listener };
-
-            if (!_rawEventListeners.TryAdd(eventName, listeners))
-            {
-                _rawEventListeners[eventName].Add(listener);
-            }
+            ((TextEventEmitter)Emitters[nameof(TextEventEmitter)]).Bind(eventName, listener);
         }
 
         /// <summary>
@@ -56,12 +43,7 @@ namespace PusherClient
         /// <param name="listener">The action to perform when the event occurs</param>
         public void Bind(string eventName, Action<PusherEvent> listener)
         {
-            var listeners = new List<Action<PusherEvent>> { listener };
-
-            if (!_pusherEventEventListeners.TryAdd(eventName, listeners))
-            {
-                _pusherEventEventListeners[eventName].Add(listener);
-            }
+            ((PusherEventEmitter)Emitters[nameof(PusherEventEmitter)]).Bind(eventName, listener);
         }
 
         /// <summary>
@@ -70,7 +52,7 @@ namespace PusherClient
         /// <param name="listener">The action to perform when the any event occurs</param>
         public void BindAll(Action<string, dynamic> listener)
         {
-            _generalListeners.Push(listener);
+            ((DynamicEventEmitter)Emitters[nameof(DynamicEventEmitter)]).Bind(listener);
         }
 
         /// <summary>
@@ -79,7 +61,7 @@ namespace PusherClient
         /// <param name="listener">The action to perform when the any event occurs</param>
         public void BindAll(Action<string, string> listener)
         {
-            _rawGeneralListeners.Push(listener);
+            ((TextEventEmitter)Emitters[nameof(TextEventEmitter)]).Bind(listener);
         }
 
         /// <summary>
@@ -88,7 +70,7 @@ namespace PusherClient
         /// <param name="listener">The action to perform when the any event occurs</param>
         public void BindAll(Action<string, PusherEvent> listener)
         {
-            _pusherEventGeneralListeners.Push(listener);
+            ((PusherEventEmitter)Emitters[nameof(PusherEventEmitter)]).Bind(listener);
         }
 
         /// <summary>
@@ -97,23 +79,9 @@ namespace PusherClient
         /// <param name="eventName">The name of the event to unbind</param>
         public void Unbind(string eventName)
         {
-            if (_eventListeners.ContainsKey(eventName))
+            foreach (IEventBinder binder in Emitters.Values)
             {
-                List<Action<dynamic>> outEventValue = null;
-                _eventListeners.TryRemove(eventName, out outEventValue);
-
-            }
-
-            if (_rawEventListeners.ContainsKey(eventName))
-            {
-                List<Action<string>> outRawValue = null;
-                _rawEventListeners.TryRemove(eventName, out outRawValue);
-            }
-
-            if (_pusherEventEventListeners.ContainsKey(eventName))
-            {
-                List<Action<PusherEvent>> outPusherValue = null;
-                _pusherEventEventListeners.TryRemove(eventName, out outPusherValue);
+                binder.Unbind(eventName);
             }
         }
 
@@ -124,10 +92,7 @@ namespace PusherClient
         /// <param name="listener">The action to remove</param>
         public void Unbind(string eventName, Action<dynamic> listener)
         {
-            if (_eventListeners.ContainsKey(eventName))
-            {
-                _eventListeners[eventName].Remove(listener);
-            }
+            ((DynamicEventEmitter)Emitters[nameof(DynamicEventEmitter)]).Unbind(eventName, listener);
         }
 
         /// <summary>
@@ -137,10 +102,7 @@ namespace PusherClient
         /// <param name="listener">The action to remove</param>
         public void Unbind(string eventName, Action<string> listener)
         {
-            if (_rawEventListeners.ContainsKey(eventName))
-            {
-                _rawEventListeners[eventName].Remove(listener);
-            }
+            ((TextEventEmitter)Emitters[nameof(TextEventEmitter)]).Unbind(eventName, listener);
         }
 
         /// <summary>
@@ -150,10 +112,7 @@ namespace PusherClient
         /// <param name="listener">The action to remove</param>
         public void Unbind(string eventName, Action<PusherEvent> listener)
         {
-            if (_pusherEventEventListeners.ContainsKey(eventName))
-            {
-                _pusherEventEventListeners[eventName].Remove(listener);
-            }
+            ((PusherEventEmitter)Emitters[nameof(PusherEventEmitter)]).Unbind(eventName, listener);
         }
 
         /// <summary>
@@ -161,47 +120,22 @@ namespace PusherClient
         /// </summary>
         public void UnbindAll()
         {
-            _eventListeners.Clear();
-            _generalListeners.Clear();
-
-            _rawEventListeners.Clear();
-            _rawGeneralListeners.Clear();
-
-            _pusherEventEventListeners.Clear();
-            _pusherEventGeneralListeners.Clear();
-        }
-
-        internal void EmitEvent(string eventName, PusherEvent data)
-        {
-            var stringData = data.ToString();
-            
-            ActionData(_rawGeneralListeners, _rawEventListeners, eventName, stringData);
-            EmitDynamicEvent(eventName, stringData);
-            ActionData(_pusherEventGeneralListeners, _pusherEventEventListeners, eventName, data);
-        }
-
-        internal void EmitDynamicEvent(string eventName, string data)
-        {
-            if (_generalListeners.Count > 0 || _eventListeners.Count > 0)
+            foreach (IEventBinder binder in Emitters.Values)
             {
-                var dynamicData = JsonConvert.DeserializeObject<dynamic>(data);
-                ActionData(_generalListeners, _eventListeners, eventName, dynamicData);
+                binder.UnbindAll();
             }
         }
 
-        private void ActionData<T>(ConcurrentStack<Action<string, T>> listToProcess, ConcurrentDictionary<string, List<Action<T>>> dictionaryToProcess, string eventName, T data)
+        internal IEventBinder GetEventBinder(string eventBinderKey)
         {
-            if (listToProcess.Count > 0 || dictionaryToProcess.Count > 0)
-            {
-                foreach (var a in listToProcess)
-                {
-                    a(eventName, data);
-                }
+            return Emitters[eventBinderKey];
+        }
 
-                if (dictionaryToProcess.ContainsKey(eventName))
-                {
-                    dictionaryToProcess[eventName].ForEach(a => a(data));
-                }
+        protected void SetEventEmitterErrorHandler(Action<PusherException> errorHandler)
+        {
+            foreach (IEventBinder binder in Emitters.Values)
+            {
+                binder.ErrorHandler = errorHandler;
             }
         }
     }

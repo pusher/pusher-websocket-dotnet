@@ -168,6 +168,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AcceptanceTests\ConnectionTest.cs" />
+    <Compile Include="AcceptanceTests\EventEmitterTest.TextEventEmitter.cs" />
+    <Compile Include="AcceptanceTests\EventEmitterTest.DynamicEventEmitter.cs" />
+    <Compile Include="AcceptanceTests\EventEmitterTest.PusherEventEmitter.cs" />
     <Compile Include="AcceptanceTests\EventEmitterTest.cs" />
     <Compile Include="AcceptanceTests\PresenceChannelTest.cs" />
     <Compile Include="AcceptanceTests\SubscriptionTest.SubscribeThenConnect.cs" />

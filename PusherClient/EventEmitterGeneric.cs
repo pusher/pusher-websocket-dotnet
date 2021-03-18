@@ -1,15 +1,30 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 
 namespace PusherClient
 {
-    public class EventEmitter<TData> : IEventBinder<TData>, IEmitter<TData>
+    public class EventEmitter<TData> : IEventEmitter<TData>
     {
         private readonly ConcurrentDictionary<string, List<Action<TData>>> _listeners = new ConcurrentDictionary<string, List<Action<TData>>>();
         private readonly ConcurrentStack<Action<string, TData>> _generalListeners = new ConcurrentStack<Action<string, TData>>();
 
-        internal Action<PusherException> ErrorHandler;
+        /// <summary>
+        /// Gets or sets the Pusher error handler.
+        /// </summary>
+        public Action<PusherException> ErrorHandler { get; set; }
+
+        /// <summary>
+        /// Gets whether any listeners are listening.
+        /// </summary>
+        public bool HasListeners
+        {
+            get
+            {
+                return _listeners.Count > 0 || _generalListeners.Count > 0;
+            }
+        }
 
         /// <summary>
         /// Binds to a given event with <paramref name="eventName"/>.
@@ -80,7 +95,22 @@ namespace PusherClient
             _generalListeners.Clear();
         }
 
-        void IEmitter<TData>.EmitEvent(string eventName, TData data)
+        /// <summary>
+        /// Parse event Json data.
+        /// </summary>
+        /// <param name="jsonData">The Json to parse.</param>
+        /// <returns>Returns the parsed data.</returns>
+        public virtual TData ParseJson(string jsonData)
+        {
+            return JsonConvert.DeserializeObject<TData>(jsonData);
+        }
+
+        /// <summary>
+        /// Emits an event.
+        /// </summary>
+        /// <param name="eventName">The name of the event to emit.</param>
+        /// <param name="data">The event data.</param>
+        public void EmitEvent(string eventName, TData data)
         {
             foreach (var a in _generalListeners)
             {
@@ -114,8 +144,7 @@ namespace PusherClient
         {
             if (ErrorHandler != null)
             {
-                PusherException errorToHandle = e as PusherException;
-                if (errorToHandle == null)
+                if (!(e is PusherException errorToHandle))
                 {
                     errorToHandle = new EventEmitterActionException<TData>(ErrorCodes.EventEmitterActionError, eventName, data, e);
                 }

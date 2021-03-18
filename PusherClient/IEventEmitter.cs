@@ -2,8 +2,10 @@
 
 namespace PusherClient
 {
-    internal interface IEmitter<TData>
+    public interface IEventEmitter<TData>: IEventBinder<TData>
     {
+        TData ParseJson(string jsonData);
+
         void EmitEvent(string eventName, TData data);
     }
 }

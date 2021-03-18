@@ -2,12 +2,14 @@
 
 namespace PusherClient
 {
-    public interface IEventBinder<TData>
+    public interface IEventBinder
     {
-        void Bind(string eventName, Action<TData> listener);
-        void Bind(Action<string, TData> listener);
+        Action<PusherException> ErrorHandler { get; set; }
+
+        bool HasListeners { get; }
+
         void Unbind(string eventName);
-        void Unbind(string eventName, Action<TData> listener);
+
         void UnbindAll();
     }
 }

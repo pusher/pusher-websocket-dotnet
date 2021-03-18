@@ -102,6 +102,7 @@ namespace PusherClient
 
             Options = options ?? new PusherOptions();
             ((IPusher)this).IsTracingEnabled = Options.IsTracingEnabled;
+            SetEventEmitterErrorHandler(InvokeErrorHandler);
         }
 
         bool IPusher.IsTracingEnabled { get; set; }
@@ -168,17 +169,20 @@ namespace PusherClient
             RaiseError(pusherException);
         }
 
-        void IPusher.EmitPusherEvent(string eventName, PusherEvent data)
+        IEventBinder IPusher.GetEventBinder(string eventBinderKey)
         {
-            EmitEvent(eventName, data);
+            return GetEventBinder(eventBinderKey);
         }
 
-        void IPusher.EmitChannelEvent(string channelName, string eventName, PusherEvent data)
+        IEventBinder IPusher.GetChannelEventBinder(string eventBinderKey, string channelName)
         {
+            IEventBinder result = null;
             if (Channels.TryGetValue(channelName, out Channel channel))
             {
-                channel.EmitEvent(eventName, data);
+                result = channel.GetEventBinder(eventBinderKey);
             }
+
+            return result;
         }
 
         void IPusher.AddMember(string channelName, string member)

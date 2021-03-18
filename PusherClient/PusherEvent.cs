@@ -19,10 +19,61 @@ namespace PusherClient
             return value;
         }
 
-        public string UserId => (string)_eventData["user_id"];
-        public string ChannelName => (string)_eventData["channel"];
-        public string EventName => (string)_eventData["event"];
-        public string Data => (string)_eventData["data"];
+        public string UserId
+        {
+            get
+            {
+                string result = null;
+                if (_eventData.TryGetValue("user_id", out object obj))
+                {
+                    result = obj.ToString();
+                }
+
+                return result;
+            }
+        }
+
+        public string ChannelName
+        {
+            get
+            {
+                string result = null;
+                if (_eventData.TryGetValue("channel", out object obj))
+                {
+                    result = obj.ToString();
+                }
+
+                return result;
+            }
+        }
+
+        public string EventName
+        {
+            get
+            {
+                string result = null;
+                if (_eventData.TryGetValue("event", out object obj))
+                {
+                    result = obj.ToString();
+                }
+
+                return result;
+            }
+        }
+
+        public string Data
+        {
+            get
+            {
+                string result = null;
+                if (_eventData.TryGetValue("data", out object obj))
+                {
+                    result = obj.ToString();
+                }
+
+                return result;
+            }
+        }
 
         public override string ToString()
         {

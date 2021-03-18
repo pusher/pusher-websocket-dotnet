@@ -8,12 +8,12 @@ namespace PusherClient
 
         void ChangeConnectionState(ConnectionState state);
         void ErrorOccured(PusherException pusherException);
-
-        void EmitPusherEvent(string eventName, PusherEvent data);
-        void EmitChannelEvent(string channelName, string eventName, PusherEvent data);
         void AddMember(string channelName, string member);
         void RemoveMember(string channelName, string member);
         void SubscriptionSuceeded(string channelName, string data);
         void SubscriptionFailed(string channelName, string data);
+        IEventBinder GetEventBinder(string eventBinderKey);
+        IEventBinder GetChannelEventBinder(string eventBinderKey, string channelName);
+
     }
 }

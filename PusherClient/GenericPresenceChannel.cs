@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace PusherClient
 {
@@ -119,9 +120,12 @@ namespace PusherClient
 
         private ConcurrentDictionary<string, T> ParseMembersList(string data)
         {
+            JToken jToken = JToken.Parse(data);
+            JObject jObject = JObject.Parse(jToken.ToString());
+
             ConcurrentDictionary<string, T> members = new ConcurrentDictionary<string, T>();
 
-            var dataAsObj = JsonConvert.DeserializeObject<SubscriptionData>(data);
+            var dataAsObj = JsonConvert.DeserializeObject<SubscriptionData>(jObject.ToString(Formatting.None));
 
             for (int i = 0; i < dataAsObj.presence.ids.Count; i++)
             {

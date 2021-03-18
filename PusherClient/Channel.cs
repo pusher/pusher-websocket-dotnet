@@ -71,6 +71,7 @@ namespace PusherClient
         {
             _pusher = pusher;
             Name = channelName;
+            SetEventEmitterErrorHandler(pusher.RaiseChannelError);
         }
 
         internal virtual void SubscriptionSucceeded(string data)
@@ -107,7 +108,18 @@ namespace PusherClient
         /// <param name="obj">The object to send as the payload on the event</param>
         public void Trigger(string eventName, object obj)
         {
-            _pusher.TriggerAsync(Name, eventName, obj);
+            Task.WaitAll(_pusher.TriggerAsync(Name, eventName, obj));
+        }
+
+        /// <summary>
+        /// Trigger this channel with the provided information
+        /// </summary>
+        /// <param name="eventName">The name of the event to trigger</param>
+        /// <param name="obj">The object to send as the payload on the event</param>
+        /// <returns>An awaitable Task.</returns>
+        public async Task TriggerAsync(string eventName, object obj)
+        {
+            await _pusher.TriggerAsync(Name, eventName, obj).ConfigureAwait(false);
         }
 
         /// <summary>

@@ -24,6 +24,13 @@ namespace PusherClient
         private SemaphoreSlim _connectionSemaphore;
         private Exception _currentError;
 
+        private IList<string> EmitterKeys { get; } = new List<string>
+        {
+            { nameof(PusherEventEmitter) },
+            { nameof(TextEventEmitter) },
+            { nameof(DynamicEventEmitter) },
+        };
+
         public string SocketId { get; private set; }
 
         public ConnectionState State { get; private set; } = ConnectionState.Uninitialized;
@@ -124,6 +131,64 @@ namespace PusherClient
             return false;
         }
 
+        private static Dictionary<string, object> GetEventPropertiesFromMessage(string messageJson)
+        {
+            Dictionary<string, object> properties = new Dictionary<string, object>();
+            JObject jObject = JObject.Parse(messageJson);
+            foreach (JToken child in jObject.Children())
+            {
+                var item = jObject[child.Path];
+                if ("data".Equals(child.Path))
+                {
+                    if (item.Type != JTokenType.String)
+                    {
+                        properties[child.Path] = item.ToString(Formatting.None);
+                    }
+                    else
+                    {
+                        properties[child.Path] = item.Value<string>();
+                    }
+                }
+                else if (item.Type == JTokenType.String)
+                {
+                    properties[child.Path] = item.Value<string>();
+                }
+            }
+
+            return properties;
+        }
+
+        private static void EmitEvent(string eventName, IEventBinder binder, string jsonMessage, Dictionary<string, object> message)
+        {
+            if (binder.HasListeners)
+            {
+                if (binder is PusherEventEmitter pusherEventEmitter)
+                {
+                    PusherEvent pusherEvent = new PusherEvent(message, jsonMessage);
+                    if (pusherEvent != null)
+                    {
+                        pusherEventEmitter.EmitEvent(eventName, pusherEvent);
+                    }
+                }
+                else if (binder is TextEventEmitter textEventEmitter)
+                {
+                    string textEvent = textEventEmitter.ParseJson(jsonMessage);
+                    if (textEvent != null)
+                    {
+                        textEventEmitter.EmitEvent(eventName, textEvent);
+                    }
+                }
+                else if (binder is DynamicEventEmitter dynamicEventEmitter)
+                {
+                    dynamic dynamicEvent = dynamicEventEmitter.ParseJson(jsonMessage);
+                    if (dynamicEvent != null)
+                    {
+                        dynamicEventEmitter.EmitEvent(eventName, dynamicEvent);
+                    }
+                }
+            }
+        }
+
         private void DisposeWebsocket()
         {
             _currentError = null;
@@ -132,6 +197,70 @@ namespace PusherClient
             _websocket.Dispose();
             _websocket = null;
             ChangeState(ConnectionState.Disconnected);
+        }
+
+        private void ProcessChannelEvent(string eventName, string jsonMessage, string channelName, Dictionary<string, object> message)
+        {
+            foreach (string key in EmitterKeys)
+            {
+                IEventBinder binder = _pusher.GetChannelEventBinder(key, channelName);
+                EmitEvent(eventName, binder, jsonMessage, message);
+            }
+        }
+
+        private void ProcessEvent(string eventName, string jsonMessage, Dictionary<string, object> message)
+        {
+            foreach (string key in EmitterKeys)
+            {
+                IEventBinder binder = _pusher.GetEventBinder(key);
+                EmitEvent(eventName, binder, jsonMessage, message);
+            }
+        }
+
+        private bool ProcessPusherEvent(string eventName, string messageData)
+        {
+            bool processed = true;
+            switch (eventName)
+            {
+                case Constants.CONNECTION_ESTABLISHED:
+                    ParseConnectionEstablished(messageData);
+                    break;
+
+                default:
+                    processed = false;
+                    break;
+            }
+
+            return processed;
+        }
+
+        private bool ProcessPusherChannelEvent(string eventName, string channelName, string messageData)
+        {
+            bool processed = true;
+            switch (eventName)
+            {
+                case Constants.CHANNEL_SUBSCRIPTION_SUCCEEDED:
+                    _pusher.SubscriptionSuceeded(channelName, messageData);
+                    break;
+
+                case Constants.CHANNEL_SUBSCRIPTION_ERROR:
+                    _pusher.SubscriptionFailed(channelName, messageData);
+                    break;
+
+                case Constants.CHANNEL_MEMBER_ADDED:
+                    _pusher.AddMember(channelName, messageData);
+                    break;
+
+                case Constants.CHANNEL_MEMBER_REMOVED:
+                    _pusher.RemoveMember(channelName, messageData);
+                    break;
+
+                default:
+                    processed = false;
+                    break;
+            }
+
+            return processed;
         }
 
         private void WebsocketMessageReceived(object sender, MessageReceivedEventArgs e)
@@ -148,63 +277,44 @@ namespace PusherClient
             // bad:  "{\"event\":\"pusher:error\",\"data\":{\"code\":4201,\"message\":\"Pong reply not received\"}}"
             // good: "{\"event\":\"pusher:error\",\"data\":\"{\\\"code\\\":4201,\\\"message\\\":\\\"Pong reply not received\\\"}\"}";
 
-            var jObject = JObject.Parse(e.Message);
-
-            if (jObject["data"] != null)
+            JObject jObject = JObject.Parse(e.Message);
+            string rawJson = jObject.ToString(Formatting.None);
+            Dictionary<string, object> message = GetEventPropertiesFromMessage(rawJson);
+            if (message.ContainsKey("event") && jObject["data"] != null)
             {
-                if (jObject["data"].Type != JTokenType.String)
+                string eventName = (string)message["event"];
+                string messageData = string.Empty;
+                if (message.ContainsKey("data"))
                 {
-                    jObject["data"] = jObject["data"].ToString(Formatting.None);
+                    messageData = (string)message["data"];
                 }
-            }
 
-            var jsonMessage = jObject.ToString(Formatting.None);
-            var template = new { @event = string.Empty, data = string.Empty, channel = string.Empty };
-
-            var message = JsonConvert.DeserializeAnonymousType(jsonMessage, template);
-
-            var eventData = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonMessage);
-
-            if (jObject["data"] != null)
-                eventData["data"] = jObject["data"].ToString(); // undo any kind of deserialisation of the data property
-
-            var receivedEvent = new PusherEvent(eventData, jsonMessage);
-
-            _pusher.EmitPusherEvent(message.@event, receivedEvent);
-
-            if (message.@event.StartsWith(Constants.PUSHER_MESSAGE_PREFIX))
-            {
-                // Assume Pusher event
-                switch (message.@event)
+                if (eventName == Constants.ERROR)
                 {
-                    case Constants.ERROR:
-                        ParseError(message.data);
-                        break;
-
-                    case Constants.CONNECTION_ESTABLISHED:
-                        ParseConnectionEstablished(message.data);
-                        break;
-
-                    case Constants.CHANNEL_SUBSCRIPTION_SUCCEEDED:
-                        _pusher.SubscriptionSuceeded(message.channel, message.data);
-                        break;
-
-                    case Constants.CHANNEL_SUBSCRIPTION_ERROR:
-                        _pusher.SubscriptionFailed(message.channel, message.data);
-                        break;
-
-                    case Constants.CHANNEL_MEMBER_ADDED:
-                        _pusher.AddMember(message.channel, message.data);
-                        break;
-
-                    case Constants.CHANNEL_MEMBER_REMOVED:
-                        _pusher.RemoveMember(message.channel, message.data);
-                        break;
+                    ParseError(jObject["data"]);
                 }
-            }
-            else // Assume channel event
-            {
-                _pusher.EmitChannelEvent(message.channel, message.@event, receivedEvent);
+                else
+                {
+                    bool systemMessageProcessed;
+                    if (message.ContainsKey("channel"))
+                    {
+                        string channelName = (string)message["channel"];
+                        systemMessageProcessed = ProcessPusherChannelEvent(eventName, channelName, messageData);
+                        if (!systemMessageProcessed)
+                        {
+                            ProcessChannelEvent(eventName, rawJson, channelName, message);
+                        }
+                    }
+                    else
+                    {
+                        systemMessageProcessed = ProcessPusherEvent(eventName, messageData);
+                    }
+
+                    if (!systemMessageProcessed)
+                    {
+                        ProcessEvent(eventName, rawJson, message);
+                    }
+                }
             }
         }
 
@@ -229,11 +339,15 @@ namespace PusherClient
             RaiseError(new WebsocketException(State, e.Exception));
         }
 
-        private void ParseConnectionEstablished(string data)
+        private void ParseConnectionEstablished(string messageData)
         {
-            var template = new { socket_id = string.Empty };
-            var message = JsonConvert.DeserializeAnonymousType(data, template);
-            SocketId = message.socket_id;
+            JToken jToken = JToken.Parse(messageData);
+            JObject jObject = JObject.Parse(jToken.ToString());
+            jToken = jObject.SelectToken("socket_id");
+            if (jToken.Type == JTokenType.String)
+            {
+                SocketId = jToken.Value<string>();
+            }
 
             ChangeState(ConnectionState.Connected);
             _connectionSemaphore?.Release();
@@ -288,22 +402,23 @@ namespace PusherClient
             });
         }
 
-        private void ParseError(string data)
+        private void ParseError(JToken jToken)
         {
-            var template = new { message = string.Empty, code = (int?)null };
-            var parsed = JsonConvert.DeserializeAnonymousType(data, template);
-
-            ErrorCodes error = ErrorCodes.Unknown;
-
-            if (parsed.code.HasValue)
+            JToken message = jToken.SelectToken("message");
+            if (message != null && message.Type == JTokenType.String)
             {
-                if (Enum.IsDefined(typeof(ErrorCodes), parsed.code))
+                ErrorCodes error = ErrorCodes.Unknown;
+                JToken code = jToken.SelectToken("code");
+                if (code != null && code.Type == JTokenType.Integer)
                 {
-                    error = (ErrorCodes)parsed.code;
+                    if (Enum.IsDefined(typeof(ErrorCodes), code.Value<int>()))
+                    {
+                        error = (ErrorCodes)code.Value<int>();
+                    }
                 }
-            }
 
-            RaiseError(new PusherException(parsed.message, error));
+                RaiseError(new PusherException(message.Value<string>(), error));
+            }
         }
 
         private void ChangeState(ConnectionState state)
