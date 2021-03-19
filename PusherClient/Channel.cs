@@ -108,6 +108,7 @@ namespace PusherClient
         /// <param name="obj">The object to send as the payload on the event</param>
         public void Trigger(string eventName, object obj)
         {
+            Guard.EventName(eventName);
             Task.WaitAll(_pusher.TriggerAsync(Name, eventName, obj));
         }
 
@@ -119,6 +120,7 @@ namespace PusherClient
         /// <returns>An awaitable Task.</returns>
         public async Task TriggerAsync(string eventName, object obj)
         {
+            Guard.EventName(eventName);
             await _pusher.TriggerAsync(Name, eventName, obj).ConfigureAwait(false);
         }
 

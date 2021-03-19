@@ -217,21 +217,14 @@ namespace PusherClient
             }
         }
 
-        private bool ProcessPusherEvent(string eventName, string messageData)
+        private void ProcessPusherEvent(string eventName, string messageData)
         {
-            bool processed = true;
             switch (eventName)
             {
                 case Constants.CONNECTION_ESTABLISHED:
                     ParseConnectionEstablished(messageData);
                     break;
-
-                default:
-                    processed = false;
-                    break;
             }
-
-            return processed;
         }
 
         private bool ProcessPusherChannelEvent(string eventName, string channelName, string messageData)
@@ -295,24 +288,18 @@ namespace PusherClient
                 }
                 else
                 {
-                    bool systemMessageProcessed;
                     if (message.ContainsKey("channel"))
                     {
                         string channelName = (string)message["channel"];
-                        systemMessageProcessed = ProcessPusherChannelEvent(eventName, channelName, messageData);
-                        if (!systemMessageProcessed)
+                        if (!ProcessPusherChannelEvent(eventName, channelName, messageData))
                         {
                             ProcessChannelEvent(eventName, rawJson, channelName, message);
+                            ProcessEvent(eventName, rawJson, message);
                         }
                     }
                     else
                     {
-                        systemMessageProcessed = ProcessPusherEvent(eventName, messageData);
-                    }
-
-                    if (!systemMessageProcessed)
-                    {
-                        ProcessEvent(eventName, rawJson, message);
+                        ProcessPusherEvent(eventName, messageData);
                     }
                 }
             }

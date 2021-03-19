@@ -57,6 +57,26 @@
         EventEmitterActionError = 5100,
 
         /// <summary>
+        /// Attempt to trigger an event with an event name that does not begin with 'client-'.
+        /// </summary>
+        TriggerEventNameInvalidError = 5101,
+
+        /// <summary>
+        /// Attempt to trigger an event when not connected.
+        /// </summary>
+        TriggerEventNotConnectedError = 5102,
+
+        /// <summary>
+        /// Attempt to trigger an event when not subscribed.
+        /// </summary>
+        TriggerEventNotSubscribedError = 5103,
+
+        /// <summary>
+        /// Attempt to trigger an event using a public channel.
+        /// </summary>
+        TriggerEventPublicChannelError = 5104,
+
+        /// <summary>
         /// The presence or private channel has not had its Authorizer set.
         /// </summary>
         ChannelAuthorizerNotSet = 7500,

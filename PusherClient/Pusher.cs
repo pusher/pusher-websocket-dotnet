@@ -660,8 +660,42 @@ namespace PusherClient
             }
         }
 
+        private void ValidateTriggerInput(string channelName, string eventName)
+        {
+            if (Channel.GetChannelType(channelName) == ChannelTypes.Public)
+            {
+                string errorMsg = $"Failed to trigger event '{eventName}'. Client events are only supported on private and presence channels.";
+                throw new TriggerEventException(errorMsg, ErrorCodes.TriggerEventPublicChannelError);
+            }
+
+            if (eventName.IndexOf("client-", StringComparison.Ordinal) != 0)
+            {
+                string errorMsg = $"Failed to trigger event '{eventName}'. Client events must start with 'client-'.";
+                throw new TriggerEventException(errorMsg, ErrorCodes.TriggerEventNameInvalidError);
+            }
+
+            if (State != ConnectionState.Connected)
+            {
+                string errorMsg = $"Failed to trigger event '{eventName}'. Client needs to be connected. Current connection state is {State}.";
+                throw new TriggerEventException(errorMsg, ErrorCodes.TriggerEventNotConnectedError);
+            }
+
+            bool subscribed = false;
+            if (Channels.TryGetValue(channelName, out Channel channel))
+            {
+                subscribed = channel.IsSubscribed;
+            }
+
+            if (!subscribed)
+            {
+                string errorMsg = $"Failed to trigger event '{eventName}'. Channel '{channelName}' needs to be subscribed.";
+                throw new TriggerEventException(errorMsg, ErrorCodes.TriggerEventNotSubscribedError);
+            }
+        }
+
         async Task ITriggerChannels.TriggerAsync(string channelName, string eventName, object obj)
         {
+            ValidateTriggerInput(channelName, eventName);
             string message = JsonConvert.SerializeObject(new
             {
                 @event = eventName,
