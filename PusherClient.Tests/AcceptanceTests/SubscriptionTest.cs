@@ -5,85 +5,126 @@ using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using PusherClient.Tests.Utilities;
+using WebSocket4Net;
 
 namespace PusherClient.Tests.AcceptanceTests
 {
+    /// <summary>
+    /// Tests subscribe and unsubscribe functionality for Public, Private and Presence channels.
+    /// </summary>
     [TestFixture]
     public partial class SubscriptionTest
     {
-        #region Public channel tests
+        private readonly List<Pusher> _clients = new List<Pusher>(10);
+
+        [TearDown]
+        public async Task DisposeAsync()
+        {
+            await PusherFactory.DisposePushersAsync(_clients).ConfigureAwait(false);
+        }
+
+        #region Connect then subscribe combined channel tests
 
         [Test]
-        public async Task PusherShouldUnsubscribeSuccessfullyWhenTheRequestIsMadeViaTheChannelAsync()
+        public async Task CombinedChannelsConnectThenSubscribeAsync()
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher();
-            var mockChannelName = ChannelNameFactory.CreateUniqueChannelName();
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            List<string> channelNames = CreateChannelNames();
+
+            // Act and Assert
+            await ConnectThenSubscribeMultipleChannelsTestAsync(pusher, channelNames).ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task CombinedChannelsConnectThenSubscribeThenDisconnectAsync()
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            var disconnectedEvent = new AutoResetEvent(false);
+            pusher.Disconnected += sender =>
+            {
+                disconnectedEvent.Set();
+            };
+
+            List<string> channelNames = CreateChannelNames();
 
             // Act
-            await pusher.ConnectAsync().ConfigureAwait(false);
-            var channel = await pusher.SubscribeAsync(mockChannelName).ConfigureAwait(false);
-            channel.Unsubscribe();
+            await ConnectThenSubscribeMultipleChannelsTestAsync(pusher, channelNames).ConfigureAwait(false);
+            await pusher.DisconnectAsync().ConfigureAwait(false);
+            disconnectedEvent.WaitOne(TimeSpan.FromSeconds(5));
+
+            // Need to delay as there is no channel disconnected event to wait upon.
+            await Task.Delay(1000).ConfigureAwait(false);
 
             // Assert
-            ValidateUnsubscribedChannel(pusher, channel);
-
-            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
+            AssertIsDisconnected(pusher, channelNames);
         }
 
         [Test]
-        public async Task SubscribeWithoutConnectingPublicChannelAsync()
-        {
-            await SubscribeWithoutConnectingTestAsync(ChannelTypes.Public).ConfigureAwait(false);
-        }
-
-        [Test]
-        public async Task SubscribeThenUnsubscribeWithoutConnectingPublicChannelAsync()
-        {
-            await SubscribeThenUnsubscribeWithoutConnectingTestAsync(ChannelTypes.Public).ConfigureAwait(false);
-        }
-
-        #endregion
-
-        #region Private channel tests
-
-        [Test]
-        public async Task SubscribeWithoutConnectingPrivateChannelAsync()
-        {
-            await SubscribeWithoutConnectingTestAsync(ChannelTypes.Private).ConfigureAwait(false);
-        }
-
-        [Test]
-        public async Task SubscribeThenUnsubscribeWithoutConnectingPrivateChannelAsync()
-        {
-            await SubscribeThenUnsubscribeWithoutConnectingTestAsync(ChannelTypes.Private).ConfigureAwait(false);
-        }
-
-        #endregion
-
-        #region Presence channel tests
-
-        [Test]
-        public async Task SubscribeWithoutConnectingPresenceChannelAsync()
-        {
-            await SubscribeWithoutConnectingTestAsync(ChannelTypes.Presence).ConfigureAwait(false);
-        }
-
-        [Test]
-        public async Task SubscribeThenUnsubscribeWithoutConnectingPresenceChannelAsync()
-        {
-            await SubscribeThenUnsubscribeWithoutConnectingTestAsync(ChannelTypes.Presence).ConfigureAwait(false);
-        }
-
-        #endregion
-
-        #region Combination tests
-
-        [Test]
-        public async Task ConnectThenSubscribeThenUnsubscribeMultipleChannelsTest()
+        public async Task CombinedChannelsConnectThenSubscribeThenDisconnectThenReconnectAsync()
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            List<string> channelNames = CreateChannelNames();
+            var subscribedEvent = new AutoResetEvent(false);
+            var disconnectedEvent = new AutoResetEvent(false);
+            pusher.Disconnected += sender =>
+            {
+                disconnectedEvent.Set();
+            };
+
+            // Act
+            await ConnectThenSubscribeMultipleChannelsTestAsync(pusher, channelNames).ConfigureAwait(false);
+            await pusher.DisconnectAsync().ConfigureAwait(false);
+            disconnectedEvent.WaitOne(TimeSpan.FromSeconds(5));
+
+            // Need to delay as there is no channel disconnected event to wait upon.
+            await Task.Delay(1000).ConfigureAwait(false);
+
+            // Assert
+            AssertIsDisconnected(pusher, channelNames);
+
+            // Act
+            int subscribedCount = 0;
+            pusher.Subscribed += (sender, channelName) =>
+            {
+                subscribedCount++;
+                if (subscribedCount == channelNames.Count)
+                {
+                    subscribedEvent.Set();
+                }
+            };
+            await pusher.ConnectAsync().ConfigureAwait(false);
+            subscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
+
+            // Assert
+            AssertIsSubscribed(pusher, channelNames);
+        }
+
+        [Test]
+        public async Task CombinedChannelsConnectThenSubscribeUnauthorizedAsync()
+        {
+            await SubscribeUnauthorizedChannelsAsync(connectBeforeSubscribing: true).ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task CombinedChannelsConnectThenSubscribeAuthorizationFailureAsync()
+        {
+            await SubscribeAuthorizationFailureChannelsAsync(connectBeforeSubscribing: true).ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task CombinedChannelsConnectThenSubscribeMessageTamperFailureAsync()
+        {
+            await SubscribeFailureChannelsAsync(connectBeforeSubscribing: true).ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task CombinedChannelsConnectThenSubscribeThenUnsubscribeTest()
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
             List<string> channelNames = CreateChannelNames(numberOfChannels: 6);
 
             // Act
@@ -99,15 +140,13 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 ValidateUnsubscribedChannel(pusher, channel);
             }
-
-            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         [Test]
-        public async Task ConnectThenSubscribeThenUnsubscribeAllMultipleChannelsTest()
+        public async Task CombinedChannelsConnectThenSubscribeThenUnsubscribeAllTest()
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
             List<string> channelNames = CreateChannelNames(numberOfChannels: 6);
 
             // Act
@@ -120,15 +159,141 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 ValidateUnsubscribedChannel(pusher, channel);
             }
+        }
 
-            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
+        #endregion
+
+        #region Subscribe then connect combined channel tests
+
+        [Test]
+        public async Task CombinedChannelsSubscribeThenConnectAsync()
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            List<string> channelNames = CreateChannelNames();
+
+            // Act and Assert
+            await SubscribeThenConnectMultipleChannelsTestAsync(pusher, channelNames).ConfigureAwait(false);
         }
 
         [Test]
-        public async Task SubscribeThenConnectThenUnsubscribeMultipleChannelsTest()
+        public async Task CombinedChannelsSubscribeThenConnectThenDisconnectAsync()
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            List<string> channelNames = CreateChannelNames();
+            var disconnectedEvent = new AutoResetEvent(false);
+            pusher.Disconnected += sender =>
+            {
+                disconnectedEvent.Set();
+            };
+
+            // Act
+            await SubscribeThenConnectMultipleChannelsTestAsync(pusher, channelNames).ConfigureAwait(false);
+            await pusher.DisconnectAsync().ConfigureAwait(false);
+            disconnectedEvent.WaitOne(TimeSpan.FromSeconds(5));
+
+            // Need to delay as there is no channel disconnected event to wait upon.
+            await Task.Delay(1000).ConfigureAwait(false);
+
+            // Assert
+            AssertIsDisconnected(pusher, channelNames);
+        }
+
+        [Test]
+        public async Task CombinedChannelsSubscribeThenConnectThenDisconnectThenReconnectAsync()
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            List<string> channelNames = CreateChannelNames();
+            var subscribedEvent = new AutoResetEvent(false);
+            var disconnectedEvent = new AutoResetEvent(false);
+            pusher.Disconnected += sender =>
+            {
+                disconnectedEvent.Set();
+            };
+
+            // Act
+            await SubscribeThenConnectMultipleChannelsTestAsync(pusher, channelNames).ConfigureAwait(false);
+            await pusher.DisconnectAsync().ConfigureAwait(false);
+            disconnectedEvent.WaitOne(TimeSpan.FromSeconds(5));
+
+            // Need to delay as there is no channel disconnected event to wait upon.
+            await Task.Delay(1000).ConfigureAwait(false);
+
+            // Assert
+            AssertIsDisconnected(pusher, channelNames);
+
+            // Act
+            int subscribedCount = 0;
+            pusher.Subscribed += (sender, channelName) =>
+            {
+                subscribedCount++;
+                if (subscribedCount == channelNames.Count)
+                {
+                    subscribedEvent.Set();
+                }
+            };
+            await pusher.ConnectAsync().ConfigureAwait(false);
+            subscribedEvent.WaitOne(TimeSpan.FromSeconds(5));
+
+            // Assert
+            AssertIsSubscribed(pusher, channelNames);
+        }
+
+        [Test]
+        public async Task CombinedChannelsSubscribeThenConnectThenReconnectWhenTheUnderlyingSocketIsClosedAsync()
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            var subscribedEvent = new AutoResetEvent(false);
+            List<string> channelNames = CreateChannelNames();
+
+            // Act
+            await SubscribeThenConnectMultipleChannelsTestAsync(pusher, channelNames).ConfigureAwait(false);
+            int subscribedCount = 0;
+            pusher.Subscribed += (sender, channelName) =>
+            {
+                subscribedCount++;
+                if (subscribedCount == channelNames.Count)
+                {
+                    subscribedEvent.Set();
+                }
+            };
+            await Task.Run(() =>
+            {
+                WebSocket socket = ConnectionTest.GetWebSocket(pusher);
+                socket.Close();
+            }).ConfigureAwait(false);
+
+            // Assert
+            Assert.IsTrue(subscribedEvent.WaitOne(TimeSpan.FromSeconds(5)));
+            AssertIsSubscribed(pusher, channelNames);
+        }
+
+        [Test]
+        public async Task CombinedChannelsSubscribeThenConnectUnauthorizedAsync()
+        {
+            await SubscribeUnauthorizedChannelsAsync(connectBeforeSubscribing: false).ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task CombinedChannelsSubscribeThenConnectAuthorizationFailureAsync()
+        {
+            await SubscribeAuthorizationFailureChannelsAsync(connectBeforeSubscribing: false).ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task CombinedChannelsSubscribeThenConnectMessageTamperFailureAsync()
+        {
+            await SubscribeFailureChannelsAsync(connectBeforeSubscribing: false).ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task CombinedChannelsSubscribeThenConnectThenUnsubscribeTest()
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
             List<string> channelNames = CreateChannelNames(numberOfChannels: 6);
 
             // Act
@@ -149,15 +314,13 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 ValidateUnsubscribedChannel(pusher, channel);
             }
-
-            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         [Test]
-        public async Task SubscribeThenConnectThenUnsubscribeAllMultipleChannelsTest()
+        public async Task CombinedChannelsSubscribeThenConnectThenUnsubscribeAllTest()
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
             List<string> channelNames = CreateChannelNames(numberOfChannels: 6);
 
             // Act
@@ -175,9 +338,11 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 ValidateUnsubscribedChannel(pusher, channel);
             }
-
-            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
+
+        #endregion
+
+        #region Subscription backlog tests
 
         [Test]
         public async Task UnsubscribeWithBacklogTest()
@@ -187,7 +352,7 @@ namespace PusherClient.Tests.AcceptanceTests
              */
 
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
             List<string> channelNames = CreateChannelNames(numberOfChannels: 6);
 
             // Act
@@ -206,8 +371,6 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 ValidateUnsubscribedChannel(pusher, channel);
             }
-
-            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         [Test]
@@ -218,7 +381,7 @@ namespace PusherClient.Tests.AcceptanceTests
              */
 
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()));
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
             List<string> channelNames = CreateChannelNames(numberOfChannels: 6);
 
             // Act
@@ -234,8 +397,6 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 ValidateUnsubscribedChannel(pusher, channel);
             }
-
-            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         #endregion
@@ -348,10 +509,10 @@ namespace PusherClient.Tests.AcceptanceTests
             return result;
         }
 
-        private static async Task SubscribeWithoutConnectingTestAsync(ChannelTypes channelType)
+        private async Task SubscribeWithoutConnectingTestAsync(ChannelTypes channelType)
         {
             // Arrange
-            Pusher pusher = PusherFactory.GetPusher(channelType: channelType);
+            Pusher pusher = PusherFactory.GetPusher(channelType: channelType, saveTo: _clients);
             string mockChannelName = ChannelNameFactory.CreateUniqueChannelName(channelType: channelType);
 
             // Act
@@ -361,11 +522,11 @@ namespace PusherClient.Tests.AcceptanceTests
             ValidateDisconnectedChannel(pusher, mockChannelName, subscribedChannel, channelType);
         }
 
-        private static async Task SubscribeThenUnsubscribeWithoutConnectingTestAsync(ChannelTypes channelType)
+        private async Task SubscribeThenUnsubscribeWithoutConnectingTestAsync(ChannelTypes channelType)
         {
             // Arrange
             string mockChannelName = ChannelNameFactory.CreateUniqueChannelName(channelType: channelType);
-            Pusher pusher = PusherFactory.GetPusher(channelType: channelType);
+            Pusher pusher = PusherFactory.GetPusher(channelType: channelType, saveTo: _clients);
 
             // Act
             Channel subscribedChannel = await pusher.SubscribeAsync(mockChannelName).ConfigureAwait(false);
@@ -375,7 +536,7 @@ namespace PusherClient.Tests.AcceptanceTests
             ValidateUnsubscribedChannel(pusher, subscribedChannel);
         }
 
-        private static async Task SubscribeTestAsync(bool connectBeforeSubscribing, ChannelTypes channelType, Pusher pusher = null, bool raiseSubscribedError = false)
+        private async Task SubscribeTestAsync(bool connectBeforeSubscribing, ChannelTypes channelType, Pusher pusher = null, bool raiseSubscribedError = false)
         {
             // Arrange
             AutoResetEvent subscribedEvent = new AutoResetEvent(false);
@@ -383,7 +544,7 @@ namespace PusherClient.Tests.AcceptanceTests
             string mockChannelName = ChannelNameFactory.CreateUniqueChannelName(channelType: channelType);
             if (pusher == null)
             {
-                pusher = PusherFactory.GetPusher(channelType: channelType);
+                pusher = PusherFactory.GetPusher(channelType: channelType, saveTo: _clients);
             }
 
             bool[] channelSubscribed = { false, false };
@@ -456,10 +617,10 @@ namespace PusherClient.Tests.AcceptanceTests
             }
         }
 
-        private static async Task SubscribeSameChannelTwiceAsync(bool connectBeforeSubscribing, ChannelTypes channelType)
+        private async Task SubscribeSameChannelTwiceAsync(bool connectBeforeSubscribing, ChannelTypes channelType)
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(channelType);
+            var pusher = PusherFactory.GetPusher(channelType, saveTo: _clients);
             var subscribedEvent = new AutoResetEvent(false);
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(channelType);
             var numberOfCalls = 0;
@@ -500,14 +661,12 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.AreEqual(firstChannel.IsSubscribed, secondChannel.IsSubscribed);
             Assert.AreEqual(firstChannel.Name, secondChannel.Name);
             Assert.AreEqual(firstChannel.ChannelType, secondChannel.ChannelType);
-
-            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
-        private static async Task SubscribeSameChannelMultipleTimesTestAsync(bool connectBeforeSubscribing, ChannelTypes channelType)
+        private async Task SubscribeSameChannelMultipleTimesTestAsync(bool connectBeforeSubscribing, ChannelTypes channelType)
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(channelType);
+            var pusher = PusherFactory.GetPusher(channelType, saveTo: _clients);
             var subscribedEvent = new AutoResetEvent(false);
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(channelType);
             var numberOfCalls = 0;
@@ -546,8 +705,6 @@ namespace PusherClient.Tests.AcceptanceTests
             // Assert
             Assert.IsTrue(channelSubscribed);
             Assert.AreEqual(1, numberOfCalls);
-
-            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         private static async Task SubscribeMultipleChannelsTestAsync(bool connectBeforeSubscribing, Pusher pusher, IList<string> channelNames)
@@ -588,10 +745,10 @@ namespace PusherClient.Tests.AcceptanceTests
             AssertIsSubscribed(pusher, channelNames);
         }
 
-        private static async Task SubscribeUnauthorizedChannelsAsync(bool connectBeforeSubscribing)
+        private async Task SubscribeUnauthorizedChannelsAsync(bool connectBeforeSubscribing)
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeUnauthoriser());
+            var pusher = PusherFactory.GetPusher(new FakeUnauthoriser(), saveTo: _clients);
             AutoResetEvent subscribedEvent = new AutoResetEvent(false);
             var errorEvent = new AutoResetEvent(false);
             int errorCount = 0;
@@ -676,14 +833,12 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.AreEqual(expectedExceptionCount, exceptionCount, "Number of exceptions expected");
             Assert.AreEqual(expectedErrorCount, errorCount, "# Errors expected");
             AssertUnauthorized(pusher, channelNames);
-
-            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
-        private static async Task SubscribeAuthorizationFailureChannelsAsync(bool connectBeforeSubscribing)
+        private async Task SubscribeAuthorizationFailureChannelsAsync(bool connectBeforeSubscribing)
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeUnauthoriser());
+            var pusher = PusherFactory.GetPusher(new FakeUnauthoriser(), saveTo: _clients);
             AutoResetEvent subscribedEvent = new AutoResetEvent(false);
             var errorEvent = new AutoResetEvent(false);
             int errorCount = 0;
@@ -768,14 +923,12 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.AreEqual(expectedExceptionCount, exceptionCount, "Number of exceptions expected");
             Assert.AreEqual(expectedErrorCount, errorCount, "# Errors expected");
             AssertUnauthorized(pusher, channelNames);
-
-            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
-        private static async Task SubscribeFailureChannelsAsync(bool connectBeforeSubscribing)
+        private async Task SubscribeFailureChannelsAsync(bool connectBeforeSubscribing)
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser("SabotagedUser"));
+            var pusher = PusherFactory.GetPusher(new FakeAuthoriser("SabotagedUser"), saveTo: _clients);
             AutoResetEvent subscribedEvent = new AutoResetEvent(false);
             var errorEvent = new AutoResetEvent(false);
             int errorCount = 0;
@@ -859,8 +1012,54 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.AreEqual(expectedExceptionCount, exceptionCount, "Number of exceptions expected");
             Assert.AreEqual(expectedErrorCount, errorCount, "# Errors expected");
             AssertUnauthorized(pusher, channelNames);
+        }
 
-            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
+        #endregion
+
+        #region Connect then subscribe test methods
+
+        private async Task ConnectThenSubscribeTestAsync(ChannelTypes channelType, Pusher pusher = null, bool raiseSubscribedError = false)
+        {
+            await SubscribeTestAsync(connectBeforeSubscribing: true, channelType, pusher, raiseSubscribedError).ConfigureAwait(false);
+        }
+
+        private async Task ConnectThenSubscribeSameChannelTwiceAsync(ChannelTypes channelType)
+        {
+            await SubscribeSameChannelTwiceAsync(connectBeforeSubscribing: true, channelType).ConfigureAwait(false);
+        }
+
+        private async Task ConnectThenSubscribeSameChannelMultipleTimesTestAsync(ChannelTypes channelType)
+        {
+            await SubscribeSameChannelMultipleTimesTestAsync(connectBeforeSubscribing: true, channelType).ConfigureAwait(false);
+        }
+
+        private static async Task ConnectThenSubscribeMultipleChannelsTestAsync(Pusher pusher, IList<string> channelNames)
+        {
+            await SubscribeMultipleChannelsTestAsync(connectBeforeSubscribing: true, pusher, channelNames).ConfigureAwait(false);
+        }
+
+        #endregion
+
+        #region Subscribe then connect test methods
+
+        private async Task SubscribeThenConnectTestAsync(ChannelTypes channelType, Pusher pusher = null, bool raiseSubscribedError = false)
+        {
+            await SubscribeTestAsync(connectBeforeSubscribing: false, channelType, pusher, raiseSubscribedError).ConfigureAwait(false);
+        }
+
+        private async Task SubscribeThenConnectSameChannelTwiceAsync(ChannelTypes channelType)
+        {
+            await SubscribeSameChannelTwiceAsync(connectBeforeSubscribing: false, channelType).ConfigureAwait(false);
+        }
+
+        private async Task SubscribeThenConnectSameChannelMultipleTimesTestAsync(ChannelTypes channelType)
+        {
+            await SubscribeSameChannelMultipleTimesTestAsync(connectBeforeSubscribing: false, channelType).ConfigureAwait(false);
+        }
+
+        private static async Task SubscribeThenConnectMultipleChannelsTestAsync(Pusher pusher, IList<string> channelNames)
+        {
+            await SubscribeMultipleChannelsTestAsync(connectBeforeSubscribing: false, pusher, channelNames).ConfigureAwait(false);
         }
 
         #endregion

@@ -173,8 +173,9 @@
     <Compile Include="AcceptanceTests\EventEmitterTest.PusherEventEmitter.cs" />
     <Compile Include="AcceptanceTests\EventEmitterTest.cs" />
     <Compile Include="AcceptanceTests\PresenceChannelTest.cs" />
-    <Compile Include="AcceptanceTests\SubscriptionTest.SubscribeThenConnect.cs" />
-    <Compile Include="AcceptanceTests\SubscriptionTest.ConnectThenSubscribe.cs" />
+    <Compile Include="AcceptanceTests\SubscriptionTest.PresenceChannels.cs" />
+    <Compile Include="AcceptanceTests\SubscriptionTest.PrivateChannels.cs" />
+    <Compile Include="AcceptanceTests\SubscriptionTest.PublicChannels.cs" />
     <Compile Include="AcceptanceTests\SubscriptionTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="UnitTests\HttpAuthorizerTest.cs" />

@@ -2,32 +2,34 @@
 using System;
 using PusherClient.Tests.Utilities;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace PusherClient.Tests.AcceptanceTests
 {
     [TestFixture]
     public partial class EventEmitterTest
     {
-        private Pusher _pusher;
+        private readonly List<Pusher> _clients = new List<Pusher>(10);
+        private Pusher _remoteClient;
 
         [SetUp]
         public async Task ConnectAsync()
         {
-            _pusher = PusherFactory.GetPusher(channelType: ChannelTypes.Presence);
-            _pusher.Error += HandlePusherError;
-            await _pusher.ConnectAsync().ConfigureAwait(false);
+            _remoteClient = PusherFactory.GetPusher(channelType: ChannelTypes.Presence, saveTo: _clients);
+            _remoteClient.Error += HandlePusherError;
+            await _remoteClient.ConnectAsync().ConfigureAwait(false);
         }
 
         [TearDown]
-        public async Task DestroyAsync()
+        public async Task DisposeAsync()
         {
-            await PusherFactory.DisposePusherAsync(_pusher).ConfigureAwait(false);
-            _pusher = null;
+            await PusherFactory.DisposePushersAsync(_clients).ConfigureAwait(false);
+            _remoteClient = null;
         }
 
         private void HandlePusherError(object sender, PusherException error)
         {
-            System.Diagnostics.Trace.TraceError($"Pusher error detected on socket {_pusher.SocketID}:{Environment.NewLine}{error}");
+            System.Diagnostics.Trace.TraceError($"Pusher error detected on socket {_remoteClient.SocketID}:{Environment.NewLine}{error}");
         }
 
         private class RawPusherEvent
@@ -37,6 +39,5 @@ namespace PusherClient.Tests.AcceptanceTests
             public string @event { get; set; }
             public string data { get; set; }
         }
-
     }
 }

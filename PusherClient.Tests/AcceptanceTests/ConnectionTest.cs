@@ -13,6 +13,14 @@ namespace PusherClient.Tests.AcceptanceTests
     [TestFixture]
     public class ConnectionTest
     {
+        private readonly List<Pusher> _clients = new List<Pusher>(10);
+
+        [TearDown]
+        public async Task DisposeAsync()
+        {
+            await PusherFactory.DisposePushersAsync(_clients).ConfigureAwait(false);
+        }
+
         [Test]
         public async Task PusherShouldSuccessfullyConnectWhenGivenAValidAppKeyAsync()
         {
@@ -43,7 +51,7 @@ namespace PusherClient.Tests.AcceptanceTests
             int expectedFinalCount = 2;
             List<ConnectionState> stateChangeLog = new List<ConnectionState>(expectedFinalCount);
 
-            var pusher = PusherFactory.GetPusher();
+            var pusher = PusherFactory.GetPusher(saveTo: _clients);
             pusher.Connected += sender =>
             {
                 connectedCount++;
@@ -153,7 +161,7 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task PusherShouldSuccessfullyDisconnectEvenIfNotConnectedAsync()
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher();
+            var pusher = PusherFactory.GetPusher(saveTo: _clients);
 
             // Act
             await pusher.DisconnectAsync().ConfigureAwait(false);
@@ -417,7 +425,7 @@ namespace PusherClient.Tests.AcceptanceTests
             return expectedErrorCount;
         }
 
-        private static async Task<Pusher> ConnectTestAsync(SortedSet<ConnectionState> raiseErrorOn = null)
+        private async Task<Pusher> ConnectTestAsync(SortedSet<ConnectionState> raiseErrorOn = null)
         {
             // Arrange
             var connectedEvent = new AutoResetEvent(false);
@@ -429,7 +437,7 @@ namespace PusherClient.Tests.AcceptanceTests
             int expectedFinalCount = 2;
             List<ConnectionState> stateChangeLog = new List<ConnectionState>(expectedFinalCount);
 
-            var pusher = PusherFactory.GetPusher();
+            var pusher = PusherFactory.GetPusher(saveTo: _clients);
             Assert.IsNull(pusher.SocketID);
             pusher.Connected += sender =>
             {
@@ -512,7 +520,7 @@ namespace PusherClient.Tests.AcceptanceTests
             return pusher;
         }
 
-        private static async Task<Pusher> DisconnectTestAsync(SortedSet<ConnectionState> raiseErrorOn = null)
+        private async Task<Pusher> DisconnectTestAsync(SortedSet<ConnectionState> raiseErrorOn = null)
         {
             // Arrange
             var disconnectedEvent = new AutoResetEvent(false);

@@ -17,7 +17,7 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task EmitPusherEventTestAsync()
         {
             // Arrange
-            Pusher localPusher = PusherFactory.GetPusher(channelType: ChannelTypes.Presence);
+            Pusher localPusher = PusherFactory.GetPusher(channelType: ChannelTypes.Presence, saveTo: _clients);
             localPusher.Error += HandlePusherError;
             string testEventName = "client-pusher-event-test";
             AutoResetEvent globalEventReceived = new AutoResetEvent(false);
@@ -27,7 +27,7 @@ namespace PusherClient.Tests.AcceptanceTests
             PusherEvent pusherEvent = CreatePusherEvent(ChannelTypes.Private, testEventName);
 
             await localPusher.ConnectAsync().ConfigureAwait(false);
-            Channel remoteChannel = await _pusher.SubscribeAsync(pusherEvent.ChannelName).ConfigureAwait(false);
+            Channel remoteChannel = await _remoteClient.SubscribeAsync(pusherEvent.ChannelName).ConfigureAwait(false);
             Channel localChannel = await localPusher.SubscribeAsync(pusherEvent.ChannelName).ConfigureAwait(false);
 
             // Act

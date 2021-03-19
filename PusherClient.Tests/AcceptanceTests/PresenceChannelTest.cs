@@ -12,6 +12,14 @@ namespace PusherClient.Tests.AcceptanceTests
     [TestFixture]
     public class PresenceChannelTest
     {
+        private readonly List<Pusher> _clients = new List<Pusher>(10);
+
+        [TearDown]
+        public async Task DisposeAsync()
+        {
+            await PusherFactory.DisposePushersAsync(_clients).ConfigureAwait(false);
+        }
+
         #region Connect first tests
 
         [Test]
@@ -42,22 +50,14 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task ConnectThenSubscribeChannelMultipleMembersAsync()
         {
             string channelName = ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence);
-            IList<Pusher> pusherClients = await ConnectThenSubscribeMultipleMembersAsync(4, channelName).ConfigureAwait(false);
-            foreach (Pusher pusher in pusherClients)
-            {
-                await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
-            }
+            await ConnectThenSubscribeMultipleMembersAsync(4, channelName).ConfigureAwait(false);
         }
 
         [Test]
         public async Task ConnectThenSubscribeChannelMultipleMembersWithMemberAddedErrorAsync()
         {
             string channelName = ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence);
-            IList<Pusher> pusherClients = await ConnectThenSubscribeMultipleMembersAsync(3, channelName, raiseMemberAddedError: true).ConfigureAwait(false);
-            foreach (Pusher pusher in pusherClients)
-            {
-                await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
-            }
+            await ConnectThenSubscribeMultipleMembersAsync(3, channelName, raiseMemberAddedError: true).ConfigureAwait(false);
         }
 
         [Test]
@@ -76,7 +76,7 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task ConnectThenSubscribeChannelWithoutAuthorizerAsync()
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher();
+            var pusher = PusherFactory.GetPusher(saveTo: _clients);
             PusherException caughtException = null;
 
             // Act
@@ -126,22 +126,14 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task SubscribeThenConnectChannelMultipleMembersAsync()
         {
             string channelName = ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence);
-            IList<Pusher> pusherClients = await SubscribeThenConnectMultipleMembersAsync(4, channelName).ConfigureAwait(false);
-            foreach (Pusher pusher in pusherClients)
-            {
-                await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
-            }
+            await SubscribeThenConnectMultipleMembersAsync(4, channelName).ConfigureAwait(false);
         }
 
         [Test]
         public async Task SubscribeThenConnectChannelMultipleMembersWithMemberAddedErrorAsync()
         {
             string channelName = ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence);
-            IList<Pusher> pusherClients = await SubscribeThenConnectMultipleMembersAsync(3, channelName, raiseMemberAddedError: true).ConfigureAwait(false);
-            foreach (Pusher pusher in pusherClients)
-            {
-                await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
-            }
+            await SubscribeThenConnectMultipleMembersAsync(3, channelName, raiseMemberAddedError: true).ConfigureAwait(false);
         }
 
         [Test]
@@ -160,7 +152,7 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task SubscribeThenConnectChannelWithoutAuthorizerAsync()
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher();
+            var pusher = PusherFactory.GetPusher(saveTo: _clients);
             PusherException caughtException = null;
 
             // Act
@@ -182,7 +174,7 @@ namespace PusherClient.Tests.AcceptanceTests
 
         #region Private helpers
 
-        private static async Task SubscribeAsync(bool connectBeforeSubscribing, Pusher pusher = null, bool raiseError = false)
+        private async Task SubscribeAsync(bool connectBeforeSubscribing, Pusher pusher = null, bool raiseError = false)
         {
             // Arrange
             const int PusherSubcribedIndex = 0;
@@ -193,7 +185,7 @@ namespace PusherClient.Tests.AcceptanceTests
             string mockChannelName = ChannelNameFactory.CreateUniqueChannelName(channelType: channelType);
             if (pusher == null)
             {
-                pusher = PusherFactory.GetPusher(channelType: channelType);
+                pusher = PusherFactory.GetPusher(channelType: channelType, saveTo: _clients);
             }
 
             bool[] subscribed = { false, false };
@@ -266,24 +258,22 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 ValidateSubscribedExceptions(mockChannelName, errors);
             }
-
-            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
-        private static async Task ConnectThenSubscribeAsync(Pusher pusher = null, bool raiseSubscribedError = false)
+        private async Task ConnectThenSubscribeAsync(Pusher pusher = null, bool raiseSubscribedError = false)
         {
             await SubscribeAsync(connectBeforeSubscribing: true, pusher, raiseSubscribedError).ConfigureAwait(false);
         }
 
-        private static async Task SubscribeThenConnectAsync(Pusher pusher = null, bool raiseSubscribedError = false)
+        private async Task SubscribeThenConnectAsync(Pusher pusher = null, bool raiseSubscribedError = false)
         {
             await SubscribeAsync(connectBeforeSubscribing: false, pusher, raiseSubscribedError).ConfigureAwait(false);
         }
 
-        private static async Task SubscribeSameChannelTwiceAsync(bool connectBeforeSubscribing)
+        private async Task SubscribeSameChannelTwiceAsync(bool connectBeforeSubscribing)
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(ChannelTypes.Presence);
+            var pusher = PusherFactory.GetPusher(ChannelTypes.Presence, saveTo: _clients);
             AutoResetEvent subscribedEvent = new AutoResetEvent(false);
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(ChannelTypes.Presence);
             var numberOfCalls = 0;
@@ -324,14 +314,12 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.AreEqual(firstChannel.IsSubscribed, secondChannel.IsSubscribed);
             Assert.AreEqual(firstChannel.Name, secondChannel.Name);
             Assert.AreEqual(firstChannel.ChannelType, secondChannel.ChannelType);
-
-            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
-        private static async Task SubscribeSameChannelMultipleTimesAsync(bool connectBeforeSubscribing)
+        private async Task SubscribeSameChannelMultipleTimesAsync(bool connectBeforeSubscribing)
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(ChannelTypes.Presence);
+            var pusher = PusherFactory.GetPusher(ChannelTypes.Presence, saveTo: _clients);
             AutoResetEvent subscribedEvent = new AutoResetEvent(false);
             var mockChannelName = ChannelNameFactory.CreateUniqueChannelName(ChannelTypes.Presence);
             var numberOfCalls = 0;
@@ -370,8 +358,6 @@ namespace PusherClient.Tests.AcceptanceTests
             // Assert
             Assert.IsTrue(channelSubscribed);
             Assert.AreEqual(1, numberOfCalls);
-
-            await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
         }
 
         private static void CheckIfAllMembersAdded(int numberOfMembers, ConcurrentDictionary<int, int> membersAddedCounter, AutoResetEvent memberAddedEvent, GenericPresenceChannel<FakeUserInfo> presenceChannel)
@@ -407,7 +393,7 @@ namespace PusherClient.Tests.AcceptanceTests
             }
         }
 
-        private static async Task<IList<Pusher>> SubscribeMultipleMembersAsync(bool connectBeforeSubscribing, int numberOfMembers, string channelName, bool raiseMemberAddedError = false)
+        private async Task<IList<Pusher>> SubscribeMultipleMembersAsync(bool connectBeforeSubscribing, int numberOfMembers, string channelName, bool raiseMemberAddedError = false)
         {
             // Arrange
             ChannelTypes channelType = ChannelTypes.Presence;
@@ -419,7 +405,7 @@ namespace PusherClient.Tests.AcceptanceTests
             int expectedSubscribedCount = numberOfMembers;
             for (int i = 1; i <= numberOfMembers; i++)
             {
-                Pusher pusher = PusherFactory.GetPusher(channelType: channelType, $"User{i}");
+                Pusher pusher = PusherFactory.GetPusher(channelType: channelType, $"User{i}", saveTo: _clients);
                 pusherMembers.Add(pusher);
                 pusher.Subscribed += (sender, channel) =>
                 {
@@ -499,17 +485,17 @@ namespace PusherClient.Tests.AcceptanceTests
             return pusherMembers;
         }
 
-        private static async Task<IList<Pusher>> ConnectThenSubscribeMultipleMembersAsync(int numberOfMembers, string channelName, bool raiseMemberAddedError = false)
+        private async Task<IList<Pusher>> ConnectThenSubscribeMultipleMembersAsync(int numberOfMembers, string channelName, bool raiseMemberAddedError = false)
         {
             return await SubscribeMultipleMembersAsync(connectBeforeSubscribing: true, numberOfMembers, channelName, raiseMemberAddedError).ConfigureAwait(false);
         }
 
-        private static async Task<IList<Pusher>> SubscribeThenConnectMultipleMembersAsync(int numberOfMembers, string channelName, bool raiseMemberAddedError = false)
+        private async Task<IList<Pusher>> SubscribeThenConnectMultipleMembersAsync(int numberOfMembers, string channelName, bool raiseMemberAddedError = false)
         {
             return await SubscribeMultipleMembersAsync(connectBeforeSubscribing: false, numberOfMembers, channelName, raiseMemberAddedError).ConfigureAwait(false);
         }
 
-        private static async Task RemoveMemberAsync(bool connectBeforeSubscribing, int numberOfMembers = 4, bool raiseMemberRemovedError = false)
+        private async Task RemoveMemberAsync(bool connectBeforeSubscribing, int numberOfMembers = 4, bool raiseMemberRemovedError = false)
         {
             // Arrange
             int numMemberRemovedEvents = 0;
@@ -573,11 +559,6 @@ namespace PusherClient.Tests.AcceptanceTests
             }
 
             Assert.AreEqual(expectedNumMemberRemovedErrorEvents, numMemberRemovedErrors, "# MemberRemoved errors");
-
-            foreach (Pusher pusher in pusherMembers)
-            {
-                await PusherFactory.DisposePusherAsync(pusher).ConfigureAwait(false);
-            }
         }
 
         private static void ValidateSubscribedChannel(Pusher pusher, string expectedChannelName, Channel channel, int numMembersExpected = 1)

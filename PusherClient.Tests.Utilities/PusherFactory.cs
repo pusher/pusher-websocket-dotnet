@@ -1,10 +1,11 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace PusherClient.Tests.Utilities
 {
     public static class PusherFactory
     {
-        public static Pusher GetPusher(IAuthorizer authorizer = null)
+        public static Pusher GetPusher(IAuthorizer authorizer = null, IList<Pusher> saveTo = null)
         {
             PusherOptions options = new PusherOptions()
             {
@@ -14,32 +15,54 @@ namespace PusherClient.Tests.Utilities
                 IsTracingEnabled = true,
             };
 
-            return new Pusher(Config.AppKey, options);
+            Pusher result = new Pusher(Config.AppKey, options);
+            if (saveTo != null)
+            {
+                saveTo.Add(result);
+            }
+
+            return result;
         }
 
-        public static Pusher GetPusher(ChannelTypes channelType, string username = null)
+        public static Pusher GetPusher(ChannelTypes channelType, string username = null, IList<Pusher> saveTo = null)
         {
+            Pusher result;
             switch (channelType)
             {
                 case ChannelTypes.Private:
                 case ChannelTypes.Presence:
-                    return GetPusher(new FakeAuthoriser(username ?? UserNameFactory.CreateUniqueUserName()));
+                    result = GetPusher(new FakeAuthoriser(username ?? UserNameFactory.CreateUniqueUserName()), saveTo: saveTo);
+                    break;
+
                 default:
-                    return GetPusher(authorizer: null);
+                    result = GetPusher(authorizer: null, saveTo: saveTo);
+                    break;
             }
+
+            return result;
         }
 
-        public static async Task DisposePusherAsync(Pusher pusher)
+        public static async Task DisposePusherClientAsync(Pusher pusher)
         {
             if (pusher != null)
             {
-                if (pusher.State != ConnectionState.Connected)
-                {
-                    await pusher.ConnectAsync().ConfigureAwait(false);
-                }
-
+                await pusher.ConnectAsync().ConfigureAwait(false);
                 await pusher.UnsubscribeAllAsync().ConfigureAwait(false);
                 await pusher.DisconnectAsync().ConfigureAwait(false);
+            }
+        }
+
+        public static async Task DisposePushersAsync(IList<Pusher> pushers)
+        {
+            if (pushers != null)
+            {
+                for (int i = 0; i < pushers.Count; i++)
+                {
+                    await DisposePusherClientAsync(pushers[i]).ConfigureAwait(false);
+                    pushers[i] = null;
+                }
+
+                pushers.Clear();
             }
         }
     }
