@@ -1,9 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using Newtonsoft.Json;
+using System.Collections.Generic;
 
 namespace PusherClient
 {
     public class PusherEvent
     {
+        private static readonly JsonSerializerSettings _jsonSettings = new JsonSerializerSettings() { NullValueHandling = NullValueHandling.Ignore };
+
         private readonly Dictionary<string, object> _eventData;
         private readonly string _rawEvent;
 
@@ -68,7 +71,14 @@ namespace PusherClient
                 string result = null;
                 if (_eventData.TryGetValue("data", out object obj))
                 {
-                    result = obj.ToString();
+                    if (obj is string)
+                    {
+                        result = (string)obj;
+                    }
+                    else
+                    {
+                        result = JsonConvert.SerializeObject(obj, _jsonSettings);
+                    }
                 }
 
                 return result;

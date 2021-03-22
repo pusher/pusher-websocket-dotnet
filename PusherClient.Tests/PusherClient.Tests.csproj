@@ -172,6 +172,7 @@
     <Compile Include="AcceptanceTests\EventEmitterTest.DynamicEventEmitter.cs" />
     <Compile Include="AcceptanceTests\EventEmitterTest.PusherEventEmitter.cs" />
     <Compile Include="AcceptanceTests\EventEmitterTest.cs" />
+    <Compile Include="AcceptanceTests\EventTestData.cs" />
     <Compile Include="AcceptanceTests\PresenceChannelTest.cs" />
     <Compile Include="AcceptanceTests\SubscriptionTest.PresenceChannels.cs" />
     <Compile Include="AcceptanceTests\SubscriptionTest.PrivateChannels.cs" />

@@ -8,6 +8,13 @@ namespace PusherClient
     /// </summary>
     public class EventEmitter
     {
+        internal static readonly string[] EmitterKeys = new string[]
+        {
+            nameof(PusherEventEmitter),
+            nameof(TextEventEmitter),
+            nameof(DynamicEventEmitter),
+        };
+
         private IDictionary<string, IEventBinder> Emitters { get; } = new SortedList<string, IEventBinder>
         {
             {nameof(PusherEventEmitter), new PusherEventEmitter() },

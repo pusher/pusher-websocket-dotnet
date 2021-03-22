@@ -24,13 +24,6 @@ namespace PusherClient
         private SemaphoreSlim _connectionSemaphore;
         private Exception _currentError;
 
-        private IList<string> EmitterKeys { get; } = new List<string>
-        {
-            { nameof(PusherEventEmitter) },
-            { nameof(TextEventEmitter) },
-            { nameof(DynamicEventEmitter) },
-        };
-
         public string SocketId { get; private set; }
 
         public ConnectionState State { get; private set; } = ConnectionState.Uninitialized;
@@ -201,7 +194,7 @@ namespace PusherClient
 
         private void ProcessChannelEvent(string eventName, string jsonMessage, string channelName, Dictionary<string, object> message)
         {
-            foreach (string key in EmitterKeys)
+            foreach (string key in EventEmitter.EmitterKeys)
             {
                 IEventBinder binder = _pusher.GetChannelEventBinder(key, channelName);
                 EmitEvent(eventName, binder, jsonMessage, message);
@@ -210,7 +203,7 @@ namespace PusherClient
 
         private void ProcessEvent(string eventName, string jsonMessage, Dictionary<string, object> message)
         {
-            foreach (string key in EmitterKeys)
+            foreach (string key in EventEmitter.EmitterKeys)
             {
                 IEventBinder binder = _pusher.GetEventBinder(key);
                 EmitEvent(eventName, binder, jsonMessage, message);

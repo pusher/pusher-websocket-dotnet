@@ -9,6 +9,9 @@ namespace PusherClient.Tests.AcceptanceTests
     [TestFixture]
     public partial class EventEmitterTest
     {
+        private const string ExpectedTextField = "Clock, hour-glass, nut\n⏰,⏳,⏣\n";
+        private const int ExpectedIntegerField = 16078622;
+
         private readonly List<Pusher> _clients = new List<Pusher>(10);
         private Pusher _remoteClient;
 
@@ -156,14 +159,6 @@ namespace PusherClient.Tests.AcceptanceTests
             // Assert
             Assert.IsNotNull(exception, $"Expected a {nameof(ArgumentNullException)}");
             Assert.IsTrue(exception.Message.Contains("eventName"));
-        }
-
-        private class RawPusherEvent
-        {
-            public string user_id { get; set; }
-            public string channel { get; set; }
-            public string @event { get; set; }
-            public string data { get; set; }
         }
     }
 }

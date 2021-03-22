@@ -78,15 +78,30 @@ namespace PusherClient.Tests.AcceptanceTests
 
         private static PusherEvent CreatePusherEvent(ChannelTypes channelType, string eventName)
         {
+            EventTestData data = new EventTestData
+            {
+                TextField = ExpectedTextField,
+                IntegerField = ExpectedIntegerField,
+            };
             Dictionary<string, object> properties = new Dictionary<string, object>
             {
-                { nameof(RawPusherEvent.channel), ChannelNameFactory.CreateUniqueChannelName(channelType: channelType) },
-                { nameof(RawPusherEvent.@event), eventName },
-                { nameof(RawPusherEvent.data), "Date: " + DateTime.Now.ToString("o") },
+                { "channel", ChannelNameFactory.CreateUniqueChannelName(channelType: channelType) },
+                { "event", eventName },
+                { "data", data },
             };
 
             PusherEvent result = new PusherEvent(properties, JsonConvert.SerializeObject(properties));
             return result;
+        }
+
+        private static void AssertPusherEventData(string expectedData, string actualData)
+        {
+            Assert.IsNotNull(expectedData);
+            Assert.AreEqual(expectedData, actualData);
+            EventTestData actual = JsonConvert.DeserializeObject<EventTestData>(actualData);
+            Assert.AreEqual(ExpectedIntegerField, actual.IntegerField, nameof(actual.IntegerField));
+            Assert.IsNull(actual.NothingField, nameof(actual.NothingField));
+            Assert.AreEqual(ExpectedTextField, actual.TextField, nameof(actual.TextField));
         }
 
         private static void AssertPusherEventsAreEqual(ChannelTypes channelType, PusherEvent expected, PusherEvent actual)
@@ -111,8 +126,7 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.IsNotNull(actual.EventName);
             Assert.AreEqual(expected.EventName, actual.EventName);
 
-            Assert.IsNotNull(actual.Data);
-            Assert.AreEqual(expected.Data, actual.Data);
+            AssertPusherEventData(expected.Data, actual.Data);
         }
 
         private async Task PusherEventEmitterTestAsync(ChannelTypes channelType, bool raiseEmitterActionError = false)
