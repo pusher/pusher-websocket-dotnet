@@ -27,7 +27,7 @@ namespace PusherClient
         /// </summary>
         public ConcurrentDictionary<string, T> Members { get; private set; } = new ConcurrentDictionary<string, T>();
 
-        public ConcurrentDictionary<string, T> Me { get; private set; } = new ConcurrentDictionary<string, T>();
+        public ConcurrentDictionary<string, string> Me { get; private set; } = new ConcurrentDictionary<string, string>();
 
         internal override void SubscriptionSucceeded(string data)
         {

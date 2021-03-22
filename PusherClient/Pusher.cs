@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace PusherClient
 {
@@ -328,7 +329,7 @@ namespace PusherClient
                     var message = JsonConvert.DeserializeAnonymousType(jsonAuth, template);
                     if (channelType == ChannelTypes.Presence)
                     {
-                        ((PresenceChannel)Channels[channelName]).Me["data"] = JsonConvert.DeserializeObject<dynamic>(message.channel_data);
+                        ((PresenceChannel)Channels[channelName]).Me["data"] = message.channel_data;
                     }
  
                     await _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName, auth = message.auth, channel_data = message.channel_data } }));
