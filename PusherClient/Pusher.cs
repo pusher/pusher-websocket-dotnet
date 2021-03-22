@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace PusherClient
 {
@@ -603,27 +604,29 @@ namespace PusherClient
 
         private string CreateAuthorizedChannelSubscribeMessage(string channelName, string jsonAuth)
         {
-            var template = new { auth = string.Empty, channel_data = string.Empty };
-            dynamic messageObj = JsonConvert.DeserializeAnonymousType(jsonAuth, template);
-            return JsonConvert.SerializeObject(new
+            string auth = null;
+            string channelData = null;
+            JObject jObject = JObject.Parse(jsonAuth);
+            JToken jToken = jObject.SelectToken("auth");
+            if (jToken != null && jToken.Type == JTokenType.String)
             {
-                @event = Constants.CHANNEL_SUBSCRIBE,
-                data = new
-                {
-                    channel = channelName,
-                    messageObj.auth,
-                    messageObj.channel_data
-                }
-            });
+                auth = jToken.Value<string>();
+            }
+
+            jToken = jObject.SelectToken("channel_data");
+            if (jToken != null && jToken.Type == JTokenType.String)
+            {
+                channelData = jToken.Value<string>();
+            }
+
+            PusherChannelSubscriptionData data = new PusherAuthorizedChannelSubscriptionData(channelName, auth, channelData);
+            return DefaultSerializer.Default.Serialize(new PusherChannelSubscribeEvent(data));
         }
 
         private string CreateChannelSubscribeMessage(string channelName)
         {
-            return JsonConvert.SerializeObject(new
-            {
-                @event = Constants.CHANNEL_SUBSCRIBE,
-                data = new { channel = channelName }
-            });
+            PusherChannelSubscriptionData data = new PusherChannelSubscriptionData(channelName);
+            return DefaultSerializer.Default.Serialize(new PusherChannelSubscribeEvent(data));
         }
 
         private Channel CreateChannel(string channelName)
@@ -700,12 +703,7 @@ namespace PusherClient
         async Task ITriggerChannels.TriggerAsync(string channelName, string eventName, object obj)
         {
             ValidateTriggerInput(channelName, eventName);
-            string message = JsonConvert.SerializeObject(new
-            {
-                @event = eventName,
-                channel = channelName,
-                data = obj,
-            });
+            string message = DefaultSerializer.Default.Serialize(new PusherChannelEvent(eventName, obj, channelName));
             await _connection.SendAsync(message).ConfigureAwait(false);
         }
 
@@ -779,11 +777,7 @@ namespace PusherClient
                     if (channel.IsSubscribed)
                     {
                         channel.IsSubscribed = false;
-                        await _connection.SendAsync(JsonConvert.SerializeObject(new
-                        {
-                            @event = Constants.CHANNEL_UNSUBSCRIBE,
-                            data = new { channel = channel.Name },
-                        })).ConfigureAwait(false);
+                        await _connection.SendAsync(DefaultSerializer.Default.Serialize(new PusherChannelUnsubscribeEvent(channel.Name))).ConfigureAwait(false);
                     }
                 }
                 finally

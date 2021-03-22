@@ -13,6 +13,8 @@ namespace PusherClient.Tests.AcceptanceTests
     /// </summary>
     public partial class EventEmitterTest
     {
+        #region Presence channels
+
         [Test]
         public async Task PusherEventEmitterPresenceChannelTestAsync()
         {
@@ -21,17 +23,42 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         [Test]
-        public async Task PusherEventEmitterPrivateChannelTestAsync()
-        {
-            ChannelTypes channelType = ChannelTypes.Private;
-            await PusherEventEmitterTestAsync(channelType).ConfigureAwait(false);
-        }
-
-        [Test]
         public async Task PusherEventEmitterPresenceChannelActionErrorTestAsync()
         {
             ChannelTypes channelType = ChannelTypes.Presence;
             await PusherEventEmitterTestAsync(channelType, raiseEmitterActionError: true).ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task PusherEventEmitterPresenceChannelUnbindAllListenersTestAsync()
+        {
+            ChannelTypes channelType = ChannelTypes.Presence;
+            await PusherEventEmitterUnbindTestAsync(channelType, listenersToUnbind: new List<int> { 2, 3 }).ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task PusherEventEmitterPresenceChannelUnbindAllGeneralListenersTestAsync()
+        {
+            ChannelTypes channelType = ChannelTypes.Presence;
+            await PusherEventEmitterUnbindTestAsync(channelType, listenersToUnbind: new List<int> { 0, 1 }).ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task PusherEventEmitterPresenceChannelUnbindAllTestAsync()
+        {
+            ChannelTypes channelType = ChannelTypes.Presence;
+            await PusherEventEmitterUnbindTestAsync(channelType, listenersToUnbind: new List<int> { 0, 1, 2, 3 }).ConfigureAwait(false);
+        }
+
+        #endregion
+
+        #region Private channels
+
+        [Test]
+        public async Task PusherEventEmitterPrivateChannelTestAsync()
+        {
+            ChannelTypes channelType = ChannelTypes.Private;
+            await PusherEventEmitterTestAsync(channelType).ConfigureAwait(false);
         }
 
         [Test]
@@ -49,32 +76,15 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         [Test]
-        public async Task PusherEventEmitterPresenceChannelUnbindAllListenersTestAsync()
-        {
-            ChannelTypes channelType = ChannelTypes.Presence;
-            await PusherEventEmitterUnbindTestAsync(channelType, listenersToUnbind: new List<int> { 2, 3 }).ConfigureAwait(false);
-        }
-
-        [Test]
         public async Task PusherEventEmitterPrivateChannelUnbindGeneralListenerTestAsync()
         {
             ChannelTypes channelType = ChannelTypes.Private;
             await PusherEventEmitterUnbindTestAsync(channelType, listenersToUnbind: new List<int> { 0 }).ConfigureAwait(false);
         }
 
-        [Test]
-        public async Task PusherEventEmitterPresenceChannelUnbindAllGeneralListenersTestAsync()
-        {
-            ChannelTypes channelType = ChannelTypes.Presence;
-            await PusherEventEmitterUnbindTestAsync(channelType, listenersToUnbind: new List<int> { 0, 1 }).ConfigureAwait(false);
-        }
+        #endregion
 
-        [Test]
-        public async Task PusherEventEmitterPresenceChannelUnbindAllTestAsync()
-        {
-            ChannelTypes channelType = ChannelTypes.Presence;
-            await PusherEventEmitterUnbindTestAsync(channelType, listenersToUnbind: new List<int> { 0, 1, 2, 3 }).ConfigureAwait(false);
-        }
+        #region Test helper functions
 
         private static PusherEvent CreatePusherEvent(ChannelTypes channelType, string eventName)
         {
@@ -321,5 +331,7 @@ namespace PusherClient.Tests.AcceptanceTests
                 Assert.AreEqual(totalEventsExpected[i], numberEventsReceived[i], $"# Event[{i}]");
             }
         }
+
+        #endregion
     }
 }

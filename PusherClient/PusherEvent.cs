@@ -5,8 +5,6 @@ namespace PusherClient
 {
     public class PusherEvent
     {
-        private static readonly JsonSerializerSettings _jsonSettings = new JsonSerializerSettings() { NullValueHandling = NullValueHandling.Ignore };
-
         private readonly Dictionary<string, object> _eventData;
         private readonly string _rawEvent;
 
@@ -77,7 +75,7 @@ namespace PusherClient
                     }
                     else
                     {
-                        result = JsonConvert.SerializeObject(obj, _jsonSettings);
+                        result = DefaultSerializer.Default.Serialize(obj);
                     }
                 }
 

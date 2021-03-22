@@ -234,8 +234,8 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.IsTrue(disconnected, nameof(disconnected));
             Assert.AreEqual(1, disconnectedCount, nameof(disconnectedCount));
             Assert.AreEqual(expectedFinalCount, stateChangeLog.Count, nameof(expectedFinalCount));
-            Assert.AreEqual(ConnectionState.Disconnecting, stateChangeLog[0]);
             Assert.AreEqual(ConnectionState.Disconnected, stateChangeLog[1]);
+            Assert.AreEqual(ConnectionState.Disconnecting, stateChangeLog[0]);
             Assert.IsFalse(errored, nameof(errored));
         }
 
