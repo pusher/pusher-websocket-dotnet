@@ -18,7 +18,7 @@ namespace PusherClient
         /// <summary>
         /// Fires when a Member is Removed
         /// </summary>
-        public event MemberRemovedEventHandler MemberRemoved;
+        public event MemberRemovedEventHandler<T> MemberRemoved;
 
         internal GenericPresenceChannel(string channelName, ITriggerChannels pusher) : base(channelName, pusher) { }
 
@@ -26,6 +26,8 @@ namespace PusherClient
         /// Gets the Members of the channel
         /// </summary>
         public ConcurrentDictionary<string, T> Members { get; private set; } = new ConcurrentDictionary<string, T>();
+
+        public ConcurrentDictionary<string, T> Me { get; private set; } = new ConcurrentDictionary<string, T>();
 
         internal override void SubscriptionSucceeded(string data)
         {
@@ -54,7 +56,7 @@ namespace PusherClient
                 if (Members.TryRemove(member.Key, out removed))
                 {
                     if (MemberRemoved != null)
-                        MemberRemoved(this);
+                        MemberRemoved(this, new KeyValuePair<string, T>(member.Key, removed));
                 }
             }
         }

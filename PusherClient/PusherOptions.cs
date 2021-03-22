@@ -18,8 +18,16 @@
         /// <summary>
         /// Gets or sets the Cluster to user for the Host
         /// </summary>
-        public string Cluster { get; set; } = "mt1";
+        public static string Cluster { get; set; } = "mt1";
 
-        internal string Host => $"ws-{Cluster}.pusher.com";
+        /// <summary>
+        /// Gets or sets the Host
+        /// </summary>
+        public string Host { get; set; } = $"ws-{ Cluster}.pusher.com";
+
+        /// <summary>
+        /// Gets or sets the Host
+        /// </summary>
+        public int Port { get; set; } = -1;
     }
 }

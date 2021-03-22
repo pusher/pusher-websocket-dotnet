@@ -58,7 +58,7 @@ namespace PusherClient
         /// <summary>
         /// Tracks the member info types used to create each non-dynamic presence channel
         /// </summary>
-        private readonly ConcurrentDictionary<string, Tuple<Type, Func<Channel>>> _presenceChannelFactories 
+        private readonly ConcurrentDictionary<string, Tuple<Type, Func<Channel>>> _presenceChannelFactories
             = new ConcurrentDictionary<string, Tuple<Type, Func<Channel>>>();
 
         private Connection _connection;
@@ -85,6 +85,8 @@ namespace PusherClient
 
         SemaphoreSlim _mutexLock = new SemaphoreSlim(1);
 
+        Timer _pingTimer = null;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Pusher" /> class.
         /// </summary>
@@ -98,6 +100,19 @@ namespace PusherClient
             _applicationKey = applicationKey;
 
             _options = options ?? new PusherOptions { Encrypted = false };
+
+            _pingTimer = new Timer(async (e) =>
+            {
+                if (this.State == ConnectionState.Connected)
+                {
+                    await _connection.Send(JsonConvert.SerializeObject(new { @event = "pusher:ping"}));
+                }
+            }, null, 1000, 30000);
+        }
+
+        ~Pusher()
+        {
+            if (_pingTimer != null) _pingTimer.Dispose();
         }
 
         void IPusher.ConnectionStateChanged(ConnectionState state)
@@ -212,8 +227,8 @@ namespace PusherClient
         private string ConstructUrl()
         {
             var scheme = _options.Encrypted ? Constants.SECURE_SCHEMA : Constants.INSECURE_SCHEMA;
-
-            return $"{scheme}{_options.Host}/app/{_applicationKey}?protocol=5&client=pusher-dotnet-client&version=1.1.2";
+            var port = _options.Port > 0 ? $":{_options.Port}" : "";
+            return $"{scheme}{_options.Host}{port}/app/{_applicationKey}?protocol=5&client=pusher-dotnet-client&version=1.1.2";
         }
 
         /// <summary>
@@ -272,9 +287,9 @@ namespace PusherClient
                 throw new ArgumentException("The channel name must be refer to a presence channel", nameof(channelName));
 
             // We need to keep track of the type we want the channel to be, in case it gets created or re-created later.
-            _presenceChannelFactories.AddOrUpdate(channelName, 
-                (_) => Tuple.Create<Type, Func<Channel>>(typeof(MemberT), 
-                    () => new GenericPresenceChannel<MemberT>(channelName, this)), 
+            _presenceChannelFactories.AddOrUpdate(channelName,
+                (_) => Tuple.Create<Type, Func<Channel>>(typeof(MemberT),
+                    () => new GenericPresenceChannel<MemberT>(channelName, this)),
                 (_, existing) =>
                 {
                     if (existing.Item1 != typeof(MemberT))
@@ -311,7 +326,11 @@ namespace PusherClient
 
                     var template = new { auth = string.Empty, channel_data = string.Empty };
                     var message = JsonConvert.DeserializeAnonymousType(jsonAuth, template);
-
+                    if (channelType == ChannelTypes.Presence)
+                    {
+                        ((PresenceChannel)Channels[channelName]).Me["data"] = JsonConvert.DeserializeObject<dynamic>(message.channel_data);
+                    }
+ 
                     await _connection.Send(JsonConvert.SerializeObject(new { @event = Constants.CHANNEL_SUBSCRIBE, data = new { channel = channelName, auth = message.auth, channel_data = message.channel_data } }));
                 }
                 else
@@ -421,6 +440,11 @@ namespace PusherClient
             {
                 var result = SubscribeToChannel(channel.Key).Result;
             }
+        }
+
+        public async Task<bool> Send(string data)
+        {
+            return await _connection.Send(data);
         }
     }
 }
