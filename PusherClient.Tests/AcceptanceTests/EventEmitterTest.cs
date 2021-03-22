@@ -16,7 +16,6 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task ConnectAsync()
         {
             _remoteClient = PusherFactory.GetPusher(channelType: ChannelTypes.Presence, saveTo: _clients);
-            _remoteClient.Error += HandlePusherError;
             await _remoteClient.ConnectAsync().ConfigureAwait(false);
         }
 
@@ -25,11 +24,6 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             await PusherFactory.DisposePushersAsync(_clients).ConfigureAwait(false);
             _remoteClient = null;
-        }
-
-        private void HandlePusherError(object sender, PusherException error)
-        {
-            System.Diagnostics.Trace.TraceError($"Pusher error detected on socket {_remoteClient.SocketID}:{Environment.NewLine}{error}");
         }
 
         [Test]
@@ -41,7 +35,7 @@ namespace PusherClient.Tests.AcceptanceTests
             string testEventName = "client-pusher-event-test";
             PusherEvent pusherEvent = CreatePusherEvent(channelType, testEventName);
             Channel localChannel = await localPusher.SubscribeAsync(pusherEvent.ChannelName).ConfigureAwait(false);
-            TriggerEventException expectedException = null;
+            TriggerEventException exception = null;
 
             // Act
             try
@@ -50,12 +44,12 @@ namespace PusherClient.Tests.AcceptanceTests
             }
             catch (TriggerEventException error)
             {
-                expectedException = error;
+                exception = error;
             }
 
             // Assert
-            Assert.IsNotNull(expectedException, $"Expected a {nameof(TriggerEventException)}");
-            Assert.AreEqual(ErrorCodes.TriggerEventPublicChannelError, expectedException.PusherCode);
+            Assert.IsNotNull(exception, $"Expected a {nameof(TriggerEventException)}");
+            Assert.AreEqual(ErrorCodes.TriggerEventPublicChannelError, exception.PusherCode);
         }
 
         [Test]
@@ -67,7 +61,7 @@ namespace PusherClient.Tests.AcceptanceTests
             string testEventName = "pusher-event-test";
             PusherEvent pusherEvent = CreatePusherEvent(channelType, testEventName);
             Channel localChannel = await localPusher.SubscribeAsync(pusherEvent.ChannelName).ConfigureAwait(false);
-            TriggerEventException expectedException = null;
+            TriggerEventException exception = null;
 
             // Act
             try
@@ -76,12 +70,12 @@ namespace PusherClient.Tests.AcceptanceTests
             }
             catch (TriggerEventException error)
             {
-                expectedException = error;
+                exception = error;
             }
 
             // Assert
-            Assert.IsNotNull(expectedException, $"Expected a {nameof(TriggerEventException)}");
-            Assert.AreEqual(ErrorCodes.TriggerEventNameInvalidError, expectedException.PusherCode);
+            Assert.IsNotNull(exception, $"Expected a {nameof(TriggerEventException)}");
+            Assert.AreEqual(ErrorCodes.TriggerEventNameInvalidError, exception.PusherCode);
         }
 
         [Test]
@@ -93,7 +87,7 @@ namespace PusherClient.Tests.AcceptanceTests
             string testEventName = "client-pusher-event-test";
             PusherEvent pusherEvent = CreatePusherEvent(channelType, testEventName);
             Channel localChannel = await localPusher.SubscribeAsync(pusherEvent.ChannelName).ConfigureAwait(false);
-            TriggerEventException expectedException = null;
+            TriggerEventException exception = null;
 
             // Act
             try
@@ -102,12 +96,12 @@ namespace PusherClient.Tests.AcceptanceTests
             }
             catch (TriggerEventException error)
             {
-                expectedException = error;
+                exception = error;
             }
 
             // Assert
-            Assert.IsNotNull(expectedException, $"Expected a {nameof(TriggerEventException)}");
-            Assert.AreEqual(ErrorCodes.TriggerEventNotConnectedError, expectedException.PusherCode);
+            Assert.IsNotNull(exception, $"Expected a {nameof(TriggerEventException)}");
+            Assert.AreEqual(ErrorCodes.TriggerEventNotConnectedError, exception.PusherCode);
         }
 
         [Test]
@@ -120,7 +114,7 @@ namespace PusherClient.Tests.AcceptanceTests
             PusherEvent pusherEvent = CreatePusherEvent(channelType, testEventName);
             await localPusher.ConnectAsync().ConfigureAwait(false);
             Channel localChannel = await localPusher.SubscribeAsync(pusherEvent.ChannelName).ConfigureAwait(false);
-            TriggerEventException expectedException = null;
+            TriggerEventException exception = null;
 
             // Act
             await localPusher.UnsubscribeAllAsync().ConfigureAwait(false);
@@ -130,12 +124,38 @@ namespace PusherClient.Tests.AcceptanceTests
             }
             catch (TriggerEventException error)
             {
-                expectedException = error;
+                exception = error;
             }
 
             // Assert
-            Assert.IsNotNull(expectedException, $"Expected a {nameof(TriggerEventException)}");
-            Assert.AreEqual(ErrorCodes.TriggerEventNotSubscribedError, expectedException.PusherCode);
+            Assert.IsNotNull(exception, $"Expected a {nameof(TriggerEventException)}");
+            Assert.AreEqual(ErrorCodes.TriggerEventNotSubscribedError, exception.PusherCode);
+        }
+
+        [Test]
+        public async Task TriggerNullEventNameErrorTestAsync()
+        {
+            // Arrange
+            ChannelTypes channelType = ChannelTypes.Public;
+            Pusher localPusher = PusherFactory.GetPusher(channelType: ChannelTypes.Presence, saveTo: _clients);
+            string testEventName = null;
+            PusherEvent pusherEvent = CreatePusherEvent(channelType, testEventName);
+            Channel localChannel = await localPusher.SubscribeAsync(pusherEvent.ChannelName).ConfigureAwait(false);
+            ArgumentNullException exception = null;
+
+            // Act
+            try
+            {
+                await localChannel.TriggerAsync(testEventName, pusherEvent.Data);
+            }
+            catch (ArgumentNullException error)
+            {
+                exception = error;
+            }
+
+            // Assert
+            Assert.IsNotNull(exception, $"Expected a {nameof(ArgumentNullException)}");
+            Assert.IsTrue(exception.Message.Contains("eventName"));
         }
 
         private class RawPusherEvent

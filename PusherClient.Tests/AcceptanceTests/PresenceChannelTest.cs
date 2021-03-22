@@ -77,21 +77,21 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             // Arrange
             var pusher = PusherFactory.GetPusher(saveTo: _clients);
-            PusherException caughtException = null;
+            ChannelException caughtException = null;
 
             // Act
             try
             {
                 await ConnectThenSubscribeAsync(pusher: pusher).ConfigureAwait(false);
             }
-            catch (PusherException ex)
+            catch (ChannelException ex)
             {
                 caughtException = ex;
             }
 
             // Assert
             Assert.IsNotNull(caughtException);
-            StringAssert.Contains("An Authorizer needs to be provided when subscribing to a private or presence channel.", caughtException.Message);
+            StringAssert.Contains("An Authorizer needs to be provided when subscribing to the private or presence channel", caughtException.Message);
         }
 
         #endregion
@@ -153,21 +153,21 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             // Arrange
             var pusher = PusherFactory.GetPusher(saveTo: _clients);
-            PusherException caughtException = null;
+            ChannelException caughtException = null;
 
             // Act
             try
             {
                 await SubscribeThenConnectAsync(pusher: pusher).ConfigureAwait(false);
             }
-            catch (PusherException ex)
+            catch (ChannelException ex)
             {
                 caughtException = ex;
             }
 
             // Assert
             Assert.IsNotNull(caughtException);
-            StringAssert.Contains("An Authorizer needs to be provided when subscribing to a private or presence channel.", caughtException.Message);
+            StringAssert.Contains("An Authorizer needs to be provided when subscribing to the private or presence channel", caughtException.Message);
         }
 
         #endregion
@@ -222,14 +222,14 @@ namespace PusherClient.Tests.AcceptanceTests
                 };
             }
 
-            SubscriptionEventHandler subscribedEventHandler = (sender) =>
+            void subscribedEventHandler(object sender)
             {
                 subscribed[ChannelSubcribedIndex] = true;
                 if (raiseError)
                 {
                     throw new InvalidOperationException($"Simulated error for {nameof(Channel)}.{nameof(Pusher.Subscribed)} {mockChannelName}.");
                 }
-            };
+            }
 
 
             GenericPresenceChannel<FakeUserInfo> presenceChannel;
@@ -552,7 +552,7 @@ namespace PusherClient.Tests.AcceptanceTests
             await pusherMembers[0].DisconnectAsync().ConfigureAwait(false);
 
             // Assert
-            Assert.IsTrue(memberRemovedEvent.WaitOne(TimeSpan.FromSeconds(5)));
+            Assert.IsTrue(memberRemovedEvent.WaitOne(TimeSpan.FromSeconds(7)));
             if (raiseMemberRemovedError)
             {
                 Assert.IsTrue(memberRemovedErrorEvent.WaitOne(TimeSpan.FromSeconds(5)));

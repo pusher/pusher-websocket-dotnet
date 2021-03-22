@@ -36,7 +36,7 @@ namespace PusherClient
         public ErrorCodes PusherCode { get; }
 
         /// <summary>
-        /// Gets or sets whether this exception has been emitted to the Pusher.Error event handler.
+        /// Gets or sets whether this exception has been emitted to the <c>Pusher.Error</c> event handler.
         /// </summary>
         /// <remarks>This property helps prevent duplicate error events from being emitted.</remarks>
         public bool EmittedToErrorHandler { get; set; }

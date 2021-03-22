@@ -42,11 +42,6 @@
         ClientOverRateLimit = 4301,
 
         /// <summary>
-        /// No connection is present.
-        /// </summary>
-        NotConnected = 5002,
-
-        /// <summary>
         ///  A subscription error has occured.
         /// </summary>
         SubscriptionError = 5003,
@@ -90,6 +85,11 @@
         /// The presence or private channel is unauthorized. Received a 403 Forbidden HTTP error from the Authorizer.
         /// </summary>
         ChannelUnauthorized = 7502,
+
+        /// <summary>
+        /// The presence channel is already defined using a different member type.
+        /// </summary>
+        PresenceChannelAlreadyDefined = 7503,
 
         /// <summary>
         /// An error was caught when emitting an event to the Pusher.Connected event handler.

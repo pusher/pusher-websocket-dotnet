@@ -1,14 +1,13 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Concurrent;
+﻿using System;
 using System.Collections.Generic;
 
 namespace PusherClient
 {
     public class EventEmitter<TData> : IEventEmitter<TData>
     {
-        private readonly ConcurrentDictionary<string, List<Action<TData>>> _listeners = new ConcurrentDictionary<string, List<Action<TData>>>();
-        private readonly ConcurrentStack<Action<string, TData>> _generalListeners = new ConcurrentStack<Action<string, TData>>();
+        private readonly object _sync = new object();
+        private readonly IDictionary<string, List<Action<TData>>> _listeners = new SortedList<string, List<Action<TData>>>();
+        private readonly IList<Action<string, TData>> _generalListeners = new List<Action<string, TData>>();
 
         /// <summary>
         /// Gets or sets the Pusher error handler.
@@ -37,8 +36,18 @@ namespace PusherClient
 
             if (listener != null)
             {
-                _listeners.TryAdd(eventName, new List<Action<TData>>());
-                _listeners[eventName].Add(listener);
+                lock (_sync)
+                {
+                    if (!_listeners.ContainsKey(eventName))
+                    {
+                        _listeners[eventName] = new List<Action<TData>>();
+                    }
+
+                    if (!_listeners[eventName].Contains(listener))
+                    {
+                        _listeners[eventName].Add(listener);
+                    }
+                }
             }
         }
 
@@ -50,7 +59,13 @@ namespace PusherClient
         {
             if (listener != null)
             {
-                _generalListeners.Push(listener);
+                lock (_sync)
+                {
+                    if (!_generalListeners.Contains(listener))
+                    {
+                        _generalListeners.Add(listener);
+                    }
+                }
             }
         }
 
@@ -65,9 +80,12 @@ namespace PusherClient
 
             if (listener != null)
             {
-                if (_listeners.ContainsKey(eventName))
+                lock (_sync)
                 {
-                    _listeners[eventName].Remove(listener);
+                    if (_listeners.ContainsKey(eventName))
+                    {
+                        _listeners[eventName].Remove(listener);
+                    }
                 }
             }
         }
@@ -80,9 +98,28 @@ namespace PusherClient
         {
             Guard.EventName(eventName);
 
-            if (_listeners.TryRemove(eventName, out List<Action<TData>> items))
+            lock (_sync)
             {
-                items.Clear();
+                if (_listeners.ContainsKey(eventName))
+                {
+                    _listeners[eventName].Clear();
+                    _listeners.Remove(eventName);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Unbinds a listener that listens to all events.
+        /// </summary>
+        /// <param name="listener">The listener to unbind.</param>
+        public void Unbind(Action<string, TData> listener)
+        {
+            if (listener != null)
+            {
+                lock (_sync)
+                {
+                    _generalListeners.Remove(listener);
+                }
             }
         }
 
@@ -91,18 +128,16 @@ namespace PusherClient
         /// </summary>
         public void UnbindAll()
         {
-            _listeners.Clear();
-            _generalListeners.Clear();
-        }
+            lock (_sync)
+            {
+                _generalListeners.Clear();
+                foreach (var list in _listeners.Values)
+                {
+                    list.Clear();
+                }
 
-        /// <summary>
-        /// Parse event Json data.
-        /// </summary>
-        /// <param name="jsonData">The Json to parse.</param>
-        /// <returns>Returns the parsed data.</returns>
-        public virtual TData ParseJson(string jsonData)
-        {
-            return JsonConvert.DeserializeObject<TData>(jsonData);
+                _listeners.Clear();
+            }
         }
 
         /// <summary>
@@ -112,25 +147,47 @@ namespace PusherClient
         /// <param name="data">The event data.</param>
         public void EmitEvent(string eventName, TData data)
         {
-            foreach (var a in _generalListeners)
+            if (HasListeners)
             {
-                try
+                List<Action<string, TData>> generalListeners = new List<Action<string, TData>>();
+                List<Action<TData>> listeners = new List<Action<TData>>();
+                lock (_sync)
                 {
-                    a(eventName, data);
-                }
-                catch (Exception e)
-                {
-                    HandleException(e, eventName, data);
-                }
-            }
 
-            if (_listeners.TryGetValue(eventName, out var items))
-            {
-                foreach (var a in items)
+                    if (_generalListeners.Count > 0)
+                    {
+                        foreach (var action in _generalListeners)
+                        {
+                            generalListeners.Add(action);
+                        }
+                    }
+
+                    if (_listeners.Count > 0)
+                    {
+                        foreach (var list in _listeners.Values)
+                        {
+                            listeners.AddRange(list);
+                        }
+                    }
+                }
+
+                foreach (var action in generalListeners)
                 {
                     try
                     {
-                        a(data);
+                        action(eventName, data);
+                    }
+                    catch (Exception e)
+                    {
+                        HandleException(e, eventName, data);
+                    }
+                }
+
+                foreach (var action in listeners)
+                {
+                    try
+                    {
+                        action(data);
                     }
                     catch (Exception e)
                     {
@@ -144,20 +201,13 @@ namespace PusherClient
         {
             if (ErrorHandler != null)
             {
-                if (!(e is PusherException errorToHandle))
+                PusherException errorToHandle = e as PusherException;
+                if (errorToHandle == null)
                 {
                     errorToHandle = new EventEmitterActionException<TData>(ErrorCodes.EventEmitterActionError, eventName, data, e);
                 }
 
-                try
-                {
-                    ErrorHandler.Invoke(errorToHandle);
-                }
-                catch (Exception errorHandlerError)
-                {
-                    // Not much we can do if the error handler also fails
-                    System.Diagnostics.Trace.TraceError(errorHandlerError.ToString());
-                }
+                ErrorHandler.Invoke(errorToHandle);
             }
         }
     }

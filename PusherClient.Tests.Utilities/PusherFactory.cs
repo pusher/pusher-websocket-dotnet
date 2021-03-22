@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace PusherClient.Tests.Utilities
@@ -16,6 +17,7 @@ namespace PusherClient.Tests.Utilities
             };
 
             Pusher result = new Pusher(Config.AppKey, options);
+            result.Error += HandlePusherError;
             if (saveTo != null)
             {
                 saveTo.Add(result);
@@ -64,6 +66,12 @@ namespace PusherClient.Tests.Utilities
 
                 pushers.Clear();
             }
+        }
+
+        private static void HandlePusherError(object sender, PusherException error)
+        {
+            Pusher pusher = sender as Pusher;
+            System.Diagnostics.Trace.TraceError($"Pusher error detected on socket {pusher.SocketID}:{Environment.NewLine}{error}");
         }
     }
 }

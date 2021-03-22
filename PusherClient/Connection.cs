@@ -172,7 +172,7 @@ namespace PusherClient
                 }
                 else if (binder is TextEventEmitter textEventEmitter)
                 {
-                    string textEvent = textEventEmitter.ParseJson(jsonMessage);
+                    string textEvent = jsonMessage;
                     if (textEvent != null)
                     {
                         textEventEmitter.EmitEvent(eventName, textEvent);
@@ -180,7 +180,7 @@ namespace PusherClient
                 }
                 else if (binder is DynamicEventEmitter dynamicEventEmitter)
                 {
-                    dynamic dynamicEvent = dynamicEventEmitter.ParseJson(jsonMessage);
+                    dynamic dynamicEvent = JsonConvert.DeserializeObject<dynamic>(jsonMessage);
                     if (dynamicEvent != null)
                     {
                         dynamicEventEmitter.EmitEvent(eventName, dynamicEvent);

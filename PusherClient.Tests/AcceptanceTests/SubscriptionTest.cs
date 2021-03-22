@@ -548,7 +548,8 @@ namespace PusherClient.Tests.AcceptanceTests
             }
 
             bool[] channelSubscribed = { false, false };
-            pusher.Subscribed += (sender, channel) =>
+
+            void PusherSubscribedEventHandler(object sender, Channel channel)
             {
                 if (channel.Name == mockChannelName)
                 {
@@ -559,14 +560,17 @@ namespace PusherClient.Tests.AcceptanceTests
                         throw new InvalidOperationException($"Simulated error for {nameof(Pusher)}.{nameof(Pusher.Subscribed)} {channel.Name}.");
                     }
                 }
-            };
+            }
+
+            pusher.Subscribed += PusherSubscribedEventHandler;
 
             SubscribedEventHandlerException[] errors = { null, null };
             if (raiseSubscribedError)
             {
                 errorEvent[0] = new AutoResetEvent(false);
                 errorEvent[1] = new AutoResetEvent(false);
-                pusher.Error += (sender, error) =>
+
+                void ErrorHandler(object sender, PusherException error)
                 {
                     if (error.ToString().Contains($"{nameof(Pusher)}.{nameof(Pusher.Subscribed)}"))
                     {
@@ -578,28 +582,30 @@ namespace PusherClient.Tests.AcceptanceTests
                         errors[1] = error as SubscribedEventHandlerException;
                         errorEvent[1].Set();
                     }
-                };
+                }
+
+                pusher.Error += ErrorHandler;
             }
 
-            SubscriptionEventHandler subscribedEventHandler = (sender) =>
+            void ChannelSubscribedEventHandler(object sender)
             {
                 channelSubscribed[1] = true;
                 if (raiseSubscribedError)
                 {
                     throw new InvalidOperationException($"Simulated error for {nameof(Channel)}.{nameof(Pusher.Subscribed)} {mockChannelName}.");
                 }
-            };
+            }
 
             // Act
             Channel subscribedChannel;
             if (connectBeforeSubscribing)
             {
                 await pusher.ConnectAsync().ConfigureAwait(false);
-                subscribedChannel = await pusher.SubscribeAsync(mockChannelName, subscribedEventHandler).ConfigureAwait(false);
+                subscribedChannel = await pusher.SubscribeAsync(mockChannelName, ChannelSubscribedEventHandler).ConfigureAwait(false);
             }
             else
             {
-                subscribedChannel = await pusher.SubscribeAsync(mockChannelName, subscribedEventHandler).ConfigureAwait(false);
+                subscribedChannel = await pusher.SubscribeAsync(mockChannelName, ChannelSubscribedEventHandler).ConfigureAwait(false);
                 await pusher.ConnectAsync().ConfigureAwait(false);
             }
 
@@ -776,7 +782,7 @@ namespace PusherClient.Tests.AcceptanceTests
 
             pusher.Error += (sender, error) =>
             {
-                if (error is ChannelUnauthorizedException)
+                if (!error.EmittedToErrorHandler && error is ChannelUnauthorizedException)
                 {
                     errorCount++;
                     if (errorCount == expectedErrorCount)
@@ -866,7 +872,7 @@ namespace PusherClient.Tests.AcceptanceTests
 
             pusher.Error += (sender, error) =>
             {
-                if (error is ChannelAuthorizationFailureException)
+                if (!error.EmittedToErrorHandler && error is ChannelAuthorizationFailureException)
                 {
                     errorCount++;
                     if (errorCount == expectedErrorCount)
@@ -956,7 +962,7 @@ namespace PusherClient.Tests.AcceptanceTests
 
             pusher.Error += (sender, error) =>
             {
-                if (error is ChannelException)
+                if (!error.EmittedToErrorHandler && error is ChannelException)
                 {
                     errorCount++;
                     if (errorCount == expectedErrorCount)

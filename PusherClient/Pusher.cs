@@ -375,7 +375,7 @@ namespace PusherClient
             var channelType = Channel.GetChannelType(channelName);
             if (channelType != ChannelTypes.Presence)
             {
-                throw new ArgumentException($"The channel name '{channelName}' is not that of a presence channel.", nameof(channelName));
+                throw new ArgumentException($"The channel name '{channelName}' is not that of a presence channel. Expecting the name to start with '{Constants.PRESENCE_CHANNEL}'.", nameof(channelName));
             }
 
             GenericPresenceChannel<MemberT> result;
@@ -383,14 +383,17 @@ namespace PusherClient
             {
                 if (!(channel is GenericPresenceChannel<MemberT> presenceChannel))
                 {
+                    string errorMsg;
                     if (channel is PresenceChannel)
                     {
-                        throw new InvalidOperationException("This presence channel has already been created without specifying the member info type.");
+                        errorMsg = $"The presence channel '{channelName}' has already been created as a {nameof(PresenceChannel)} : {nameof(PresenceChannel)}<dynamic>.";
                     }
                     else
                     {
-                        throw new InvalidOperationException($"The presence channel has already been created but with a different type: {channel.GetType()}");
+                        errorMsg = $"The presence channel '{channelName}' has already been created but with a different type: {channel.GetType()}";
                     }
+
+                    throw new ChannelException(errorMsg, ErrorCodes.PresenceChannelAlreadyDefined, channelName, SocketID);
                 }
 
                 if (presenceChannel.IsSubscribed)
@@ -404,7 +407,7 @@ namespace PusherClient
             }
             else
             {
-                AuthEndpointCheck();
+                AuthEndpointCheck(channelName);
                 result = new GenericPresenceChannel<MemberT>(channelName, this);
                 if (Channels.TryAdd(channelName, result))
                 {
@@ -630,11 +633,11 @@ namespace PusherClient
             switch (type)
             {
                 case ChannelTypes.Private:
-                    AuthEndpointCheck();
+                    AuthEndpointCheck(channelName);
                     result = new PrivateChannel(channelName, this);
                     break;
                 case ChannelTypes.Presence:
-                    AuthEndpointCheck();
+                    AuthEndpointCheck(channelName);
                     result = new PresenceChannel(channelName, this);
                     break;
                 default:
@@ -650,11 +653,12 @@ namespace PusherClient
             return result;
         }
 
-        private void AuthEndpointCheck()
+        private void AuthEndpointCheck(string channelName)
         {
             if (Options.Authorizer == null)
             {
-                var pusherException = new PusherException("An Authorizer needs to be provided when subscribing to a private or presence channel.", ErrorCodes.ChannelAuthorizerNotSet);
+                string errorMsg = $"An Authorizer needs to be provided when subscribing to the private or presence channel '{channelName}'.";
+                ChannelException pusherException = new ChannelException(errorMsg, ErrorCodes.ChannelAuthorizerNotSet, channelName: channelName, socketId: SocketID);
                 RaiseError(pusherException);
                 throw pusherException;
             }

@@ -176,7 +176,7 @@ namespace PusherClient.Tests.UnitTests
         public async Task PusherShouldThrowAnExceptionWhenSubscribePresenceIsCalledWithADifferentTypeAsync()
         {
             // Arrange
-            InvalidOperationException caughtException = null;
+            ChannelException caughtException = null;
 
             // Act
             var pusher = new Pusher("FakeAppKey", new PusherOptions { Authorizer = new FakeAuthoriser("test") });
@@ -186,21 +186,21 @@ namespace PusherClient.Tests.UnitTests
             {
                 await pusher.SubscribePresenceAsync<int>("presence-123").ConfigureAwait(false);
             }
-            catch (InvalidOperationException ex)
+            catch (ChannelException ex)
             {
                 caughtException = ex;
             }
 
             // Assert
             Assert.IsNotNull(caughtException);
-            StringAssert.Contains("The presence channel has already been created but with a different type", caughtException.Message);
+            StringAssert.Contains("The presence channel 'presence-123' has already been created but with a different type", caughtException.Message);
         }
 
         [Test]
         public async Task PusherShouldThrowAnExceptionWhenSubscribePresenceIsCalledAfterSubscribeAsync()
         {
             // Arrange
-            InvalidOperationException caughtException = null;
+            ChannelException caughtException = null;
 
             // Act
             var pusher = new Pusher("FakeAppKey", new PusherOptions { Authorizer = new FakeAuthoriser("test") });
@@ -210,14 +210,14 @@ namespace PusherClient.Tests.UnitTests
             {
                 await pusher.SubscribePresenceAsync<int>("presence-123").ConfigureAwait(false);
             }
-            catch (InvalidOperationException ex)
+            catch (ChannelException ex)
             {
                 caughtException = ex;
             }
 
             // Assert
             Assert.IsNotNull(caughtException);
-            StringAssert.Contains("This presence channel has already been created without specifying the member info type", caughtException.Message);
+            StringAssert.Contains("The presence channel 'presence-123' has already been created as a PresenceChannel", caughtException.Message);
         }
     }
 }
