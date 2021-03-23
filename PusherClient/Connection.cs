@@ -42,9 +42,9 @@ namespace PusherClient
             try
             {
                 _currentError = null;
-                if (_pusher.IsTracingEnabled)
+                if (_pusher.TraceLogger != null)
                 {
-                    Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Connecting to: {_url}");
+                    _pusher.TraceLogger.TraceInformation($"Connecting to: {_url}");
                 }
 
                 ChangeState(ConnectionState.Connecting);
@@ -86,9 +86,9 @@ namespace PusherClient
             {
                 if (State != ConnectionState.Disconnected)
                 {
-                    if (_pusher.IsTracingEnabled)
+                    if (_pusher.TraceLogger != null)
                     {
-                        Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Disconnecting from: {_url}");
+                        _pusher.TraceLogger.TraceInformation($"Disconnecting from: {_url}");
                     }
 
                     ChangeState(ConnectionState.Disconnecting);
@@ -107,18 +107,18 @@ namespace PusherClient
         {
             if (IsConnected)
             {
-                if (_pusher.IsTracingEnabled)
+                if (_pusher.TraceLogger != null)
                 {
-                    Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Sending:{Environment.NewLine}{message}");
+                    _pusher.TraceLogger.TraceInformation($"Sending:{Environment.NewLine}{message}");
                 }
 
                 await Task.Run(() => _websocket.Send(message)).ConfigureAwait(false);
                 return true;
             }
 
-            if (_pusher.IsTracingEnabled)
+            if (_pusher.TraceLogger != null)
             {
-                Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"No active connection, did not send:{Environment.NewLine}{message}");
+                _pusher.TraceLogger.TraceWarning($"No active connection, did not send:{Environment.NewLine}{message}");
             }
 
             return false;
@@ -252,9 +252,9 @@ namespace PusherClient
 
         private void WebsocketMessageReceived(object sender, MessageReceivedEventArgs e)
         {
-            if (_pusher.IsTracingEnabled)
+            if (_pusher.TraceLogger != null)
             {
-                Pusher.Trace.TraceEvent(TraceEventType.Information, 0, $"Websocket message received:{Environment.NewLine}{e.Message}");
+                _pusher.TraceLogger.TraceInformation($"Websocket message received:{Environment.NewLine}{e.Message}");
             }
 
             // DeserializeAnonymousType will throw and error when an error comes back from pusher
@@ -301,9 +301,9 @@ namespace PusherClient
 
         private void WebsocketConnectionError(object sender, SuperSocket.ClientEngine.ErrorEventArgs e)
         {
-            if (_pusher.IsTracingEnabled)
+            if (_pusher.TraceLogger != null)
             {
-                Pusher.Trace.TraceEvent(TraceEventType.Error, 0, $"Error when connecting:{Environment.NewLine}{e.Exception}");
+                _pusher.TraceLogger.TraceError($"Error when connecting:{Environment.NewLine}{e.Exception}");
             }
 
             _currentError = e.Exception;
@@ -312,9 +312,9 @@ namespace PusherClient
 
         private void WebsocketError(object sender, SuperSocket.ClientEngine.ErrorEventArgs e)
         {
-            if (_pusher.IsTracingEnabled)
+            if (_pusher.TraceLogger != null)
             {
-                Pusher.Trace.TraceEvent(TraceEventType.Error, 0, $"Websocket error:{Environment.NewLine}{e.Exception}");
+                _pusher.TraceLogger.TraceError($"Websocket error:{Environment.NewLine}{e.Exception}");
             }
 
             RaiseError(new WebsocketException(State, e.Exception));
@@ -351,9 +351,9 @@ namespace PusherClient
                 try
                 {
                     _backOffMillis = Math.Min(MAX_BACKOFF_MILLIS, _backOffMillis + BACK_OFF_MILLIS_INCREMENT);
-                    if (_pusher.IsTracingEnabled)
+                    if (_pusher.TraceLogger != null)
                     {
-                        Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Waiting " + _backOffMillis.ToString() + "ms before attempting to reconnect");
+                        _pusher.TraceLogger.TraceWarning($"Waiting {_backOffMillis} ms before attempting to reconnect");
                     }
 
                     ChangeState(ConnectionState.WaitingToReconnect);
@@ -363,9 +363,9 @@ namespace PusherClient
                     {
                         if (State != ConnectionState.Disconnected)
                         {
-                            if (_pusher.IsTracingEnabled)
+                            if (_pusher.TraceLogger != null)
                             {
-                                Pusher.Trace.TraceEvent(TraceEventType.Warning, 0, "Attempting websocket reconnection");
+                                _pusher.TraceLogger.TraceWarning("Attempting websocket reconnection");
                             }
 
                             ChangeState(ConnectionState.Connecting);

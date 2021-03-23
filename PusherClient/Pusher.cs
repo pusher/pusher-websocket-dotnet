@@ -54,11 +54,6 @@ namespace PusherClient
         /// </summary>
         public event SubscribedEventHandler Subscribed;
 
-        /// <summary>
-        /// The TraceSource instance to be used for logging
-        /// </summary>
-        public static TraceSource Trace = new TraceSource(nameof(Pusher));
-
         private static string Version { get; } = typeof(Pusher).GetTypeInfo().Assembly.GetName().Version.ToString(3);
 
         private readonly string _applicationKey;
@@ -102,11 +97,11 @@ namespace PusherClient
             _applicationKey = applicationKey;
 
             Options = options ?? new PusherOptions();
-            ((IPusher)this).IsTracingEnabled = Options.IsTracingEnabled;
+            ((IPusher)this).TraceLogger = Options.TraceLogger;
             SetEventEmitterErrorHandler(InvokeErrorHandler);
         }
 
-        bool IPusher.IsTracingEnabled { get; set; }
+        ITraceLogger IPusher.TraceLogger { get; set; }
 
         void IPusher.ChangeConnectionState(ConnectionState state)
         {
@@ -753,9 +748,9 @@ namespace PusherClient
                         }
                         catch (Exception e)
                         {
-                            if (Options.IsTracingEnabled)
+                            if (Options.TraceLogger != null)
                             {
-                                Trace.TraceInformation($"Error caught invoking delegate Pusher.Error:{Environment.NewLine}{e}");
+                                Options.TraceLogger.TraceError($"Error caught invoking delegate Pusher.Error:{Environment.NewLine}{e}");
                             }
                         }
                     }

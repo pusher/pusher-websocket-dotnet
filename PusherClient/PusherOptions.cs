@@ -21,9 +21,9 @@
         public string Cluster { get; set; } = "mt1";
 
         /// <summary>
-        /// Gets or sets whether debug tracing is enabled.
+        /// Gets or sets the <see cref="ITraceLogger"/> to use for tracing debug messages.
         /// </summary>
-        public bool IsTracingEnabled { get; set; }
+        public ITraceLogger TraceLogger { get; set; }
 
         internal string Host => $"ws-{Cluster}.pusher.com";
     }

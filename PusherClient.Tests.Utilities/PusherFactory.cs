@@ -13,7 +13,7 @@ namespace PusherClient.Tests.Utilities
                 Authorizer = authorizer,
                 Cluster = Config.Cluster,
                 Encrypted = Config.Encrypted,
-                IsTracingEnabled = true,
+                TraceLogger = new TraceLogger(),
             };
 
             Pusher result = new Pusher(Config.AppKey, options);

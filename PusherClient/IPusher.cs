@@ -1,10 +1,8 @@
-﻿using System.Collections.Generic;
-
-namespace PusherClient
+﻿namespace PusherClient
 {
     internal interface IPusher
     {
-        bool IsTracingEnabled { get; set; }
+        ITraceLogger TraceLogger { get; set; }
 
         void ChangeConnectionState(ConnectionState state);
         void ErrorOccured(PusherException pusherException);
