@@ -1,6 +1,5 @@
 ﻿using Newtonsoft.Json;
 using NUnit.Framework;
-using NUnit.Framework.Internal;
 using System.Collections.Generic;
 
 namespace PusherClient.Tests.UnitTests
@@ -13,15 +12,17 @@ namespace PusherClient.Tests.UnitTests
         {
             // Arrange
             var testData = GetTestData("cunning user name","a channel","Event name");
+            var rawJson = JsonConvert.SerializeObject(testData);
 
             // Act
             var pusherEvent = CreateTestEvent(testData);
 
             // Assert
-            StringAssert.AreEqualIgnoringCase("cunning user name", pusherEvent.UserId);
-            StringAssert.AreEqualIgnoringCase("a channel", pusherEvent.ChannelName);
-            StringAssert.AreEqualIgnoringCase("Event name", pusherEvent.EventName);
-            StringAssert.AreEqualIgnoringCase("stuff", pusherEvent.Data);
+            Assert.AreEqual("cunning user name", pusherEvent.UserId);
+            Assert.AreEqual("a channel", pusherEvent.ChannelName);
+            Assert.AreEqual("Event name", pusherEvent.EventName);
+            Assert.AreEqual("stuff", pusherEvent.Data);
+            Assert.AreEqual(rawJson, pusherEvent.ToString());
         }
 
         [Test]
@@ -33,11 +34,11 @@ namespace PusherClient.Tests.UnitTests
             var pusherEvent = CreateTestEvent(testData);
 
             // Assert
-            StringAssert.AreEqualIgnoringCase("cunning user name", pusherEvent.UserId);
-            StringAssert.AreEqualIgnoringCase("a channel", pusherEvent.ChannelName);
-            StringAssert.AreEqualIgnoringCase("Event name", pusherEvent.EventName);
-            StringAssert.AreEqualIgnoringCase("more stuff", pusherEvent.Data);
-            StringAssert.AreEqualIgnoringCase("an extra property", pusherEvent.GetProperty("ExtraProperty").ToString());
+            Assert.AreEqual("cunning user name", pusherEvent.UserId);
+            Assert.AreEqual("a channel", pusherEvent.ChannelName);
+            Assert.AreEqual("Event name", pusherEvent.EventName);
+            Assert.AreEqual("more stuff", pusherEvent.Data);
+            Assert.AreEqual("an extra property", pusherEvent.GetProperty("ExtraProperty").ToString());
         }
 
         [Test]
@@ -49,10 +50,10 @@ namespace PusherClient.Tests.UnitTests
             var pusherEvent = CreateTestEvent(testData);
 
             // Assert
-            StringAssert.AreEqualIgnoringCase("cunning user name", pusherEvent.UserId);
-            StringAssert.AreEqualIgnoringCase("a channel", pusherEvent.ChannelName);
-            StringAssert.AreEqualIgnoringCase("Event name", pusherEvent.EventName);
-            StringAssert.AreEqualIgnoringCase("stuff", pusherEvent.Data);
+            Assert.AreEqual("cunning user name", pusherEvent.UserId);
+            Assert.AreEqual("a channel", pusherEvent.ChannelName);
+            Assert.AreEqual("Event name", pusherEvent.EventName);
+            Assert.AreEqual("stuff", pusherEvent.Data);
             Assert.IsNull(pusherEvent.GetProperty("ExtraProperty"));
         }
 

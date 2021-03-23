@@ -173,7 +173,8 @@ namespace PusherClient
                 }
                 else if (binder is DynamicEventEmitter dynamicEventEmitter)
                 {
-                    dynamic dynamicEvent = JsonConvert.DeserializeObject<dynamic>(jsonMessage);
+                    var template = new { @event = string.Empty, data = string.Empty, channel = string.Empty, user_id = string.Empty };
+                    dynamic dynamicEvent = JsonConvert.DeserializeAnonymousType(jsonMessage, template);
                     if (dynamicEvent != null)
                     {
                         dynamicEventEmitter.EmitEvent(eventName, dynamicEvent);

@@ -157,7 +157,7 @@ namespace PusherClient.Tests.AcceptanceTests
             PusherEvent pusherEvent = CreatePusherEvent(channelType, testEventName);
             if (raiseEmitterActionError)
             {
-                localPusher.Error += (sender, error) =>
+                void HandleError(object sender, PusherException error)
                 {
                     if (error.Message == globalActionErrorMsg)
                     {
@@ -169,19 +169,21 @@ namespace PusherClient.Tests.AcceptanceTests
                         channelActionError = error as EventEmitterActionException<PusherEvent>;
                         channelActionErrorReceived?.Set();
                     }
+
                     if (raiseEmitterActionError)
                     {
                         throw new InvalidOperationException("Simulated error from error handler.");
                     }
-                };
+                }
+
+                localPusher.Error += HandleError;
             }
 
             await localPusher.ConnectAsync().ConfigureAwait(false);
             Channel remoteChannel = await _remoteClient.SubscribeAsync(pusherEvent.ChannelName).ConfigureAwait(false);
             Channel localChannel = await localPusher.SubscribeAsync(pusherEvent.ChannelName).ConfigureAwait(false);
 
-            // Act
-            localPusher.BindAll((string eventName, PusherEvent eventData) =>
+            void GeneralListener(string eventName, PusherEvent eventData)
             {
                 if (eventName == testEventName)
                 {
@@ -192,9 +194,9 @@ namespace PusherClient.Tests.AcceptanceTests
                         throw new PusherException(globalActionErrorMsg, ErrorCodes.Unknown);
                     }
                 }
-            });
+            }
 
-            localChannel.Bind(testEventName, (PusherEvent eventData) =>
+            void Listener(PusherEvent eventData)
             {
                 channelEvent = eventData;
                 channelEventReceived.Set();
@@ -202,8 +204,11 @@ namespace PusherClient.Tests.AcceptanceTests
                 {
                     throw new InvalidOperationException(channelActionErrorMsg);
                 }
-            });
+            }
 
+            // Act
+            localPusher.BindAll(GeneralListener);
+            localChannel.Bind(testEventName, Listener);
             remoteChannel.Trigger(testEventName, pusherEvent.Data);
 
             // Assert

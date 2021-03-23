@@ -552,7 +552,7 @@ namespace PusherClient.Tests.AcceptanceTests
             await pusherMembers[0].DisconnectAsync().ConfigureAwait(false);
 
             // Assert
-            Assert.IsTrue(memberRemovedEvent.WaitOne(TimeSpan.FromSeconds(7)));
+            Assert.IsTrue(memberRemovedEvent.WaitOne(TimeSpan.FromSeconds(10)));
             if (raiseMemberRemovedError)
             {
                 Assert.IsTrue(memberRemovedErrorEvent.WaitOne(TimeSpan.FromSeconds(5)));

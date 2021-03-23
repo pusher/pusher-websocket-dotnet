@@ -9,7 +9,7 @@ namespace PusherClient.Tests.AcceptanceTests
     [TestFixture]
     public partial class EventEmitterTest
     {
-        private const string ExpectedTextField = "Clock, hour-glass, nut\n⏰,⏳,⏣\n";
+        private const string ExpectedTextField = "Clock, hour-glass, nut\n⏰, ⏳, ⏣\n";
         private const int ExpectedIntegerField = 16078622;
 
         private readonly List<Pusher> _clients = new List<Pusher>(10);
