@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
+using Newtonsoft.Json;
 using PusherClient;
 using PusherClient.Tests.Utilities;
 
@@ -12,7 +13,7 @@ namespace ExampleApplication
     {
         private static Pusher _pusher;
         private static Channel _chatChannel;
-        private static GenericPresenceChannel<dynamic> _presenceChannel;
+        private static GenericPresenceChannel<ChatMember> _presenceChannel;
         private static string _name;
             
         static void Main()
@@ -36,7 +37,7 @@ namespace ExampleApplication
                     break;
                 }
 
-                _chatChannel.Trigger("client-my-event", new {message = line, name = _name});
+                _chatChannel.Trigger("client-my-event", new ChatMessage(message: line, name: _name));
             } while (line != null);
 
             var disconnectResult = Task.Run(() => _pusher.DisconnectAsync());
@@ -49,7 +50,7 @@ namespace ExampleApplication
             int count = 1;
             foreach (var mem in _presenceChannel.GetMembers())
             {
-                builder.AppendLine($"{count}: {(string)mem.Value.name.Value}");
+                builder.AppendLine($"{count}: {mem.Value.Name}");
                 count++;
             }
 
@@ -82,9 +83,10 @@ namespace ExampleApplication
             _chatChannel = await _pusher.SubscribeAsync(privateChannelName).ConfigureAwait(false);
 
             // Inline binding!
-            _chatChannel.Bind("client-my-event", (dynamic data) =>
+            _chatChannel.Bind("client-my-event", (PusherEvent eventData) =>
             {
-                Console.WriteLine("[" + data.name + "] " + data.message);
+                ChatMessage data = JsonConvert.DeserializeObject<ChatMessage>(eventData.Data);
+                Console.WriteLine("[" + data.Name + "] " + data.Message);
             });
 
             // Setup presence channel
@@ -96,7 +98,7 @@ namespace ExampleApplication
                     ListMembers();
                 }
             };
-            _presenceChannel = (GenericPresenceChannel<dynamic>)(await _pusher.SubscribePresenceAsync<dynamic>(presenceChannelName).ConfigureAwait(false));
+            _presenceChannel = (GenericPresenceChannel<ChatMember>)(await _pusher.SubscribePresenceAsync<ChatMember>(presenceChannelName).ConfigureAwait(false));
             _presenceChannel.MemberAdded += PresenceChannel_MemberAdded;
             _presenceChannel.MemberRemoved += PresenceChannel_MemberRemoved;
 
@@ -113,15 +115,15 @@ namespace ExampleApplication
             Console.WriteLine("Connection state: " + state);
         }
 
-        static void PresenceChannel_MemberRemoved(object sender, KeyValuePair<string, dynamic> member)
+        static void PresenceChannel_MemberRemoved(object sender, KeyValuePair<string, ChatMember> member)
         {
-            Console.WriteLine($"Member {member.Value.name.Value} has left");
+            Console.WriteLine($"Member {member.Value.Name} has left");
             ListMembers();
         }
 
-        static void PresenceChannel_MemberAdded(object sender, KeyValuePair<string, dynamic> member)
+        static void PresenceChannel_MemberAdded(object sender, KeyValuePair<string, ChatMember> member)
         {
-            Console.WriteLine($"Member {member.Value.name.Value} has joined");
+            Console.WriteLine($"Member {member.Value.Name} has joined");
             ListMembers();
         }
     }
