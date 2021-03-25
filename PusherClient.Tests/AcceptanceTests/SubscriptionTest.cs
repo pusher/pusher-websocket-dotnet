@@ -403,7 +403,7 @@ namespace PusherClient.Tests.AcceptanceTests
 
         #region Validation functions
 
-        private static void ValidateUnsubscribedChannel(Pusher pusher, Channel unsubscribedChannel)
+        internal static void ValidateUnsubscribedChannel(Pusher pusher, Channel unsubscribedChannel)
         {
             Assert.IsNotNull(unsubscribedChannel);
             Assert.IsFalse(string.IsNullOrWhiteSpace(unsubscribedChannel.Name));
@@ -940,8 +940,8 @@ namespace PusherClient.Tests.AcceptanceTests
             int errorCount = 0;
             List<string> channelNames = new List<string>
             {
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private) + FakeAuthoriser.SabotageToken,
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence) + FakeAuthoriser.SabotageToken,
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private) + FakeAuthoriser.TamperToken,
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence) + FakeAuthoriser.TamperToken,
                 ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
             };
 

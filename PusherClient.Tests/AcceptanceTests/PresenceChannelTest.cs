@@ -20,7 +20,7 @@ namespace PusherClient.Tests.AcceptanceTests
             await PusherFactory.DisposePushersAsync(_clients).ConfigureAwait(false);
         }
 
-        #region Connect first tests
+        #region Connect first then subscribe tests
 
         [Test]
         public async Task ConnectThenSubscribeChannelAsync()
@@ -96,7 +96,7 @@ namespace PusherClient.Tests.AcceptanceTests
 
         #endregion
 
-        #region Subscribe first
+        #region Subscribe first then connect
 
         [Test]
         public async Task SubscribeThenConnectChannelAsync()
@@ -172,9 +172,140 @@ namespace PusherClient.Tests.AcceptanceTests
 
         #endregion
 
+        #region Idempotency, unsubscribe and timeout tests
+
+        [Test]
+        public async Task ConcurrentSubscribesShouldBeIdempotentAsync()
+        {
+            // Arrange
+            Channel presenceChannel = null;
+            AutoResetEvent subscribedEvent = new AutoResetEvent(false);
+            int subscribedCount = 0;
+            ChannelTypes channelType = ChannelTypes.Presence;
+            string channelName = ChannelNameFactory.CreateUniqueChannelName(channelType: channelType);
+            Pusher pusher = PusherFactory.GetPusher(channelType: channelType, saveTo: _clients);
+            await pusher.ConnectAsync().ConfigureAwait(false);
+            pusher.Subscribed += (sender, channel) =>
+            {
+                if (channel.Name == channelName)
+                {
+                    subscribedCount++;
+                    presenceChannel = channel;
+                    subscribedEvent.Set();
+                }
+            };
+
+            // Act
+            List<Task> tasks = new List<Task>();
+            for (int i = 0; i < 4; i++)
+            {
+                tasks.Add(Task.Run(() =>
+                {
+                    return pusher.SubscribePresenceAsync<FakeUserInfo>(channelName).ConfigureAwait(false);
+                }));
+            }
+
+            Task.WaitAll(tasks.ToArray());
+
+            // Assert
+            Assert.IsTrue(subscribedEvent.WaitOne(TimeSpan.FromSeconds(5)), nameof(subscribedEvent));
+            Assert.AreEqual(1, subscribedCount, nameof(subscribedCount));
+            ValidateSubscribedChannel(pusher, channelName, presenceChannel);
+        }
+
+        [Test]
+        public async Task ConcurrentUnsubscribesShouldBeIdempotentAsync()
+        {
+            // Arrange
+            ChannelTypes channelType = ChannelTypes.Presence;
+            string channelName = ChannelNameFactory.CreateUniqueChannelName(channelType: channelType);
+            Pusher pusher = PusherFactory.GetPusher(channelType: channelType, saveTo: _clients);
+            Channel channel = await SubscribeAsync(connectBeforeSubscribing: true, pusher: pusher, channelName: channelName).ConfigureAwait(false);
+
+            // Act
+            List<Task> tasks = new List<Task>();
+            for (int i = 0; i < 4; i++)
+            {
+                tasks.Add(Task.Run(() =>
+                {
+                    return pusher.UnsubscribeAsync(channelName);
+                }));
+            }
+
+            Task.WaitAll(tasks.ToArray());
+
+            // Assert
+            SubscriptionTest.ValidateUnsubscribedChannel(pusher, channel);
+        }
+
+        [Test]
+        public async Task UnsubscribeAsync()
+        {
+            // Arrange
+            ChannelTypes channelType = ChannelTypes.Presence;
+            string channelName = ChannelNameFactory.CreateUniqueChannelName(channelType: channelType);
+            Pusher pusher = PusherFactory.GetPusher(channelType: channelType, saveTo: _clients);
+            Channel channel = await SubscribeAsync(connectBeforeSubscribing: true, pusher: pusher, channelName: channelName).ConfigureAwait(false);
+
+            // Act
+            await pusher.UnsubscribeAsync(channelName).ConfigureAwait(false);
+
+            // Assert
+            SubscriptionTest.ValidateUnsubscribedChannel(pusher, channel);
+        }
+
+        [Test]
+        public async Task PusherShouldErrorWhenSubscribeTimesOutAsync()
+        {
+            // Arrange
+            AutoResetEvent errorEvent = new AutoResetEvent(false);
+            PusherException exception = null;
+            AggregateException caughtException = null;
+
+            ChannelTypes channelType = ChannelTypes.Presence;
+            string channelName = ChannelNameFactory.CreateUniqueChannelName(channelType: channelType);
+            var pusher = PusherFactory.GetPusher(channelType: channelType, saveTo: _clients);
+            await pusher.ConnectAsync().ConfigureAwait(false);
+            ((IPusher)pusher).PusherOptions.ClientTimeout = TimeSpan.FromTicks(10);
+
+            pusher.Error += (sender, error) =>
+            {
+                exception = error;
+                errorEvent.Set();
+            };
+
+            // Act
+            List<Task> tasks = new List<Task>();
+            for (int i = 0; i < 4; i++)
+            {
+                tasks.Add(Task.Run(() =>
+                {
+                    return pusher.SubscribePresenceAsync<FakeUserInfo>(channelName);
+                }));
+            }
+
+            try
+            {
+                Task.WaitAll(tasks.ToArray());
+            }
+            catch (Exception error)
+            {
+                caughtException = error as AggregateException;
+            }
+
+            // Assert
+            Assert.IsNotNull(caughtException, nameof(AggregateException));
+            Assert.IsTrue(errorEvent.WaitOne(TimeSpan.FromSeconds(5)));
+            Assert.IsNotNull(exception, nameof(PusherException));
+            Assert.AreEqual(exception.Message, caughtException.InnerException.Message);
+            Assert.AreEqual(ErrorCodes.ClientTimeout, exception.PusherCode);
+        }
+
+        #endregion
+
         #region Private helpers
 
-        private async Task SubscribeAsync(bool connectBeforeSubscribing, Pusher pusher = null, bool raiseError = false)
+        private async Task<Channel> SubscribeAsync(bool connectBeforeSubscribing, Pusher pusher = null, string channelName = null, bool raiseError = false)
         {
             // Arrange
             const int PusherSubcribedIndex = 0;
@@ -182,7 +313,12 @@ namespace PusherClient.Tests.AcceptanceTests
             ChannelTypes channelType = ChannelTypes.Presence;
             AutoResetEvent subscribedEvent = new AutoResetEvent(false);
             AutoResetEvent[] errorEvent = { null, null };
-            string mockChannelName = ChannelNameFactory.CreateUniqueChannelName(channelType: channelType);
+            string mockChannelName = channelName;
+            if (mockChannelName == null)
+            {
+                mockChannelName = ChannelNameFactory.CreateUniqueChannelName(channelType: channelType);
+            }
+
             if (pusher == null)
             {
                 pusher = PusherFactory.GetPusher(channelType: channelType, saveTo: _clients);
@@ -222,7 +358,7 @@ namespace PusherClient.Tests.AcceptanceTests
                 };
             }
 
-            void subscribedEventHandler(object sender)
+            void SubscribedEventHandler(object sender)
             {
                 subscribed[ChannelSubcribedIndex] = true;
                 if (raiseError)
@@ -238,11 +374,11 @@ namespace PusherClient.Tests.AcceptanceTests
             if (connectBeforeSubscribing)
             {
                 await pusher.ConnectAsync().ConfigureAwait(false);
-                presenceChannel = await pusher.SubscribePresenceAsync<FakeUserInfo>(mockChannelName, subscribedEventHandler).ConfigureAwait(false);
+                presenceChannel = await pusher.SubscribePresenceAsync<FakeUserInfo>(mockChannelName, SubscribedEventHandler).ConfigureAwait(false);
             }
             else
             {
-                presenceChannel = await pusher.SubscribePresenceAsync<FakeUserInfo>(mockChannelName, subscribedEventHandler).ConfigureAwait(false);
+                presenceChannel = await pusher.SubscribePresenceAsync<FakeUserInfo>(mockChannelName, SubscribedEventHandler).ConfigureAwait(false);
                 await pusher.ConnectAsync().ConfigureAwait(false);
             }
 
@@ -258,16 +394,18 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 ValidateSubscribedExceptions(mockChannelName, errors);
             }
+
+            return presenceChannel;
         }
 
         private async Task ConnectThenSubscribeAsync(Pusher pusher = null, bool raiseSubscribedError = false)
         {
-            await SubscribeAsync(connectBeforeSubscribing: true, pusher, raiseSubscribedError).ConfigureAwait(false);
+            await SubscribeAsync(connectBeforeSubscribing: true, pusher: pusher, raiseError: raiseSubscribedError).ConfigureAwait(false);
         }
 
         private async Task SubscribeThenConnectAsync(Pusher pusher = null, bool raiseSubscribedError = false)
         {
-            await SubscribeAsync(connectBeforeSubscribing: false, pusher, raiseSubscribedError).ConfigureAwait(false);
+            await SubscribeAsync(connectBeforeSubscribing: false, pusher: pusher, raiseError: raiseSubscribedError).ConfigureAwait(false);
         }
 
         private async Task SubscribeSameChannelTwiceAsync(bool connectBeforeSubscribing)
@@ -506,53 +644,56 @@ namespace PusherClient.Tests.AcceptanceTests
             AutoResetEvent memberRemovedEvent = new AutoResetEvent(false);
             AutoResetEvent memberRemovedErrorEvent = raiseMemberRemovedError ? new AutoResetEvent(false) : null;
 
+            void RemoveMemberErrorHandler(object sender, PusherException error)
+            {
+                System.Diagnostics.Trace.TraceError($"Pusher.Error handled:{Environment.NewLine}{error}");
+                numMemberRemovedErrors++;
+                ValidateMemberRemovedEventHandlerException(error, expectedNumMemberRemovedErrorEvents, numMemberRemovedErrors, memberRemovedErrorEvent);
+            }
+
+            void MemberRemovedEventHandler(object sender, KeyValuePair<string, FakeUserInfo> member)
+            {
+                string memberName = "Unknown";
+                bool memberValid = ValidateMember(member);
+                if (memberValid)
+                {
+                    memberName = member.Value.name;
+                }
+
+                if (memberValid)
+                {
+                    numMemberRemovedEvents++;
+                }
+
+                try
+                {
+                    if (raiseMemberRemovedError)
+                    {
+                        throw new InvalidOperationException($"Simulated error for member '{memberName}' when calling GenericPresenceChannel.MemberRemoved.");
+                    }
+                }
+                finally
+                {
+                    if (numMemberRemovedEvents == expectedNumMemberRemovedEvents)
+                    {
+                        memberRemovedEvent.Set();
+                    }
+                }
+            }
+
             // Act
             IList<Pusher> pusherMembers = await SubscribeMultipleMembersAsync(connectBeforeSubscribing: connectBeforeSubscribing, numberOfMembers, channelName).ConfigureAwait(false);
             for (int i = 0; i < pusherMembers.Count; i++)
             {
-                pusherMembers[i].Error += (sender, error) =>
-                {
-                    System.Diagnostics.Trace.TraceError($"Pusher.Error handled:{Environment.NewLine}{error}");
-                    numMemberRemovedErrors++;
-                    ValidateMemberRemovedEventHandlerException(error, expectedNumMemberRemovedErrorEvents, numMemberRemovedErrors, memberRemovedErrorEvent);
-                };
-
+                pusherMembers[i].Error += RemoveMemberErrorHandler;
                 var presenceChannel = await pusherMembers[i].SubscribePresenceAsync<FakeUserInfo>(channelName).ConfigureAwait(false);
-                presenceChannel.MemberRemoved += (sender, member) =>
-                {
-                    string memberName = "Unknown";
-                    bool memberValid = ValidateMember(member);
-                    if (memberValid)
-                    {
-                        memberName = member.Value.name;
-                    }
-
-                    if (memberValid)
-                    {
-                        numMemberRemovedEvents++;
-                    }
-
-                    try
-                    {
-                        if (raiseMemberRemovedError)
-                        {
-                            throw new InvalidOperationException($"Simulated error for member '{memberName}' when calling GenericPresenceChannel.MemberRemoved.");
-                        }
-                    }
-                    finally
-                    {
-                        if (numMemberRemovedEvents == expectedNumMemberRemovedEvents)
-                        {
-                            memberRemovedEvent.Set();
-                        }
-                    }
-                };
+                presenceChannel.MemberRemoved += MemberRemovedEventHandler;
             }
 
             await pusherMembers[0].DisconnectAsync().ConfigureAwait(false);
 
             // Assert
-            Assert.IsTrue(memberRemovedEvent.WaitOne(TimeSpan.FromSeconds(10)));
+            Assert.IsTrue(memberRemovedEvent.WaitOne(TimeSpan.FromSeconds(7)), $"# Member removed events = {numMemberRemovedEvents}, expected {expectedNumMemberRemovedEvents}");
             if (raiseMemberRemovedError)
             {
                 Assert.IsTrue(memberRemovedErrorEvent.WaitOne(TimeSpan.FromSeconds(5)));

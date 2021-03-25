@@ -23,6 +23,11 @@ namespace PusherClient
         }
 
         /// <summary>
+        /// Gets or sets the timeout period for the authorizer. If not specified, the default timeout of 100 seconds is used.
+        /// </summary>
+        public TimeSpan? Timeout { get; set; }
+
+        /// <summary>
         /// Perform the authorization of the channel.
         /// </summary>
         /// <param name="channelName">The name of the channel to authorise on.</param>
@@ -33,7 +38,17 @@ namespace PusherClient
         /// <returns>The response received from the authorization endpoint.</returns>
         public string Authorize(string channelName, string socketId)
         {
-            return AuthorizeAsync(channelName, socketId).Result;
+            string result;
+            try
+            {
+                result = AuthorizeAsync(channelName, socketId).Result;
+            }
+            catch(AggregateException aggregateException)
+            {
+                throw aggregateException.InnerException;
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -52,6 +67,11 @@ namespace PusherClient
             string authToken = null;
             using (var httpClient = new HttpClient())
             {
+                if (Timeout.HasValue)
+                {
+                    httpClient.Timeout = Timeout.Value;
+                }
+
                 var data = new List<KeyValuePair<string, string>>
                 {
                     new KeyValuePair<string, string>("channel_name", channelName),
@@ -60,7 +80,22 @@ namespace PusherClient
 
                 using (HttpContent content = new FormUrlEncodedContent(data))
                 {
-                    HttpResponseMessage response = await httpClient.PostAsync(_authEndpoint, content).ConfigureAwait(false);
+                    HttpResponseMessage response;
+                    try
+                    {
+                        response = await httpClient.PostAsync(_authEndpoint, content).ConfigureAwait(false);
+                    }
+                    catch (Exception e)
+                    {
+                        ErrorCodes code = ErrorCodes.ChannelAuthorizationError;
+                        if (e is TaskCanceledException)
+                        {
+                            code = ErrorCodes.ChannelAuthorizationTimeout;
+                        }
+
+                        throw new ChannelAuthorizationFailureException(code, _authEndpoint.OriginalString, channelName, socketId, e);
+                    }
+
                     if (response.StatusCode == HttpStatusCode.Forbidden)
                     {
                         throw new ChannelUnauthorizedException(_authEndpoint.OriginalString, channelName, socketId);

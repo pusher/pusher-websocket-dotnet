@@ -10,14 +10,14 @@ namespace PusherClient.Tests.Utilities
         /// <summary>
         /// The minimum latency measured in milli-seconds.
         /// </summary>
-        public const int MinLatency = 200;
+        public const int MinLatency = 300;
 
         /// <summary>
         /// The maximum latency measured in milli-seconds.
         /// </summary>
-        public const int MaxLatency = 1500;
+        public const int MaxLatency = 1000;
 
-        public const string SabotageToken = "-sabotage";
+        public const string TamperToken = "-tamper";
 
         private readonly string _userName;
 
@@ -25,6 +25,8 @@ namespace PusherClient.Tests.Utilities
         {
             _userName = userName;
         }
+
+        public TimeSpan? Timeout { get; set; }
 
         public string Authorize(string channelName, string socketId)
         {
@@ -54,7 +56,7 @@ namespace PusherClient.Tests.Utilities
                     authData = provider.Authenticate(channelName, socketId).ToJson();
                 }
 
-                if (channelName.Contains(SabotageToken))
+                if (channelName.Contains(TamperToken))
                 {
                     authData = authData.Replace("1", "2");
                 }

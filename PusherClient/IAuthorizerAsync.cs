@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace PusherClient
 {
@@ -7,6 +8,11 @@ namespace PusherClient
     /// </summary>
     public interface IAuthorizerAsync
     {
+        /// <summary>
+        /// Gets or sets the timeout period for the authorizer. This property is optional.
+        /// </summary>
+        TimeSpan? Timeout { get; set; }
+
         /// <summary>
         /// Perform the authorization of the channel
         /// </summary>

@@ -37,14 +37,44 @@
         PathNotFound = 4005,
 
         /// <summary>
-        /// The client has exceeded it rate limit.
+        /// The client has exceeded its rate limit.
         /// </summary>
         ClientOverRateLimit = 4301,
+
+        /// <summary>
+        /// The client has timed out waiting for an asynchronous operation to complete.
+        /// </summary>
+        ClientTimeout = 5000,
+
+        /// <summary>
+        ///  An unexpected error has been detected when trying to connect.
+        /// </summary>
+        ConnectError = 5001,
+
+        /// <summary>
+        ///  An unexpected error has been detected when trying to disconnect.
+        /// </summary>
+        DisconnectError = 5002,
 
         /// <summary>
         ///  A subscription error has occured.
         /// </summary>
         SubscriptionError = 5003,
+
+        /// <summary>
+        ///  An unexpected error has been detected when trying to receive a message from the Pusher server.
+        /// </summary>
+        MessageReceivedError = 5004,
+
+        /// <summary>
+        ///  An unexpected error has been detected when trying to reconnect the web socket.
+        /// </summary>
+        ReconnectError = 5005,
+
+        /// <summary>
+        ///  A <c>WebSocket4Net.WebSocket</c> error has occured.
+        /// </summary>
+        WebSocketError = 5006,
 
         /// <summary>
         ///  An event emitter action error has occured.
@@ -82,14 +112,19 @@
         ChannelAuthorizationError = 7501,
 
         /// <summary>
+        /// A timeout error was caught when attempting to authorize a presence or private channel.
+        /// </summary>
+        ChannelAuthorizationTimeout = 7502,
+
+        /// <summary>
         /// The presence or private channel is unauthorized. Received a 403 Forbidden HTTP error from the Authorizer.
         /// </summary>
-        ChannelUnauthorized = 7502,
+        ChannelUnauthorized = 7503,
 
         /// <summary>
         /// The presence channel is already defined using a different member type.
         /// </summary>
-        PresenceChannelAlreadyDefined = 7503,
+        PresenceChannelAlreadyDefined = 7504,
 
         /// <summary>
         /// An error was caught when emitting an event to the Pusher.Connected event handler.

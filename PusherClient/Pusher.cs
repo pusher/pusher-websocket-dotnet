@@ -1,29 +1,14 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace PusherClient
 {
-    /* TODO: Write tests
-     * - Websocket disconnect
-        - Connection lost, not cleanly closed
-        - MustConnectOverSSL = 4000,
-        - App does not exist
-        - App disabled
-        - Over connection limit
-        - Path not found
-        - Client over rate limie
-        - Conditions for client event triggering
-     */
-    // TODO: Implement connection fallback strategy
-
     /// <summary>
     /// The Pusher Client object
     /// </summary>
@@ -97,17 +82,17 @@ namespace PusherClient
             _applicationKey = applicationKey;
 
             Options = options ?? new PusherOptions();
-            ((IPusher)this).TraceLogger = Options.TraceLogger;
+            ((IPusher)this).PusherOptions = Options;
             SetEventEmitterErrorHandler(InvokeErrorHandler);
         }
 
-        ITraceLogger IPusher.TraceLogger { get; set; }
+        PusherOptions IPusher.PusherOptions { get; set; }
 
         void IPusher.ChangeConnectionState(ConnectionState state)
         {
             if (state == ConnectionState.Connected)
             {
-                UnsubscribeBacklog();
+                StartUnsubscribeBacklog();
                 if (Connected != null)
                 {
                     Task.Run(() =>
@@ -249,6 +234,9 @@ namespace PusherClient
         /// <summary>
         /// Connect to the Pusher Server.
         /// </summary>
+        /// <exception cref="OperationTimeoutException">
+        /// If the client times out waiting for confirmation of the connect. The timeout is defind in <see cref="PusherOptions"/>.
+        /// </exception>
         public async Task ConnectAsync()
         {
             if (_connection != null && _connection.IsConnected)
@@ -256,25 +244,37 @@ namespace PusherClient
                 return;
             }
 
-            // Prevent multiple concurrent connections
-            await _mutexLock.WaitAsync().ConfigureAwait(false);
-
             try
             {
-                // Ensure we only ever attempt to connect once
-                if (_connection != null && _connection.IsConnected)
+                // Prevent multiple concurrent connections
+                TimeSpan timeoutPeriod = Options.ClientTimeout;
+                if (!await _mutexLock.WaitAsync(timeoutPeriod).ConfigureAwait(false))
                 {
-                    return;
+                    throw new OperationTimeoutException(timeoutPeriod, Constants.CONNECTION_ESTABLISHED);
                 }
 
-                var url = ConstructUrl();
+                try
+                {
+                    // Ensure we only ever attempt to connect once
+                    if (_connection != null && _connection.IsConnected)
+                    {
+                        return;
+                    }
 
-                _connection = new Connection(this, url);
-                await _connection.ConnectAsync().ConfigureAwait(false);
+                    var url = ConstructUrl();
+
+                    _connection = new Connection(this, url);
+                    await _connection.ConnectAsync().ConfigureAwait(false);
+                }
+                finally
+                {
+                    _mutexLock.Release();
+                }
             }
-            finally
+            catch (Exception e)
             {
-                _mutexLock.Release();
+                HandleOperationException(ErrorCodes.ConnectError, $"{nameof(Pusher)}.{nameof(Pusher.ConnectAsync)}", e);
+                throw;
             }
         }
 
@@ -288,6 +288,9 @@ namespace PusherClient
         /// <summary>
         /// Disconnect from the Pusher Server.
         /// </summary>
+        /// <exception cref="OperationTimeoutException">
+        /// If the client times out waiting for confirmation of the disconnect. The timeout is defind in <see cref="PusherOptions"/>.
+        /// </exception>
         public async Task DisconnectAsync()
         {
             if (_connection == null || State == ConnectionState.Disconnected)
@@ -295,22 +298,34 @@ namespace PusherClient
                 return;
             }
 
-            await _mutexLock.WaitAsync().ConfigureAwait(false);
-
             try
             {
-                if (_connection != null)
+                TimeSpan timeoutPeriod = Options.ClientTimeout;
+                if (!await _mutexLock.WaitAsync(timeoutPeriod).ConfigureAwait(false))
                 {
-                    if (State != ConnectionState.Disconnected)
+                    throw new OperationTimeoutException(timeoutPeriod, $"{nameof(Pusher)}.{nameof(Pusher.DisconnectAsync)}");
+                }
+
+                try
+                {
+                    if (_connection != null)
                     {
-                        MarkChannelsAsUnsubscribed();
-                        await _connection.DisconnectAsync().ConfigureAwait(false);
+                        if (State != ConnectionState.Disconnected)
+                        {
+                            MarkChannelsAsUnsubscribed();
+                            await _connection.DisconnectAsync().ConfigureAwait(false);
+                        }
                     }
                 }
+                finally
+                {
+                    _mutexLock.Release();
+                }
             }
-            finally
+            catch (Exception e)
             {
-                _mutexLock.Release();
+                HandleOperationException(ErrorCodes.DisconnectError, $"{nameof(Pusher)}.{nameof(Pusher.DisconnectAsync)}", e);
+                throw;
             }
         }
 
@@ -323,6 +338,9 @@ namespace PusherClient
         /// <exception cref="ChannelUnauthorizedException">Only for private or presence channels if authorization fails.</exception>
         /// <exception cref="ChannelAuthorizationFailureException">Only for private or presence channels if an HTTP call to the authorization URL fails; that is, the HTTP status code is outside of the range 200-299.</exception>
         /// <exception cref="ChannelException">If the client receives an error (pusher:error) from the Pusher cluster while trying to subscribe.</exception>
+        /// <exception cref="OperationTimeoutException">
+        /// If the client times out waiting for the Pusher server to confirm the subscription. The timeout is defind in <see cref="PusherOptions"/>.
+        /// </exception>
         /// <returns>The channel identified by <paramref name="channelName"/>.</returns>
         /// <remarks>
         /// If Pusher is connected when calling this method, the channel will be subscribed when this method returns;
@@ -355,6 +373,9 @@ namespace PusherClient
         /// <exception cref="ChannelUnauthorizedException">If authorization fails.</exception>
         /// <exception cref="ChannelAuthorizationFailureException">f an HTTP call to the authorization URL fails; that is, the HTTP status code is outside of the range 200-299.</exception>
         /// <exception cref="ChannelException">If the client receives an error (pusher:error) from the Pusher cluster while trying to subscribe.</exception>
+        /// <exception cref="OperationTimeoutException">
+        /// If the client times out waiting for the Pusher server to confirm the subscription. The timeout is defind in the <see cref="PusherOptions"/>.
+        /// </exception>
         /// <returns>A GenericPresenceChannel<MemberT> channel identified by <paramref name="channelName"/>.</returns>
         /// <remarks>
         /// If Pusher is connected when calling this method, the channel will be subscribed when this method returns;
@@ -499,9 +520,15 @@ namespace PusherClient
 
             if (State == ConnectionState.Connected)
             {
-                await channel._subscribeLock.WaitAsync().ConfigureAwait(false);
                 try
                 {
+
+                    TimeSpan timeoutPeriod = Options.ClientTimeout;
+                    if (!await channel._subscribeLock.WaitAsync(timeoutPeriod).ConfigureAwait(false))
+                    {
+                        throw new OperationTimeoutException(timeoutPeriod, $"{Constants.CHANNEL_SUBSCRIPTION_SUCCEEDED} on {channelName}");
+                    }
+
                     if (!channel.IsSubscribed)
                     {
                         if (Channels.ContainsKey(channelName))
@@ -510,9 +537,9 @@ namespace PusherClient
                         }
                     }
                 }
-                catch (PusherException pusherError)
+                catch (Exception error)
                 {
-                    HandleSubscribeChannelError(channel, pusherError);
+                    HandleSubscribeChannelError(channel, error);
                     throw;
                 }
                 finally
@@ -531,8 +558,7 @@ namespace PusherClient
             channel._subscribeCompleted = new SemaphoreSlim(0, 1);
             try
             {
-                channel._subscriptionError = null;
-                errorHandler = (sender, error) =>
+                void SubscribeErrorHandler(object sender, PusherException error)
                 {
                     if ((int)error.PusherCode < 5000)
                     {
@@ -543,7 +569,10 @@ namespace PusherClient
                             channel._subscribeCompleted.Release();
                         }
                     }
-                };
+                }
+
+                channel._subscriptionError = null;
+                errorHandler = SubscribeErrorHandler;
                 Error += errorHandler;
                 string message;
                 if (channel.ChannelType != ChannelTypes.Public)
@@ -551,6 +580,12 @@ namespace PusherClient
                     string jsonAuth;
                     if (Options.Authorizer is IAuthorizerAsync asyncAuthorizer)
                     {
+                        if (!asyncAuthorizer.Timeout.HasValue)
+                        {
+                            // Use a timeout interval that is less than the outer subscription timeout.
+                            asyncAuthorizer.Timeout = Options.InnerClientTimeout;
+                        }
+
                         jsonAuth = await asyncAuthorizer.AuthorizeAsync(channelName, _connection.SocketId).ConfigureAwait(false);
                     }
                     else
@@ -567,7 +602,12 @@ namespace PusherClient
 
                 await _connection.SendAsync(message).ConfigureAwait(false);
 
-                await channel._subscribeCompleted.WaitAsync().ConfigureAwait(false);
+                TimeSpan timeoutPeriod = Options.InnerClientTimeout;
+                if (!await channel._subscribeCompleted.WaitAsync(timeoutPeriod).ConfigureAwait(false))
+                {
+                    throw new OperationTimeoutException(timeoutPeriod, $"{Constants.CHANNEL_SUBSCRIPTION_SUCCEEDED} on {channelName}");
+                }
+
                 if (channel._subscriptionError != null)
                 {
                     throw channel._subscriptionError;
@@ -585,16 +625,23 @@ namespace PusherClient
             }
         }
 
-        private void HandleSubscribeChannelError(Channel channel, PusherException pusherError)
+        private void HandleSubscribeChannelError(Channel channel, Exception exception)
         {
             channel.IsSubscribed = false;
-            if (pusherError is ChannelException channelException)
+            if (exception is PusherException error)
             {
-                channelException.Channel = channel;
-                Channels.TryRemove(channel.Name, out _);
+                if (error is ChannelException channelException)
+                {
+                    channelException.Channel = channel;
+                    Channels.TryRemove(channel.Name, out _);
+                }
+            }
+            else
+            {
+                error = new OperationException(ErrorCodes.SubscriptionError, $"Subscribe to {channel.Name}", exception);
             }
 
-            RaiseError(pusherError);
+            RaiseError(error);
         }
 
         private string CreateAuthorizedChannelSubscribeMessage(string channelName, string jsonAuth)
@@ -603,9 +650,12 @@ namespace PusherClient
             string channelData = null;
             JObject jObject = JObject.Parse(jsonAuth);
             JToken jToken = jObject.SelectToken("auth");
-            if (jToken != null && jToken.Type == JTokenType.String)
+            if (jToken != null)
             {
-                auth = jToken.Value<string>();
+                if (jToken.Type == JTokenType.String)
+                {
+                    auth = jToken.Value<string>();
+                }
             }
 
             jToken = jObject.SelectToken("channel_data");
@@ -714,18 +764,21 @@ namespace PusherClient
 
         private void RaiseError(PusherException error, bool runAsNewTask = true)
         {
-            if (Error != null && !error.EmittedToErrorHandler)
+            if (Error != null)
             {
-                if (runAsNewTask)
+                if (!error.EmittedToErrorHandler)
                 {
-                    Task.Run(() =>
+                    if (runAsNewTask)
+                    {
+                        Task.Run(() =>
+                        {
+                            InvokeErrorHandler(error);
+                        });
+                    }
+                    else
                     {
                         InvokeErrorHandler(error);
-                    });
-                }
-                else
-                {
-                    InvokeErrorHandler(error);
+                    }
                 }
             }
             else
@@ -764,20 +817,26 @@ namespace PusherClient
 
         private async Task SendUnsubscribeAsync(Channel channel)
         {
-            if (channel.IsSubscribed && _connection.IsConnected)
+            if (_connection != null && _connection.IsConnected)
             {
-                await channel._subscribeLock.WaitAsync().ConfigureAwait(false);
-                try
+                if (channel.IsSubscribed)
                 {
-                    if (channel.IsSubscribed)
+                    try
+                    {
+                        if (channel.IsSubscribed)
+                        {
+                            await _connection.SendAsync(DefaultSerializer.Default.Serialize(new PusherChannelUnsubscribeEvent(channel.Name))).ConfigureAwait(false);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        HandleOperationException(ErrorCodes.SubscriptionError, $"{nameof(Pusher)}.{nameof(Pusher.UnsubscribeAsync)}", e);
+                        throw;
+                    }
+                    finally
                     {
                         channel.IsSubscribed = false;
-                        await _connection.SendAsync(DefaultSerializer.Default.Serialize(new PusherChannelUnsubscribeEvent(channel.Name))).ConfigureAwait(false);
                     }
-                }
-                finally
-                {
-                    channel._subscribeLock.Release();
                 }
             }
             else
@@ -786,56 +845,68 @@ namespace PusherClient
             }
         }
 
-        private void HandleSubscriptionException(string action, Channel channel, Exception exception)
+        private void HandleOperationException(ErrorCodes code, string operation, Exception exception)
         {
-            Exception innerException = exception;
-            if (exception is AggregateException aggregateException)
+            if (!(exception is PusherException error))
             {
-                innerException = aggregateException.InnerException;
+                error = new OperationException(code, operation, exception);
             }
 
-            if (innerException is PusherException pusherException)
+            RaiseError(error);
+        }
+
+        private void HandleSubscriptionException(string action, Channel channel, Exception exception)
+        {
+            Exception error = exception;
+            if (exception is AggregateException aggregateException)
             {
-                RaiseError(pusherException);
+                error = aggregateException.InnerException;
             }
-            else
+
+            if (!(error is PusherException))
             {
-                ChannelException channelException = new ChannelException(
+                error = new ChannelException(
                     $"{action} failed for channel '{channel.Name}':{Environment.NewLine}{exception.Message}",
                     ErrorCodes.SubscriptionError,
                     channel.Name,
                     SocketID,
-                    innerException)
+                    error)
                 {
                     Channel = channel,
                 };
-                RaiseError(channelException);
             }
+
+            RaiseError(error as PusherException);
+        }
+
+        private void StartUnsubscribeBacklog()
+        {
+            Task.Run(() =>
+            {
+                UnsubscribeBacklog();
+            });
         }
 
         private void UnsubscribeBacklog()
         {
-            Task.Run(() =>
+            while (!Backlog.IsEmpty)
             {
-                while (!Backlog.IsEmpty)
+                if (Backlog.TryTake(out Channel channel))
                 {
-                    if (Backlog.TryTake(out Channel channel))
+                    if (!Channels.ContainsKey(channel.Name))
                     {
-                        if (!Channels.ContainsKey(channel.Name))
+                        try
                         {
-                            try
-                            {
-                                channel.IsSubscribed = true;
-                                Task.WaitAll(Task.Run(() => SendUnsubscribeAsync(channel)));
-                            }
-                            catch (AggregateException aggregateException)
-                            {
-                                HandleSubscriptionException("Unsubscribe", channel, aggregateException);
-                            }
+                            channel.IsSubscribed = true;
+                            Task.WaitAll(Task.Run(() => SendUnsubscribeAsync(channel)));
+                        }
+                        catch (Exception exception)
+                        {
+                            HandleSubscriptionException("Unsubscribe", channel, exception);
                         }
                     }
                 }
-            });
+            }
         }
 
         private void MarkChannelsAsUnsubscribed()
@@ -865,11 +936,12 @@ namespace PusherClient
                 {
                     try
                     {
+                        channel._subscribeLock = new SemaphoreSlim(1);
                         Task.WaitAll(Task.Run(() => SendUnsubscribeAsync(channel)));
                     }
-                    catch (AggregateException aggregateException)
+                    catch (Exception exception)
                     {
-                        HandleSubscriptionException("Unsubscribe", channel, aggregateException);
+                        HandleSubscriptionException("Unsubscribe", channel, exception);
                     }
                 }
             }

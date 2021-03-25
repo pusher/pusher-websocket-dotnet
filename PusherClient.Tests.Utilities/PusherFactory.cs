@@ -6,7 +6,7 @@ namespace PusherClient.Tests.Utilities
 {
     public static class PusherFactory
     {
-        public static Pusher GetPusher(IAuthorizer authorizer = null, IList<Pusher> saveTo = null)
+        public static Pusher GetPusher(IAuthorizer authorizer = null, IList<Pusher> saveTo = null, int timeoutPeriodMilliseconds = 30 * 1000)
         {
             PusherOptions options = new PusherOptions()
             {
@@ -14,6 +14,7 @@ namespace PusherClient.Tests.Utilities
                 Cluster = Config.Cluster,
                 Encrypted = Config.Encrypted,
                 TraceLogger = new TraceLogger(),
+                ClientTimeout = TimeSpan.FromMilliseconds(timeoutPeriodMilliseconds),
             };
 
             Pusher result = new Pusher(Config.AppKey, options);
@@ -48,8 +49,9 @@ namespace PusherClient.Tests.Utilities
         {
             if (pusher != null)
             {
-                await pusher.ConnectAsync().ConfigureAwait(false);
+                ((IPusher)pusher).PusherOptions.ClientTimeout = TimeSpan.FromSeconds(30);
                 await pusher.UnsubscribeAllAsync().ConfigureAwait(false);
+                await pusher.ConnectAsync().ConfigureAwait(false);
                 await pusher.DisconnectAsync().ConfigureAwait(false);
             }
         }

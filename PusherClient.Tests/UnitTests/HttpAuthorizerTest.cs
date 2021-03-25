@@ -2,7 +2,6 @@
 using NUnit.Framework;
 using NUnit.Framework.Internal;
 using System;
-using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace PusherClient.Tests.UnitTests
@@ -10,11 +9,12 @@ namespace PusherClient.Tests.UnitTests
     [TestFixture]
     public class HttpAuthorizerTest
     {
+        private static int _HostPort = 3000;
+
         [Test]
         public void HttpAuthorizerShouldReturnStringTokenIfAuthorized()
         {
-
-            int hostPort = 3000;
+            int hostPort = _HostPort++;
             string hostUrl = "http://localhost:" + (hostPort).ToString();
             string FakeTokenAuth = "{auth: 'b928ab800c5c554a47ad:f41b9934520700d8474928d03ea7d808cab0cc7fcec082676f6b73ca0d9ab2b'}";
 
@@ -26,14 +26,84 @@ namespace PusherClient.Tests.UnitTests
                 .RespondWith(
                     Responses
                         .WithStatusCode(200)
-                        .WithHeader("Content-Type","application/json")
+                        .WithHeader("Content-Type", "application/json")
                         .WithBody(FakeTokenAuth)
                 );
 
-            var testHttpAuthorizer = new PusherClient.HttpAuthorizer(hostUrl + "/authz");
+            var testHttpAuthorizer = new HttpAuthorizer(hostUrl + "/authz")
+            {
+                Timeout = TimeSpan.FromSeconds(30),
+            };
             var AuthToken = testHttpAuthorizer.Authorize("private-test", "fsfsdfsgsfs");
 
             Assert.AreEqual(FakeTokenAuth, AuthToken);
+        }
+
+        [Test]
+        public async Task HttpAuthorizerShouldReturnStringTokenIfAuthorizedAsync()
+        {
+            int hostPort = _HostPort++;
+            string hostUrl = "http://localhost:" + (hostPort).ToString();
+            string FakeTokenAuth = "{auth: 'b928ab800c5c554a47ad:f41b9934520700d8474928d03ea7d808cab0cc7fcec082676f6b73ca0d9ab2b'}";
+
+            var server = FluentMockServer.Start(hostPort);
+            server
+                .Given(
+                    Requests.WithUrl("/authz").UsingPost()
+                )
+                .RespondWith(
+                    Responses
+                        .WithStatusCode(200)
+                        .WithHeader("Content-Type", "application/json")
+                        .WithBody(FakeTokenAuth)
+                );
+
+            var testHttpAuthorizer = new HttpAuthorizer(hostUrl + "/authz")
+            {
+                Timeout = TimeSpan.FromSeconds(30),
+            };
+            var AuthToken = await testHttpAuthorizer.AuthorizeAsync("private-test", "fsfsdfsgsfs").ConfigureAwait(false);
+
+            Assert.AreEqual(FakeTokenAuth, AuthToken);
+        }
+
+        [Test]
+        public void HttpAuthorizerShouldRaiseExceptionIfUnauthorized()
+        {
+            string channelName = "private-unauthorized-test";
+            string socketId = Guid.NewGuid().ToString("N");
+            int hostPort = _HostPort++;
+            string hostUrl = "http://localhost:" + (hostPort).ToString();
+            string FakeTokenAuth = "Forbidden";
+
+            var server = FluentMockServer.Start(hostPort);
+            server
+                .Given(
+                    Requests.WithUrl("/unauthz").UsingPost()
+                )
+                .RespondWith(
+                    Responses
+                        .WithStatusCode(403)
+                        .WithHeader("Content-Type", "application/json")
+                        .WithBody(FakeTokenAuth)
+                );
+
+            ChannelUnauthorizedException exception = null;
+            var testHttpAuthorizer = new PusherClient.HttpAuthorizer(hostUrl + "/unauthz");
+
+            try
+            {
+                testHttpAuthorizer.Authorize(channelName, socketId);
+            }
+            catch (ChannelUnauthorizedException e)
+            {
+                exception = e;
+            }
+
+            Assert.IsNotNull(exception, $"Expecting a {nameof(ChannelUnauthorizedException)}");
+            Assert.AreEqual(channelName, exception.ChannelName, nameof(ChannelUnauthorizedException.ChannelName));
+            Assert.AreEqual(socketId, exception.SocketID, nameof(ChannelUnauthorizedException.SocketID));
+            Assert.AreEqual(ErrorCodes.ChannelUnauthorized, exception.PusherCode);
         }
 
         [Test]
@@ -41,7 +111,7 @@ namespace PusherClient.Tests.UnitTests
         {
             string channelName = "private-unauthorized-test";
             string socketId = Guid.NewGuid().ToString("N");
-            int hostPort = 3001;
+            int hostPort = _HostPort++;
             string hostUrl = "http://localhost:" + (hostPort).ToString();
             string FakeTokenAuth = "Forbidden";
 
@@ -64,7 +134,7 @@ namespace PusherClient.Tests.UnitTests
             {
                 await testHttpAuthorizer.AuthorizeAsync(channelName, socketId).ConfigureAwait(false);
             }
-            catch(ChannelUnauthorizedException e)
+            catch (ChannelUnauthorizedException e)
             {
                 exception = e;
             }
@@ -76,11 +146,11 @@ namespace PusherClient.Tests.UnitTests
         }
 
         [Test]
-        public async Task HttpAuthorizerShouldRaiseExceptionIfAuthorizerUrlNotFoundAsync()
+        public void HttpAuthorizerShouldRaiseExceptionIfAuthorizerUrlNotFound()
         {
             string channelName = "private-unauthorized-test";
             string socketId = Guid.NewGuid().ToString("N");
-            int hostPort = 3002;
+            int hostPort = _HostPort++;
             string hostUrl = "http://localhost:" + (hostPort).ToString();
             string FakeTokenAuth = "NotFound";
 
@@ -97,7 +167,45 @@ namespace PusherClient.Tests.UnitTests
                 );
 
             ChannelAuthorizationFailureException exception = null;
-            var testHttpAuthorizer = new PusherClient.HttpAuthorizer(hostUrl + "/notfound");
+            var testHttpAuthorizer = new HttpAuthorizer(hostUrl + "/notfound");
+
+            try
+            {
+                testHttpAuthorizer.Authorize(channelName, socketId);
+            }
+            catch (ChannelAuthorizationFailureException e)
+            {
+                exception = e;
+            }
+
+            Assert.IsNotNull(exception, $"Expecting a {nameof(ChannelAuthorizationFailureException)}");
+            Assert.IsTrue(exception.Message.Contains("404"));
+            Assert.AreEqual(ErrorCodes.ChannelAuthorizationError, exception.PusherCode);
+        }
+
+        [Test]
+        public async Task HttpAuthorizerShouldRaiseExceptionIfAuthorizerUrlNotFoundAsync()
+        {
+            string channelName = "private-unauthorized-test";
+            string socketId = Guid.NewGuid().ToString("N");
+            int hostPort = _HostPort++;
+            string hostUrl = "http://localhost:" + (hostPort).ToString();
+            string FakeTokenAuth = "NotFound";
+
+            var server = FluentMockServer.Start(hostPort);
+            server
+                .Given(
+                    Requests.WithUrl("/authz").UsingPost()
+                )
+                .RespondWith(
+                    Responses
+                        .WithStatusCode(200)
+                        .WithHeader("Content-Type", "application/json")
+                        .WithBody(FakeTokenAuth)
+                );
+
+            ChannelAuthorizationFailureException exception = null;
+            var testHttpAuthorizer = new HttpAuthorizer(hostUrl + "/notfound");
 
             try
             {
@@ -111,6 +219,86 @@ namespace PusherClient.Tests.UnitTests
             Assert.IsNotNull(exception, $"Expecting a {nameof(ChannelAuthorizationFailureException)}");
             Assert.IsTrue(exception.Message.Contains("404"));
             Assert.AreEqual(ErrorCodes.ChannelAuthorizationError, exception.PusherCode);
+        }
+
+        [Test]
+        public void HttpAuthorizerShouldRaiseExceptionWhenTimingOut()
+        {
+            int hostPort = _HostPort++;
+            string hostUrl = "http://localhost:" + (hostPort).ToString();
+            string FakeTokenAuth = "{auth: 'b928ab800c5c554a47ad:f41b9934520700d8474928d03ea7d808cab0cc7fcec082676f6b73ca0d9ab2b'}";
+
+            var server = FluentMockServer.Start(hostPort);
+            server
+                .Given(
+                    Requests.WithUrl("/authz").UsingPost()
+                )
+                .RespondWith(
+                    Responses
+                        .WithStatusCode(200)
+                        .WithHeader("Content-Type", "application/json")
+                        .WithBody(FakeTokenAuth)
+                );
+
+            ChannelAuthorizationFailureException exception = null;
+            var testHttpAuthorizer = new HttpAuthorizer(hostUrl + "/authz")
+            {
+                Timeout = TimeSpan.FromTicks(1),
+            };
+
+            try
+            {
+                testHttpAuthorizer.Authorize("private-test", "fsfsdfsgsfs");
+            }
+            catch (ChannelAuthorizationFailureException e)
+            {
+                exception = e;
+            }
+
+            Assert.IsNotNull(exception, $"Expecting a {nameof(ChannelAuthorizationFailureException)}");
+            string token = "A task was canceled";
+            Assert.IsTrue(exception.Message.Contains(token), token);
+            Assert.AreEqual(ErrorCodes.ChannelAuthorizationTimeout, exception.PusherCode);
+        }
+
+        [Test]
+        public async Task HttpAuthorizerShouldRaiseExceptionWhenTimingOutAsync()
+        {
+            int hostPort = _HostPort++;
+            string hostUrl = "http://localhost:" + (hostPort).ToString();
+            string FakeTokenAuth = "{auth: 'b928ab800c5c554a47ad:f41b9934520700d8474928d03ea7d808cab0cc7fcec082676f6b73ca0d9ab2b'}";
+
+            var server = FluentMockServer.Start(hostPort);
+            server
+                .Given(
+                    Requests.WithUrl("/authz").UsingPost()
+                )
+                .RespondWith(
+                    Responses
+                        .WithStatusCode(200)
+                        .WithHeader("Content-Type", "application/json")
+                        .WithBody(FakeTokenAuth)
+                );
+
+            ChannelAuthorizationFailureException exception = null;
+            var testHttpAuthorizer = new HttpAuthorizer(hostUrl + "/authz")
+            {
+                Timeout = TimeSpan.FromTicks(1),
+            };
+
+            try
+            {
+                await testHttpAuthorizer.AuthorizeAsync("private-test", "fsfsdfsgsfs");
+            }
+            catch (ChannelAuthorizationFailureException e)
+            {
+                exception = e;
+            }
+
+            Assert.IsNotNull(exception, $"Expecting a {nameof(ChannelAuthorizationFailureException)}");
+            string token = "A task was canceled";
+            Assert.IsTrue(exception.Message.Contains(token), token);
+            Assert.AreEqual(ErrorCodes.ChannelAuthorizationTimeout, exception.PusherCode);
         }
     }
 }

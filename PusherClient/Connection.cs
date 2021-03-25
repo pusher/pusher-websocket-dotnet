@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -42,9 +41,9 @@ namespace PusherClient
             try
             {
                 _currentError = null;
-                if (_pusher.TraceLogger != null)
+                if (_pusher.PusherOptions.TraceLogger != null)
                 {
-                    _pusher.TraceLogger.TraceInformation($"Connecting to: {_url}");
+                    _pusher.PusherOptions.TraceLogger.TraceInformation($"Connecting to: {_url}");
                 }
 
                 ChangeState(ConnectionState.Connecting);
@@ -62,7 +61,12 @@ namespace PusherClient
                     _websocket.Open();
                 }).ConfigureAwait(false);
 
-                await _connectionSemaphore.WaitAsync().ConfigureAwait(false);
+                TimeSpan timeoutPeriod = _pusher.PusherOptions.InnerClientTimeout;
+                if (!await _connectionSemaphore.WaitAsync(timeoutPeriod).ConfigureAwait(false))
+                {
+                    throw new OperationTimeoutException(timeoutPeriod, Constants.CONNECTION_ESTABLISHED);
+                }
+
                 if (_currentError != null)
                 {
                     throw _currentError;
@@ -86,9 +90,9 @@ namespace PusherClient
             {
                 if (State != ConnectionState.Disconnected)
                 {
-                    if (_pusher.TraceLogger != null)
+                    if (_pusher.PusherOptions.TraceLogger != null)
                     {
-                        _pusher.TraceLogger.TraceInformation($"Disconnecting from: {_url}");
+                        _pusher.PusherOptions.TraceLogger.TraceInformation($"Disconnecting from: {_url}");
                     }
 
                     ChangeState(ConnectionState.Disconnecting);
@@ -107,18 +111,13 @@ namespace PusherClient
         {
             if (IsConnected)
             {
-                if (_pusher.TraceLogger != null)
+                if (_pusher.PusherOptions.TraceLogger != null)
                 {
-                    _pusher.TraceLogger.TraceInformation($"Sending:{Environment.NewLine}{message}");
+                    _pusher.PusherOptions.TraceLogger.TraceInformation($"Sending:{Environment.NewLine}{message}");
                 }
 
                 await Task.Run(() => _websocket.Send(message)).ConfigureAwait(false);
                 return true;
-            }
-
-            if (_pusher.TraceLogger != null)
-            {
-                _pusher.TraceLogger.TraceWarning($"No active connection, did not send:{Environment.NewLine}{message}");
             }
 
             return false;
@@ -135,6 +134,7 @@ namespace PusherClient
                 {
                     if (item.Type != JTokenType.String)
                     {
+                        // If the message is not a string we need the raw Json as a string
                         properties[child.Path] = item.ToString(Formatting.None);
                     }
                     else
@@ -252,69 +252,91 @@ namespace PusherClient
 
         private void WebsocketMessageReceived(object sender, MessageReceivedEventArgs e)
         {
-            if (_pusher.TraceLogger != null)
+            string eventName = null;
+            try
             {
-                _pusher.TraceLogger.TraceInformation($"Websocket message received:{Environment.NewLine}{e.Message}");
-            }
-
-            // DeserializeAnonymousType will throw and error when an error comes back from pusher
-            // It stems from the fact that the data object is a string normally except when an error is sent back
-            // then it's an object.
-
-            // bad:  "{\"event\":\"pusher:error\",\"data\":{\"code\":4201,\"message\":\"Pong reply not received\"}}"
-            // good: "{\"event\":\"pusher:error\",\"data\":\"{\\\"code\\\":4201,\\\"message\\\":\\\"Pong reply not received\\\"}\"}";
-
-            JObject jObject = JObject.Parse(e.Message);
-            string rawJson = jObject.ToString(Formatting.None);
-            Dictionary<string, object> message = GetEventPropertiesFromMessage(rawJson);
-            if (message.ContainsKey("event") && jObject["data"] != null)
-            {
-                string eventName = (string)message["event"];
-                string messageData = string.Empty;
-                if (message.ContainsKey("data"))
+                if (_pusher.PusherOptions.TraceLogger != null)
                 {
-                    messageData = (string)message["data"];
+                    _pusher.PusherOptions.TraceLogger.TraceInformation($"Websocket message received:{Environment.NewLine}{e.Message}");
                 }
 
-                if (eventName == Constants.ERROR)
+                JObject jObject = JObject.Parse(e.Message);
+                string rawJson = jObject.ToString(Formatting.None);
+                Dictionary<string, object> message = GetEventPropertiesFromMessage(rawJson);
+                if (message.ContainsKey("event"))
                 {
-                    ParseError(jObject["data"]);
-                }
-                else
-                {
-                    if (message.ContainsKey("channel"))
+                    eventName = (string)message["event"];
+
+                    if (eventName == Constants.ERROR)
                     {
-                        string channelName = (string)message["channel"];
-                        if (!ProcessPusherChannelEvent(eventName, channelName, messageData))
-                        {
-                            ProcessChannelEvent(eventName, rawJson, channelName, message);
-                            ProcessEvent(eventName, rawJson, message);
-                        }
+                        /*
+                         *  Errors are in a different Json form to other messages.
+                         *  The data property is an object and not a string and needs to be dealt with differently; for example:
+                         *  {"event":"pusher:error","data":{"code":4001,"message":"App key Invalid not in this cluster. Did you forget to specify the cluster?"}}
+                         */
+                        ParseError(jObject["data"]);
                     }
                     else
                     {
-                        ProcessPusherEvent(eventName, messageData);
+                        /*
+                         *  For messages other than "pusher:error" the data property is a string; for example:
+                         *  {
+                         *    "event": "pusher:connection_established",
+                         *    "data": "{\"socket_id\":\"131160.155806628\"}"
+                         *  }
+                         *  
+                         *  {
+                         *    "event": "pusher_internal:subscription_succeeded",
+                         *    "data": "{\"presence\":{\"count\":1,\"ids\":[\"131160.155806628\"],\"hash\":{\"131160.155806628\":{\"name\":\"user-1\"}}}}",
+                         *    "channel": "presence-channel-1"
+                         *  }
+                         */
+                        string messageData = string.Empty;
+                        if (message.ContainsKey("data"))
+                        {
+                            messageData = (string)message["data"];
+                        }
+
+                        if (message.ContainsKey("channel"))
+                        {
+                            string channelName = (string)message["channel"];
+                            if (!ProcessPusherChannelEvent(eventName, channelName, messageData))
+                            {
+                                ProcessEvent(eventName, rawJson, message);
+                                ProcessChannelEvent(eventName, rawJson, channelName, message);
+                            }
+                        }
+                        else
+                        {
+                            ProcessPusherEvent(eventName, messageData);
+                        }
                     }
                 }
+            }
+            catch (Exception exception)
+            {
+                string operation = nameof(WebsocketMessageReceived);
+                if (eventName != null)
+                {
+                    operation += $" for event '{eventName}'";
+                }
+
+                RaiseError(new OperationException(ErrorCodes.MessageReceivedError, operation, exception));
             }
         }
 
         private void WebsocketConnectionError(object sender, SuperSocket.ClientEngine.ErrorEventArgs e)
         {
-            if (_pusher.TraceLogger != null)
-            {
-                _pusher.TraceLogger.TraceError($"Error when connecting:{Environment.NewLine}{e.Exception}");
-            }
-
             _currentError = e.Exception;
             _connectionSemaphore?.Release();
+            WebsocketError(sender, e);
         }
 
         private void WebsocketError(object sender, SuperSocket.ClientEngine.ErrorEventArgs e)
         {
-            if (_pusher.TraceLogger != null)
+            if (_pusher.PusherOptions.TraceLogger != null)
             {
-                _pusher.TraceLogger.TraceError($"Websocket error:{Environment.NewLine}{e.Exception}");
+                _pusher.PusherOptions.TraceLogger.TraceError($"Websocket error:{Environment.NewLine}{e.Exception}");
             }
 
             RaiseError(new WebsocketException(State, e.Exception));
@@ -351,9 +373,9 @@ namespace PusherClient
                 try
                 {
                     _backOffMillis = Math.Min(MAX_BACKOFF_MILLIS, _backOffMillis + BACK_OFF_MILLIS_INCREMENT);
-                    if (_pusher.TraceLogger != null)
+                    if (_pusher.PusherOptions.TraceLogger != null)
                     {
-                        _pusher.TraceLogger.TraceWarning($"Waiting {_backOffMillis} ms before attempting to reconnect");
+                        _pusher.PusherOptions.TraceLogger.TraceWarning($"Waiting {_backOffMillis} ms before attempting to reconnect");
                     }
 
                     ChangeState(ConnectionState.WaitingToReconnect);
@@ -363,9 +385,9 @@ namespace PusherClient
                     {
                         if (State != ConnectionState.Disconnected)
                         {
-                            if (_pusher.TraceLogger != null)
+                            if (_pusher.PusherOptions.TraceLogger != null)
                             {
-                                _pusher.TraceLogger.TraceWarning("Attempting websocket reconnection");
+                                _pusher.PusherOptions.TraceLogger.TraceWarning("Attempting websocket reconnection");
                             }
 
                             ChangeState(ConnectionState.Connecting);
@@ -378,7 +400,7 @@ namespace PusherClient
                 }
                 catch (Exception error)
                 {
-                    RaiseError(new ReconnectionException(error));
+                    RaiseError(new OperationException(ErrorCodes.ReconnectError, nameof(WebsocketAutoReconnect), error));
                 }
             });
         }
@@ -386,19 +408,25 @@ namespace PusherClient
         private void ParseError(JToken jToken)
         {
             JToken message = jToken.SelectToken("message");
-            if (message != null && message.Type == JTokenType.String)
+            if (message != null)
             {
-                ErrorCodes error = ErrorCodes.Unknown;
-                JToken code = jToken.SelectToken("code");
-                if (code != null && code.Type == JTokenType.Integer)
+                if (message.Type == JTokenType.String)
                 {
-                    if (Enum.IsDefined(typeof(ErrorCodes), code.Value<int>()))
+                    ErrorCodes error = ErrorCodes.Unknown;
+                    JToken code = jToken.SelectToken("code");
+                    if (code != null)
                     {
-                        error = (ErrorCodes)code.Value<int>();
+                        if (code.Type == JTokenType.Integer)
+                        {
+                            if (Enum.IsDefined(typeof(ErrorCodes), code.Value<int>()))
+                            {
+                                error = (ErrorCodes)code.Value<int>();
+                            }
+                        }
                     }
-                }
 
-                RaiseError(new PusherException(message.Value<string>(), error));
+                    RaiseError(new PusherException(message.Value<string>(), error));
+                }
             }
         }
 

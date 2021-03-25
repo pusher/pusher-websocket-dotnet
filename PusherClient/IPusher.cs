@@ -2,7 +2,7 @@
 {
     internal interface IPusher
     {
-        ITraceLogger TraceLogger { get; set; }
+        PusherOptions PusherOptions { get; set; }
 
         void ChangeConnectionState(ConnectionState state);
         void ErrorOccured(PusherException pusherException);
