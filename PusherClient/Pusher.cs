@@ -43,7 +43,7 @@ namespace PusherClient
 
         private readonly string _applicationKey;
 
-        internal IConnection _connection;
+        private IConnection _connection;
 
         /// <summary>
         /// Gets the Socket ID

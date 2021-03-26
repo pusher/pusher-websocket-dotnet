@@ -442,7 +442,7 @@ namespace PusherClient.Tests.AcceptanceTests
             PusherException pusherException = null;
             AggregateException caughtException = null;
 
-            Pusher pusher = await ConnectTestAsync().ConfigureAwait(false);
+            Pusher pusher = await ConnectTestAsync().ConfigureAwait(true);
 
             pusher.Error += (sender, error) =>
             {
@@ -452,8 +452,6 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Act
             ((IPusher)pusher).PusherOptions.ClientTimeout = TimeSpan.FromTicks(1);
-            Assert.IsNotNull(pusher._connection, nameof(pusher._connection));
-            Assert.AreEqual(ConnectionState.Connected, pusher.State, nameof(pusher.State));
             List<Task> tasks = new List<Task>();
             for (int i = 0; i < 4; i++)
             {

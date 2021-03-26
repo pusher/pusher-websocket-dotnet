@@ -90,12 +90,12 @@ namespace PusherClient
             {
                 if (State != ConnectionState.Disconnected)
                 {
+                    ChangeState(ConnectionState.Disconnecting);
+
                     if (_pusher.PusherOptions.TraceLogger != null)
                     {
                         _pusher.PusherOptions.TraceLogger.TraceInformation($"Disconnecting from: {_url}");
                     }
-
-                    ChangeState(ConnectionState.Disconnecting);
 
                     await Task.Run(() =>
                     {
