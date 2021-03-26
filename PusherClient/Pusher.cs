@@ -43,7 +43,7 @@ namespace PusherClient
 
         private readonly string _applicationKey;
 
-        private IConnection _connection;
+        internal IConnection _connection;
 
         /// <summary>
         /// Gets the Socket ID
@@ -262,10 +262,10 @@ namespace PusherClient
                         return;
                     }
 
-                    _disconnectLock = new SemaphoreSlim(1);
                     var url = ConstructUrl();
 
                     _connection = new Connection(this, url);
+                    _disconnectLock = new SemaphoreSlim(1);
                     await _connection.ConnectAsync().ConfigureAwait(false);
                 }
                 finally

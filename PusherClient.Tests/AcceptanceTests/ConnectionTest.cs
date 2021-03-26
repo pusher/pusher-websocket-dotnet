@@ -452,6 +452,8 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Act
             ((IPusher)pusher).PusherOptions.ClientTimeout = TimeSpan.FromTicks(1);
+            Assert.IsNotNull(pusher._connection, nameof(pusher._connection));
+            Assert.AreEqual(ConnectionState.Connected, pusher.State, nameof(pusher.State));
             List<Task> tasks = new List<Task>();
             for (int i = 0; i < 4; i++)
             {
