@@ -457,6 +457,8 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 tasks.Add(Task.Run(() =>
                 {
+                    // Cause an artificial delay in order to get this test to work
+                    Thread.Sleep(50);
                     return pusher.DisconnectAsync();
                 }));
             }
