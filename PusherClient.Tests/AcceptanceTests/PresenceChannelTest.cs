@@ -291,12 +291,6 @@ namespace PusherClient.Tests.AcceptanceTests
             catch (Exception error)
             {
                 caughtException = error as AggregateException;
-                if (exception.Message != caughtException.InnerException.Message)
-                {
-                    string id = DateTime.Now.ToString("yyyy-MM-dd HH.mm.ss ffffff");
-                    System.IO.File.WriteAllText(@"D:\GitHub\Pusher\Trace\Pusher." + $"{id}.Error.txt", caughtException.InnerException.ToString(), System.Text.Encoding.UTF8);
-                    System.IO.File.WriteAllText(@"D:\GitHub\Pusher\Trace\Pusher." + $"{id}.StackTrace.txt", caughtException.InnerException.StackTrace.ToString(), System.Text.Encoding.UTF8);
-                }
             }
 
             // Assert
