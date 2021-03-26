@@ -1,0 +1,23 @@
+name: Publish
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: windows-2019
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup MS Build
+      uses: microsoft/setup-msbuild@v1.0.2
+    - name: Restore dependencies
+      run: nuget restore pusher-dotnet-client.sln
+    - name: Build
+      run: msbuild /p:deterministic=true /p:msbuildArchitecture=x64 /p:configuration=Release pusher-dotnet-client.sln
+    - name: Pack
+      run: msbuild /t:Pack /p:configuration=release PusherClient/PusherClient.csproj
+    - name: Publish
+      run: nuget push PusherClient\bin\release\PusherClient.*.nupkg -NonInteractive -Source https://api.nuget.org/v3/index.json -SkipDuplicate -ApiKey ${{ secrets.NUGET_API_KEY }}
