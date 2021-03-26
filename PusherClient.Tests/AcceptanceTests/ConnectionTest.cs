@@ -450,6 +450,8 @@ namespace PusherClient.Tests.AcceptanceTests
                 errorEvent.Set();
             };
 
+            SemaphoreSlim testSync = new SemaphoreSlim(0);
+
             // Act
             ((IPusher)pusher).PusherOptions.ClientTimeout = TimeSpan.FromTicks(1);
             List<Task> tasks = new List<Task>();
@@ -457,11 +459,12 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 tasks.Add(Task.Run(() =>
                 {
-                    // Cause an artificial delay in order to get this test to work
-                    Thread.Sleep(50);
-                    return pusher.DisconnectAsync();
+                    return DisconnectAsync(pusher, testSync);
                 }));
             }
+
+            await Task.Delay(500).ConfigureAwait(false);
+            testSync.Release(tasks.Count);
 
             try
             {
@@ -490,6 +493,14 @@ namespace PusherClient.Tests.AcceptanceTests
             var result = websocket.GetValue(connection.GetValue(pusher));
             Assert.IsNotNull(result);
             return result as WebSocket;
+        }
+
+        private static async Task DisconnectAsync(Pusher pusher, SemaphoreSlim testSync)
+        {
+            // Synchronise all disconnects to happen at once
+            await testSync.WaitAsync().ConfigureAwait(false);
+
+            await pusher.DisconnectAsync().ConfigureAwait(false);
         }
 
         private static int CalculateExpectedErrorCount(SortedSet<ConnectionState> raiseErrorOn)
