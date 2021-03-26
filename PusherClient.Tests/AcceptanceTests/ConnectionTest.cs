@@ -16,10 +16,20 @@ namespace PusherClient.Tests.AcceptanceTests
     {
         private readonly List<Pusher> _clients = new List<Pusher>(10);
 
+        private Pusher _client;
+        private ConcurrentBag<string> _threadIds = new ConcurrentBag<string>();
+        private Exception _error;
+
         [TearDown]
         public async Task DisposeAsync()
         {
             await PusherFactory.DisposePushersAsync(_clients).ConfigureAwait(false);
+            _client = null;
+            _error = null;
+            while (!_threadIds.IsEmpty)
+            {
+                _threadIds.TryTake(out _);
+            }
         }
 
         [Test]
@@ -460,6 +470,7 @@ namespace PusherClient.Tests.AcceptanceTests
             AggregateException caughtException = null;
 
             Pusher pusher = await ConnectTestAsync().ConfigureAwait(true);
+            _client = pusher;
 
             pusher.Error += (sender, error) =>
             {
@@ -469,26 +480,21 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Act
             ((IPusher)pusher).PusherOptions.ClientTimeout = TimeSpan.FromTicks(1);
-            int numThreads = 3;
+            int numThreads = 2;
             ConcurrentBag<string> threadIds = new ConcurrentBag<string>();
-            List<Task> tasks = new List<Task>(numThreads);
+            Thread[] tasks = new Thread[numThreads];
             for (int i = 0; i < numThreads; i++)
             {
-                tasks.Add(Task.Run(() =>
-                {
-                    threadIds.Add(Thread.CurrentThread.ManagedThreadId.ToString());
-                    return pusher.DisconnectAsync();
-                }));
+                tasks[i] = new Thread(Disconnect);
+                tasks[i].Start();
             }
 
-            try
+            foreach (Thread thread in tasks)
             {
-                Task.WaitAll(tasks.ToArray());
+                thread.Join();
             }
-            catch (Exception error)
-            {
-                caughtException = error as AggregateException;
-            }
+
+            caughtException = _error as AggregateException;
 
             // Assert
             Assert.IsNotNull(caughtException, $"Expected an {nameof(AggregateException)}. Threads " + string.Join(", ", threadIds));
@@ -506,6 +512,19 @@ namespace PusherClient.Tests.AcceptanceTests
             var result = websocket.GetValue(connection.GetValue(pusher));
             Assert.IsNotNull(result);
             return result as WebSocket;
+        }
+
+        private void Disconnect()
+        {
+            _threadIds.Add(Thread.CurrentThread.ManagedThreadId.ToString());
+            try
+            {
+                Task.WaitAll(_client.DisconnectAsync());
+            }
+            catch (Exception e)
+            {
+                _error = e;
+            }
         }
 
         private static int CalculateExpectedErrorCount(SortedSet<ConnectionState> raiseErrorOn)
