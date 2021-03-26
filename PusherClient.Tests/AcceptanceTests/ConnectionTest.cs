@@ -467,23 +467,19 @@ namespace PusherClient.Tests.AcceptanceTests
                 errorEvent.Set();
             };
 
-            SemaphoreSlim testSync = new SemaphoreSlim(0);
-
             // Act
             ((IPusher)pusher).PusherOptions.ClientTimeout = TimeSpan.FromTicks(1);
-            int numThreads = 2;
+            int numThreads = 3;
             ConcurrentBag<string> threadIds = new ConcurrentBag<string>();
             List<Task> tasks = new List<Task>(numThreads);
             for (int i = 0; i < numThreads; i++)
             {
                 tasks.Add(Task.Run(() =>
                 {
-                    return DisconnectAsync(pusher, testSync, threadIds);
+                    threadIds.Add(Thread.CurrentThread.ManagedThreadId.ToString());
+                    return pusher.DisconnectAsync();
                 }));
             }
-
-            await Task.Delay(200).ConfigureAwait(false);
-            testSync.Release(tasks.Count);
 
             try
             {
@@ -510,16 +506,6 @@ namespace PusherClient.Tests.AcceptanceTests
             var result = websocket.GetValue(connection.GetValue(pusher));
             Assert.IsNotNull(result);
             return result as WebSocket;
-        }
-
-        private static async Task DisconnectAsync(Pusher pusher, SemaphoreSlim testSync, ConcurrentBag<string> threadIds)
-        {
-            threadIds.Add(Thread.CurrentThread.ManagedThreadId.ToString());
-
-            // Synchronise all disconnects to happen at once
-            await testSync.WaitAsync().ConfigureAwait(false);
-
-            await pusher.DisconnectAsync().ConfigureAwait(false);
         }
 
         private static int CalculateExpectedErrorCount(SortedSet<ConnectionState> raiseErrorOn)
