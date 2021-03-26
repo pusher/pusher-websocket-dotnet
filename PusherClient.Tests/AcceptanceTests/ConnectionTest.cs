@@ -444,7 +444,6 @@ namespace PusherClient.Tests.AcceptanceTests
 
             var pusher = PusherFactory.GetPusher(saveTo: _clients);
             await pusher.ConnectAsync().ConfigureAwait(false);
-            ((IPusher)pusher).PusherOptions.ClientTimeout = TimeSpan.FromTicks(1);
 
             pusher.Error += (sender, error) =>
             {
@@ -453,6 +452,8 @@ namespace PusherClient.Tests.AcceptanceTests
             };
 
             // Act
+            ((IPusher)pusher).PusherOptions.ClientTimeout = TimeSpan.FromTicks(1);
+            Assert.AreEqual(1, pusher._disconnectLock.CurrentCount, "_disconnectLock.CurrentCount");
             List<Task> tasks = new List<Task>();
             for (int i = 0; i < 4; i++)
             {

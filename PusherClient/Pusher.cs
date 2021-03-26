@@ -68,7 +68,7 @@ namespace PusherClient
         internal PusherOptions Options { get; private set; }
 
         private SemaphoreSlim _connectLock = new SemaphoreSlim(1);
-        private SemaphoreSlim _disconnectLock = new SemaphoreSlim(1);
+        internal SemaphoreSlim _disconnectLock = new SemaphoreSlim(1);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Pusher" /> class.
