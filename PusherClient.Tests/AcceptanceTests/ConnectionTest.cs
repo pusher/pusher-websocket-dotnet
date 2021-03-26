@@ -93,8 +93,8 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.IsTrue(connected, nameof(connected));
             Assert.AreEqual(1, connectedCount, nameof(connectedCount));
             Assert.AreEqual(expectedFinalCount, stateChangeLog.Count, nameof(expectedFinalCount));
-            Assert.AreEqual(ConnectionState.Connecting, stateChangeLog[0]);
-            Assert.AreEqual(ConnectionState.Connected, stateChangeLog[1]);
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Connecting), $"Expected state change {ConnectionState.Connecting}");
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Connected), $"Expected state change {ConnectionState.Connected}");
             Assert.IsFalse(errored, nameof(errored));
         }
 
@@ -216,8 +216,8 @@ namespace PusherClient.Tests.AcceptanceTests
             Assert.IsFalse(errored, nameof(errored));
             Assert.IsTrue(connected, nameof(connected));
             Assert.AreEqual(expectedFinalCount, stateChangeLog.Count, nameof(expectedFinalCount));
-            Assert.AreEqual(ConnectionState.Connecting, stateChangeLog[0]);
-            Assert.AreEqual(ConnectionState.Connected, stateChangeLog[1]);
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Connecting), $"Expected state change {ConnectionState.Connecting}");
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Connected), $"Expected state change {ConnectionState.Connected}");
         }
 
         [Test]
@@ -426,7 +426,7 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Act - trying to connect multiple times gives us increased code coverage on connection timeouts.
             List<Task> tasks = new List<Task>();
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < 2; i++)
             {
                 tasks.Add(Task.Run(() =>
                 {
@@ -471,7 +471,7 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Act
             ((IPusher)pusher).PusherOptions.ClientTimeout = TimeSpan.FromTicks(1);
-            int numThreads = 4;
+            int numThreads = 2;
             ConcurrentBag<string> threadIds = new ConcurrentBag<string>();
             List<Task> tasks = new List<Task>(numThreads);
             for (int i = 0; i < numThreads; i++)
@@ -652,8 +652,8 @@ namespace PusherClient.Tests.AcceptanceTests
 
             Assert.IsNotNull(pusher.SocketID);
             Assert.AreEqual(expectedFinalCount, stateChangeLog.Count, nameof(expectedFinalCount));
-            Assert.AreEqual(ConnectionState.Connecting, stateChangeLog[0]);
-            Assert.AreEqual(ConnectionState.Connected, stateChangeLog[1]);
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Connecting), $"Expected state change {ConnectionState.Connecting}");
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Connected), $"Expected state change {ConnectionState.Connected}");
             Assert.AreEqual(expectedErrorCount, errorCount, "# Errors");
 
             return pusher;
@@ -752,8 +752,8 @@ namespace PusherClient.Tests.AcceptanceTests
             errorEvent?.WaitOne(TimeSpan.FromSeconds(5));
 
             Assert.AreEqual(expectedFinalCount, stateChangeLog.Count, nameof(expectedFinalCount));
-            Assert.AreEqual(ConnectionState.Disconnecting, stateChangeLog[0]);
-            Assert.AreEqual(ConnectionState.Disconnected, stateChangeLog[1]);
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Disconnecting), $"Expected state change {ConnectionState.Disconnecting}");
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Disconnected), $"Expected state change {ConnectionState.Disconnected}");
             Assert.AreEqual(expectedErrorCount, errorCount, "# Errors");
 
             return pusher;
