@@ -64,6 +64,6 @@ namespace PusherClient.Tests.Utilities
             return authData;
         }
 
-        private static ILatencyInducer LatencyInducer { get; } = new LatencyInducer();
+        private static ILatencyInducer LatencyInducer { get; } = new LatencyInducer() { Enabled = false };
     }
 }
