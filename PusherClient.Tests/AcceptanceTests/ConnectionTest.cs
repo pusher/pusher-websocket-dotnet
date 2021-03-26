@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
@@ -50,8 +51,9 @@ namespace PusherClient.Tests.AcceptanceTests
             int stateChangedCount = 0;
             int expectedFinalCount = 2;
             List<ConnectionState> stateChangeLog = new List<ConnectionState>(expectedFinalCount);
-
+            object sync = new object();
             var pusher = PusherFactory.GetPusher(saveTo: _clients);
+
             pusher.Connected += sender =>
             {
                 connectedCount++;
@@ -60,9 +62,12 @@ namespace PusherClient.Tests.AcceptanceTests
 
             pusher.ConnectionStateChanged += (sender, state) =>
             {
-                stateChangedCount++;
-                stateChangeLog.Add(state);
-                Trace.TraceInformation($"[{stateChangedCount}]: {state}");
+                lock (sync)
+                {
+                    stateChangedCount++;
+                    stateChangeLog.Add(state);
+                    Trace.TraceInformation($"[{stateChangedCount}, {DateTime.Now:O}]: {state}");
+                }
             };
 
             pusher.Error += (sender, error) =>
@@ -132,7 +137,7 @@ namespace PusherClient.Tests.AcceptanceTests
             pusher.ConnectionStateChanged += (sender, state) =>
             {
                 stateChangedCount++;
-                Trace.TraceInformation($"[{stateChangedCount}]: {state}");
+                Trace.TraceInformation($"[{stateChangedCount}, {DateTime.Now:O}]: {state}");
                 if (stateChangedCount == expectedStateChangedCount)
                 {
                     statusChangeEvent.Set();
@@ -174,11 +179,16 @@ namespace PusherClient.Tests.AcceptanceTests
             bool errored = false;
             int expectedFinalCount = 2;
             List<ConnectionState> stateChangeLog = new List<ConnectionState>(expectedFinalCount);
+            object sync = new object();
 
             var pusher = await DisconnectTestAsync().ConfigureAwait(false);
             pusher.ConnectionStateChanged += (sender, state) =>
             {
-                stateChangeLog.Add(state);
+                lock (sync)
+                {
+                    stateChangeLog.Add(state);
+                }
+
                 if (stateChangeLog.Count == expectedFinalCount)
                 {
                     statusChangeEvent.Set();
@@ -275,6 +285,7 @@ namespace PusherClient.Tests.AcceptanceTests
             int stateChangedCount = 0;
             int expectedFinalCount = 4;
             List<ConnectionState> stateChangeLog = new List<ConnectionState>(expectedFinalCount);
+            object sync = new object();
             var pusher = await ConnectTestAsync().ConfigureAwait(false);
 
             pusher.Connected += sender =>
@@ -285,8 +296,12 @@ namespace PusherClient.Tests.AcceptanceTests
 
             pusher.ConnectionStateChanged += (sender, state) =>
             {
-                stateChangedCount++;
-                stateChangeLog.Add(state);
+                lock (sync)
+                {
+                    stateChangedCount++;
+                    stateChangeLog.Add(state);
+                }
+
                 if (stateChangedCount == expectedFinalCount)
                 {
                     statusChangeEvent.Set();
@@ -336,7 +351,7 @@ namespace PusherClient.Tests.AcceptanceTests
             bool errored = false;
             int expectedFinalCount = 1;
             List<ConnectionState> stateChangeLog = new List<ConnectionState>(expectedFinalCount);
-
+            object sync = new object();
             var pusher = new Pusher("Invalid");
 
             pusher.Connected += sender =>
@@ -346,7 +361,10 @@ namespace PusherClient.Tests.AcceptanceTests
 
             pusher.ConnectionStateChanged += (sender, state) =>
             {
-                stateChangeLog.Add(state);
+                lock (sync)
+                {
+                    stateChangeLog.Add(state);
+                }
             };
 
             pusher.Disconnected += sender =>
@@ -438,7 +456,6 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             // Arrange
             AutoResetEvent errorEvent = new AutoResetEvent(false);
-            Exception exception = null;
             PusherException pusherException = null;
             AggregateException caughtException = null;
 
@@ -454,16 +471,18 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Act
             ((IPusher)pusher).PusherOptions.ClientTimeout = TimeSpan.FromTicks(1);
-            List<Task> tasks = new List<Task>();
-            for (int i = 0; i < 4; i++)
+            int numThreads = 4;
+            ConcurrentBag<string> threadIds = new ConcurrentBag<string>();
+            List<Task> tasks = new List<Task>(numThreads);
+            for (int i = 0; i < numThreads; i++)
             {
                 tasks.Add(Task.Run(() =>
                 {
-                    return DisconnectAsync(pusher, testSync);
+                    return DisconnectAsync(pusher, testSync, threadIds);
                 }));
             }
 
-            await Task.Delay(500).ConfigureAwait(false);
+            await Task.Delay(200).ConfigureAwait(false);
             testSync.Release(tasks.Count);
 
             try
@@ -472,13 +491,11 @@ namespace PusherClient.Tests.AcceptanceTests
             }
             catch (Exception error)
             {
-                exception = error;
                 caughtException = error as AggregateException;
             }
 
             // Assert
-            Assert.IsNotNull(exception, $"Expected an {nameof(Exception)}");
-            Assert.IsNotNull(caughtException, $"Expected an {nameof(AggregateException)}. {exception.Message}");
+            Assert.IsNotNull(caughtException, $"Expected an {nameof(AggregateException)}. Threads " + string.Join(", ", threadIds));
             Assert.IsTrue(errorEvent.WaitOne(TimeSpan.FromSeconds(5)));
             Assert.IsNotNull(pusherException, nameof(PusherException));
             Assert.AreEqual(pusherException.Message, caughtException.InnerException.Message);
@@ -495,8 +512,10 @@ namespace PusherClient.Tests.AcceptanceTests
             return result as WebSocket;
         }
 
-        private static async Task DisconnectAsync(Pusher pusher, SemaphoreSlim testSync)
+        private static async Task DisconnectAsync(Pusher pusher, SemaphoreSlim testSync, ConcurrentBag<string> threadIds)
         {
+            threadIds.Add(Thread.CurrentThread.ManagedThreadId.ToString());
+
             // Synchronise all disconnects to happen at once
             await testSync.WaitAsync().ConfigureAwait(false);
 
@@ -539,6 +558,7 @@ namespace PusherClient.Tests.AcceptanceTests
             int stateChangedCount = 0;
             int expectedFinalCount = 2;
             List<ConnectionState> stateChangeLog = new List<ConnectionState>(expectedFinalCount);
+            object sync = new object();
 
             void ConnectedEventHandler(object sender)
             {
@@ -559,9 +579,13 @@ namespace PusherClient.Tests.AcceptanceTests
 
             void StateChangedEventHandler(object sender, ConnectionState state)
             {
-                stateChangedCount++;
-                stateChangeLog.Add(state);
-                Trace.TraceInformation($"[{stateChangedCount}]: {state}");
+                lock (sync)
+                {
+                    stateChangedCount++;
+                    stateChangeLog.Add(state);
+                    Trace.TraceInformation($"[{stateChangedCount}, {DateTime.Now:O}]: {state}");
+                }
+
                 try
                 {
                     if (raiseErrorOn != null && raiseErrorOn.Contains(state))
@@ -646,11 +670,16 @@ namespace PusherClient.Tests.AcceptanceTests
             int stateChangedCount = 0;
             int expectedFinalCount = 2;
             List<ConnectionState> stateChangeLog = new List<ConnectionState>(expectedFinalCount);
+            object sync = new object();
 
             void StateChangedEventHandler(object sender, ConnectionState state)
             {
-                stateChangedCount++;
-                stateChangeLog.Add(state);
+                lock (sync)
+                {
+                    stateChangedCount++;
+                    stateChangeLog.Add(state);
+                }
+
                 try
                 {
                     if (raiseErrorOn != null && raiseErrorOn.Contains(state))
