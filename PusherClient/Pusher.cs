@@ -67,7 +67,8 @@ namespace PusherClient
         /// </summary>
         internal PusherOptions Options { get; private set; }
 
-        private readonly SemaphoreSlim _mutexLock = new SemaphoreSlim(1);
+        private SemaphoreSlim _connectLock = new SemaphoreSlim(1);
+        private SemaphoreSlim _disconnectLock = new SemaphoreSlim(1);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Pusher" /> class.
@@ -248,7 +249,7 @@ namespace PusherClient
             {
                 // Prevent multiple concurrent connections
                 TimeSpan timeoutPeriod = Options.ClientTimeout;
-                if (!await _mutexLock.WaitAsync(timeoutPeriod).ConfigureAwait(false))
+                if (!await _connectLock.WaitAsync(timeoutPeriod).ConfigureAwait(false))
                 {
                     throw new OperationTimeoutException(timeoutPeriod, Constants.CONNECTION_ESTABLISHED);
                 }
@@ -261,6 +262,7 @@ namespace PusherClient
                         return;
                     }
 
+                    _disconnectLock = new SemaphoreSlim(1);
                     var url = ConstructUrl();
 
                     _connection = new Connection(this, url);
@@ -268,7 +270,7 @@ namespace PusherClient
                 }
                 finally
                 {
-                    _mutexLock.Release();
+                    _connectLock.Release();
                 }
             }
             catch (Exception e)
@@ -301,7 +303,7 @@ namespace PusherClient
             try
             {
                 TimeSpan timeoutPeriod = Options.ClientTimeout;
-                if (!await _mutexLock.WaitAsync(timeoutPeriod).ConfigureAwait(false))
+                if (!await _disconnectLock.WaitAsync(timeoutPeriod).ConfigureAwait(false))
                 {
                     throw new OperationTimeoutException(timeoutPeriod, $"{nameof(Pusher)}.{nameof(Pusher.DisconnectAsync)}");
                 }
@@ -312,6 +314,7 @@ namespace PusherClient
                     {
                         if (State != ConnectionState.Disconnected)
                         {
+                            _connectLock = new SemaphoreSlim(1);
                             MarkChannelsAsUnsubscribed();
                             await _connection.DisconnectAsync().ConfigureAwait(false);
                         }
@@ -319,7 +322,7 @@ namespace PusherClient
                 }
                 finally
                 {
-                    _mutexLock.Release();
+                    _disconnectLock.Release();
                 }
             }
             catch (Exception e)
