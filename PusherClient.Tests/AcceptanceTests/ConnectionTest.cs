@@ -438,7 +438,8 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             // Arrange
             AutoResetEvent errorEvent = new AutoResetEvent(false);
-            PusherException exception = null;
+            Exception exception = null;
+            PusherException pusherException = null;
             AggregateException caughtException = null;
 
             var pusher = PusherFactory.GetPusher(saveTo: _clients);
@@ -447,13 +448,13 @@ namespace PusherClient.Tests.AcceptanceTests
 
             pusher.Error += (sender, error) =>
             {
-                exception = error;
+                pusherException = error;
                 errorEvent.Set();
             };
 
             // Act
             List<Task> tasks = new List<Task>();
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 4; i++)
             {
                 tasks.Add(Task.Run(() =>
                 {
@@ -467,15 +468,17 @@ namespace PusherClient.Tests.AcceptanceTests
             }
             catch (Exception error)
             {
+                exception = error;
                 caughtException = error as AggregateException;
             }
 
             // Assert
-            Assert.IsNotNull(caughtException, nameof(AggregateException));
+            Assert.IsNotNull(exception, $"Expected an {nameof(Exception)}");
+            Assert.IsNotNull(caughtException, $"Expected an {nameof(AggregateException)}. {exception.Message}");
             Assert.IsTrue(errorEvent.WaitOne(TimeSpan.FromSeconds(5)));
-            Assert.IsNotNull(exception, nameof(PusherException));
-            Assert.AreEqual(exception.Message, caughtException.InnerException.Message);
-            Assert.AreEqual(ErrorCodes.ClientTimeout, exception.PusherCode);
+            Assert.IsNotNull(pusherException, nameof(PusherException));
+            Assert.AreEqual(pusherException.Message, caughtException.InnerException.Message);
+            Assert.AreEqual(ErrorCodes.ClientTimeout, pusherException.PusherCode);
         }
 
         internal static WebSocket GetWebSocket(Pusher pusher)

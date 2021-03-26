@@ -240,25 +240,28 @@ namespace PusherClient.Tests.UnitTests
                         .WithBody(FakeTokenAuth)
                 );
 
-            ChannelAuthorizationFailureException exception = null;
+            Exception exception = null;
+            ChannelAuthorizationFailureException channelException = null;
             var testHttpAuthorizer = new HttpAuthorizer(hostUrl + "/authz")
             {
-                Timeout = TimeSpan.FromTicks(1),
+                Timeout = TimeSpan.FromTicks(10),
             };
 
             try
             {
                 testHttpAuthorizer.Authorize("private-test", "fsfsdfsgsfs");
             }
-            catch (ChannelAuthorizationFailureException e)
+            catch (Exception e)
             {
                 exception = e;
+                channelException = e as ChannelAuthorizationFailureException;
             }
 
-            Assert.IsNotNull(exception, $"Expecting a {nameof(ChannelAuthorizationFailureException)}");
+            Assert.IsNotNull(exception, $"Expected an {nameof(Exception)}");
+            Assert.IsNotNull(channelException, $"Expected a {nameof(ChannelAuthorizationFailureException)}. {exception.Message}");
             string token = "A task was canceled";
-            Assert.IsTrue(exception.Message.Contains(token), token);
-            Assert.AreEqual(ErrorCodes.ChannelAuthorizationTimeout, exception.PusherCode);
+            Assert.IsTrue(channelException.Message.Contains(token), token);
+            Assert.AreEqual(ErrorCodes.ChannelAuthorizationTimeout, channelException.PusherCode);
         }
 
         [Test]
@@ -280,25 +283,28 @@ namespace PusherClient.Tests.UnitTests
                         .WithBody(FakeTokenAuth)
                 );
 
-            ChannelAuthorizationFailureException exception = null;
+            Exception exception = null;
+            ChannelAuthorizationFailureException channelException = null;
             var testHttpAuthorizer = new HttpAuthorizer(hostUrl + "/authz")
             {
-                Timeout = TimeSpan.FromTicks(1),
+                Timeout = TimeSpan.FromTicks(10),
             };
 
             try
             {
                 await testHttpAuthorizer.AuthorizeAsync("private-test", "fsfsdfsgsfs");
             }
-            catch (ChannelAuthorizationFailureException e)
+            catch (Exception e)
             {
                 exception = e;
+                channelException = e as ChannelAuthorizationFailureException;
             }
 
-            Assert.IsNotNull(exception, $"Expecting a {nameof(ChannelAuthorizationFailureException)}");
+            Assert.IsNotNull(exception, $"Expected an {nameof(Exception)}");
+            Assert.IsNotNull(channelException, $"Expected a {nameof(ChannelAuthorizationFailureException)}. {exception.Message}");
             string token = "A task was canceled";
-            Assert.IsTrue(exception.Message.Contains(token), token);
-            Assert.AreEqual(ErrorCodes.ChannelAuthorizationTimeout, exception.PusherCode);
+            Assert.IsTrue(channelException.Message.Contains(token), token);
+            Assert.AreEqual(ErrorCodes.ChannelAuthorizationTimeout, channelException.PusherCode);
         }
     }
 }
