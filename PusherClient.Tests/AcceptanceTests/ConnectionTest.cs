@@ -443,7 +443,7 @@ namespace PusherClient.Tests.AcceptanceTests
 
             var pusher = PusherFactory.GetPusher(saveTo: _clients);
             await pusher.ConnectAsync().ConfigureAwait(false);
-            ((IPusher)pusher).PusherOptions.ClientTimeout = TimeSpan.FromTicks(10);
+            ((IPusher)pusher).PusherOptions.ClientTimeout = TimeSpan.FromTicks(1);
 
             pusher.Error += (sender, error) =>
             {
@@ -465,9 +465,9 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 Task.WaitAll(tasks.ToArray());
             }
-            catch (AggregateException error)
+            catch (Exception error)
             {
-                caughtException = error;
+                caughtException = error as AggregateException;
             }
 
             // Assert
