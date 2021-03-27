@@ -260,7 +260,7 @@ namespace PusherClient.Tests.AcceptanceTests
             // Arrange
             AutoResetEvent errorEvent = new AutoResetEvent(false);
             PusherException exception = null;
-            AggregateException caughtException = null;
+            PusherException caughtException = null;
 
             ChannelTypes channelType = ChannelTypes.Presence;
             string channelName = ChannelNameFactory.CreateUniqueChannelName(channelType: channelType);
@@ -275,29 +275,20 @@ namespace PusherClient.Tests.AcceptanceTests
             };
 
             // Act
-            List<Task> tasks = new List<Task>();
-            for (int i = 0; i < 4; i++)
-            {
-                tasks.Add(Task.Run(() =>
-                {
-                    return pusher.SubscribePresenceAsync<FakeUserInfo>(channelName);
-                }));
-            }
-
             try
             {
-                Task.WaitAll(tasks.ToArray());
+                await pusher.SubscribePresenceAsync<FakeUserInfo>(channelName).ConfigureAwait(false);
             }
             catch (Exception error)
             {
-                caughtException = error as AggregateException;
+                caughtException = error as PusherException;
             }
 
             // Assert
-            Assert.IsNotNull(caughtException, nameof(AggregateException));
+            Assert.IsNotNull(caughtException, $"Caught exception expected to be {nameof(PusherException)}");
             Assert.IsTrue(errorEvent.WaitOne(TimeSpan.FromSeconds(5)));
-            Assert.IsNotNull(exception, nameof(PusherException));
-            Assert.AreEqual(exception.Message, caughtException.InnerException.Message);
+            Assert.IsNotNull(exception, $"Error expected to be {nameof(PusherException)}");
+            Assert.AreEqual(exception.Message, caughtException.Message);
             Assert.AreEqual(ErrorCodes.ClientTimeout, exception.PusherCode, "Unexpected error: " + exception.Message);
         }
 
