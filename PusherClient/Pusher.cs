@@ -93,10 +93,21 @@ namespace PusherClient
         {
             if (state == ConnectionState.Connected)
             {
-                StartUnsubscribeBacklog();
-                if (Connected != null)
+                Task.Run(() =>
                 {
-                    Task.Run(() =>
+                    if (ConnectionStateChanged != null)
+                    {
+                        try
+                        {
+                            ConnectionStateChanged.Invoke(this, state);
+                        }
+                        catch (Exception error)
+                        {
+                            InvokeErrorHandler(new ConnectionStateChangedEventHandlerException(state, error));
+                        }
+                    }
+
+                    if (Connected != null)
                     {
                         try
                         {
@@ -106,17 +117,30 @@ namespace PusherClient
                         {
                             InvokeErrorHandler(new ConnectedEventHandlerException(error));
                         }
-                    });
-                }
+                    }
 
-                SubscribeExistingChannels();
+                    SubscribeExistingChannels();
+                    UnsubscribeBacklog();
+                });
             }
             else if (state == ConnectionState.Disconnected)
             {
-                MarkChannelsAsUnsubscribed();
-                if (Disconnected != null)
+                Task.Run(() =>
                 {
-                    Task.Run(() =>
+                    MarkChannelsAsUnsubscribed();
+                    if (ConnectionStateChanged != null)
+                    {
+                        try
+                        {
+                            ConnectionStateChanged.Invoke(this, state);
+                        }
+                        catch (Exception error)
+                        {
+                            InvokeErrorHandler(new ConnectionStateChangedEventHandlerException(state, error));
+                        }
+                    }
+
+                    if (Disconnected != null)
                     {
                         try
                         {
@@ -126,11 +150,11 @@ namespace PusherClient
                         {
                             InvokeErrorHandler(new DisconnectedEventHandlerException(error));
                         }
-                    });
-                }
-            }
+                    }
+                });
 
-            if (ConnectionStateChanged != null)
+            }
+            else if (ConnectionStateChanged != null)
             {
                 Task.Run(() =>
                 {
@@ -882,14 +906,6 @@ namespace PusherClient
             RaiseError(error as PusherException);
         }
 
-        private void StartUnsubscribeBacklog()
-        {
-            Task.Run(() =>
-            {
-                UnsubscribeBacklog();
-            });
-        }
-
         private void UnsubscribeBacklog()
         {
             while (!Backlog.IsEmpty)
@@ -953,13 +969,7 @@ namespace PusherClient
         private void SubscribeExistingChannels()
         {
             IList<Channel> channels = GetAllChannels();
-            if (channels.Count == 0)
-            {
-                return;
-            }
-
-            // Task needs to run asynchronously otherwise we get task deadlock
-            Task.Run(() =>
+            if (channels.Count > 0)
             {
                 // Subscribe in the following order - Public, Private, Presence
                 var sorted = channels.Select(c => c).OrderBy(c => c.ChannelType);
@@ -974,7 +984,7 @@ namespace PusherClient
                         HandleSubscriptionException("Subscribe", channel, aggregateException);
                     }
                 }
-            });
+            }
         }
     }
 }
