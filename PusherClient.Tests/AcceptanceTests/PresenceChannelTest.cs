@@ -266,7 +266,7 @@ namespace PusherClient.Tests.AcceptanceTests
             string channelName = ChannelNameFactory.CreateUniqueChannelName(channelType: channelType);
             var pusher = PusherFactory.GetPusher(channelType: channelType, saveTo: _clients);
             await pusher.ConnectAsync().ConfigureAwait(false);
-            ((IPusher)pusher).PusherOptions.ClientTimeout = TimeSpan.FromTicks(10);
+            ((IPusher)pusher).PusherOptions.ClientTimeout = TimeSpan.FromMilliseconds(20);
 
             pusher.Error += (sender, error) =>
             {
