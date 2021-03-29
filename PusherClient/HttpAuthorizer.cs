@@ -80,7 +80,7 @@ namespace PusherClient
 
                 using (HttpContent content = new FormUrlEncodedContent(data))
                 {
-                    HttpResponseMessage response;
+                    HttpResponseMessage response = null;
                     try
                     {
                         response = await httpClient.PostAsync(_authEndpoint, content).ConfigureAwait(false);
@@ -96,7 +96,11 @@ namespace PusherClient
                         throw new ChannelAuthorizationFailureException(code, _authEndpoint.OriginalString, channelName, socketId, e);
                     }
 
-                    if (response.StatusCode == HttpStatusCode.Forbidden)
+                    if (response.StatusCode == HttpStatusCode.RequestTimeout || response.StatusCode == HttpStatusCode.GatewayTimeout)
+                    {
+                        throw new ChannelAuthorizationFailureException($"Authorization timeout ({response.StatusCode}).", ErrorCodes.ChannelAuthorizationTimeout, _authEndpoint.OriginalString, channelName, socketId);
+                    }
+                    else if (response.StatusCode == HttpStatusCode.Forbidden)
                     {
                         throw new ChannelUnauthorizedException(_authEndpoint.OriginalString, channelName, socketId);
                     }

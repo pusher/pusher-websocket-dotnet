@@ -9,6 +9,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Files", "Files", "{2D9F07A0
 		.gitignore = .gitignore
 		AppConfig.sample.json = AppConfig.sample.json
 		CHANGELOG.md = CHANGELOG.md
+		CPU.count.2.runsettings = CPU.count.2.runsettings
 		package.cmd = package.cmd
 		README.md = README.md
 		Root.Build.props = Root.Build.props
