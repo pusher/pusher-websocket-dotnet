@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json;
-
-namespace ExampleApplication
+﻿namespace ExampleApplication
 {
     internal class ChatMessage : ChatMember
     {
@@ -15,7 +13,6 @@ namespace ExampleApplication
             this.Message = message;
         }
 
-        [JsonProperty(PropertyName = "message")]
         public string Message { get; set; }
 
     }

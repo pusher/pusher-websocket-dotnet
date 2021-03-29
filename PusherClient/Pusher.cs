@@ -95,18 +95,6 @@ namespace PusherClient
             {
                 Task.Run(() =>
                 {
-                    if (ConnectionStateChanged != null)
-                    {
-                        try
-                        {
-                            ConnectionStateChanged.Invoke(this, state);
-                        }
-                        catch (Exception error)
-                        {
-                            InvokeErrorHandler(new ConnectionStateChangedEventHandlerException(state, error));
-                        }
-                    }
-
                     if (Connected != null)
                     {
                         try
@@ -121,13 +109,7 @@ namespace PusherClient
 
                     SubscribeExistingChannels();
                     UnsubscribeBacklog();
-                });
-            }
-            else if (state == ConnectionState.Disconnected)
-            {
-                Task.Run(() =>
-                {
-                    MarkChannelsAsUnsubscribed();
+
                     if (ConnectionStateChanged != null)
                     {
                         try
@@ -139,7 +121,13 @@ namespace PusherClient
                             InvokeErrorHandler(new ConnectionStateChangedEventHandlerException(state, error));
                         }
                     }
-
+                });
+            }
+            else if (state == ConnectionState.Disconnected)
+            {
+                Task.Run(() =>
+                {
+                    MarkChannelsAsUnsubscribed();
                     if (Disconnected != null)
                     {
                         try
@@ -149,6 +137,18 @@ namespace PusherClient
                         catch (Exception error)
                         {
                             InvokeErrorHandler(new DisconnectedEventHandlerException(error));
+                        }
+                    }
+
+                    if (ConnectionStateChanged != null)
+                    {
+                        try
+                        {
+                            ConnectionStateChanged.Invoke(this, state);
+                        }
+                        catch (Exception error)
+                        {
+                            InvokeErrorHandler(new ConnectionStateChangedEventHandlerException(state, error));
                         }
                     }
                 });
@@ -493,6 +493,11 @@ namespace PusherClient
             return result;
         }
 
+        /// <summary>
+        /// Removes a channel subscription.
+        /// </summary>
+        /// <param name="channelName">The name of the channel to unsubscribe.</param>
+        /// <returns>An awaitable task to use with async operations.</returns>
         public async Task UnsubscribeAsync(string channelName)
         {
             Guard.ChannelName(channelName);
@@ -511,6 +516,10 @@ namespace PusherClient
             }
         }
 
+        /// <summary>
+        /// Removes all channel subscriptions.
+        /// </summary>
+        /// <returns>An awaitable task to use with async operations.</returns>
         public async Task UnsubscribeAllAsync()
         {
             IList<Channel> channels = GetAllChannels();
@@ -531,6 +540,7 @@ namespace PusherClient
                 }
             }
         }
+
 
         private async Task<Channel> SubscribeAsync(string channelName, Channel channel, SubscriptionEventHandler subscribedEventHandler = null)
         {

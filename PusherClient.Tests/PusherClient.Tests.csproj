@@ -167,6 +167,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AcceptanceTests\ReadmeTest.cs" />
     <Compile Include="AcceptanceTests\ConnectionTest.cs" />
     <Compile Include="AcceptanceTests\EventEmitterTest.TextEventEmitter.cs" />
     <Compile Include="AcceptanceTests\EventEmitterTest.DynamicEventEmitter.cs" />
