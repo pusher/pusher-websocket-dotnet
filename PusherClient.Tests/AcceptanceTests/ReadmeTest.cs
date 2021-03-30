@@ -9,6 +9,9 @@ using PusherClient.Tests.Utilities;
 
 namespace PusherClient.Tests.AcceptanceTests
 {
+    /// <summary>
+    /// Validates code snippets used in README.md.
+    /// </summary>
     [TestFixture]
     public class ReadmeTest
     {
@@ -58,14 +61,14 @@ namespace PusherClient.Tests.AcceptanceTests
                 Dictionary<string, ChatMember> members = channel.GetMembers();
                 foreach (var member in members)
                 {
-                    Trace.TraceInformation($"Id: {member.Key}, Name: {member.Value.Name}\n");
+                    Trace.TraceInformation($"Id: {member.Key}, Name: {member.Value.Name}");
                 }
             }
 
             // MemberAdded event handler
             void ChatMemberAdded(object sender, KeyValuePair<string, ChatMember> member)
             {
-                Trace.TraceInformation($"Member {member.Value.Name} has joined\n");
+                Trace.TraceInformation($"Member {member.Value.Name} has joined");
                 if (sender is GenericPresenceChannel<ChatMember> channel)
                 {
                     ListMembers(channel);
@@ -75,14 +78,14 @@ namespace PusherClient.Tests.AcceptanceTests
             // MemberRemoved event handler
             void ChatMemberRemoved(object sender, KeyValuePair<string, ChatMember> member)
             {
-                Trace.TraceInformation($"Member {member.Value.Name} has left\n");
+                Trace.TraceInformation($"Member {member.Value.Name} has left");
                 if (sender is GenericPresenceChannel<ChatMember> channel)
                 {
                     ListMembers(channel);
                 }
             }
 
-            // Handles and records errors
+            // Handle errors
             void HandleError(object sender, PusherException error)
             {
                 if ((int)error.PusherCode < 5000)
@@ -109,7 +112,7 @@ namespace PusherClient.Tests.AcceptanceTests
                     }
                 }
 
-                Trace.TraceError($"{error}\n");
+                Trace.TraceError($"{error}");
             }
 
             // Subscribed event handler
@@ -129,7 +132,7 @@ namespace PusherClient.Tests.AcceptanceTests
             // Connection state change event handler
             void StateChangedEventHandler(object sender, ConnectionState state)
             {
-                Trace.TraceInformation($"SocketId: {((Pusher)sender).SocketID}, State: {state}\n");
+                Trace.TraceInformation($"SocketId: {((Pusher)sender).SocketID}, State: {state}");
                 if (state == ConnectionState.Connected)
                 {
                     readyEvent.Set();
@@ -168,12 +171,12 @@ namespace PusherClient.Tests.AcceptanceTests
             pusher.Error += HandleError;
 
             // Create subscriptions
-            await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false); ;
-            Channel chatChannel = await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false); ;
-            GenericPresenceChannel<ChatMember> presenceCh =
-                await pusher.SubscribePresenceAsync<ChatMember>("presence-channel-1").ConfigureAwait(false); ;
-            presenceCh.MemberAdded += ChatMemberAdded;
-            presenceCh.MemberRemoved += ChatMemberRemoved;
+            await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
+            await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false);
+            GenericPresenceChannel<ChatMember> memberChannel =
+                await pusher.SubscribePresenceAsync<ChatMember>("presence-channel-1").ConfigureAwait(false);
+            memberChannel.MemberAdded += ChatMemberAdded;
+            memberChannel.MemberRemoved += ChatMemberRemoved;
 
             // Connect
             try
@@ -268,6 +271,366 @@ namespace PusherClient.Tests.AcceptanceTests
 
             await pusher.ConnectAsync().ConfigureAwait(false);
             await pusher.DisconnectAsync().ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task SubscribeThenConnectPublicChannelAsync()
+        {
+            #region Code snippet
+
+            // Create client
+            Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+            {
+                Cluster = Config.Cluster,
+            });
+            pusher.Error += ErrorHandler;
+
+            // Subscribe
+            Channel publicChannel = await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
+            Assert.AreEqual(false, publicChannel.IsSubscribed);
+
+            // Connect
+            await pusher.ConnectAsync().ConfigureAwait(false);
+
+            #endregion Code snippet
+
+            await pusher.DisconnectAsync().ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task ConnectThenSubscribePublicChannelAsync()
+        {
+            #region Code snippet
+
+            // Create client
+            Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+            {
+                Cluster = Config.Cluster,
+            });
+            pusher.Error += ErrorHandler;
+
+            // Connect
+            await pusher.ConnectAsync().ConfigureAwait(false);
+
+            // Subscribe
+            try
+            {
+                Channel publicChannel = await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
+                Assert.AreEqual(true, publicChannel.IsSubscribed);
+            }
+            catch (Exception)
+            {
+                // Handle error
+            }
+
+            #endregion Code snippet
+
+            await pusher.DisconnectAsync().ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task SubscribeThenConnectPrivateChannelAsync()
+        {
+            #region Code snippet
+
+            // Create client
+            Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+            {
+                Authorizer = new FakeAuthoriser(),
+                Cluster = Config.Cluster,
+            });
+            pusher.Error += ErrorHandler;
+
+            // Subscribe
+            Channel publicChannel = await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false);
+            Assert.AreEqual(false, publicChannel.IsSubscribed);
+
+            // Connect
+            await pusher.ConnectAsync().ConfigureAwait(false);
+
+            #endregion Code snippet
+
+            await pusher.DisconnectAsync().ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task ConnectThenSubscribePrivateChannelAsync()
+        {
+            #region Code snippet
+
+            // Create client
+            Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+            {
+                Authorizer = new FakeAuthoriser(),
+                Cluster = Config.Cluster,
+            });
+            pusher.Error += ErrorHandler;
+
+            // Connect
+            await pusher.ConnectAsync().ConfigureAwait(false);
+
+            try
+            {
+                // Subscribe
+                Channel publicChannel = await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false);
+                Assert.AreEqual(true, publicChannel.IsSubscribed);
+            }
+            catch (ChannelUnauthorizedException)
+            {
+                // Handle client unauthorized error
+            }
+            catch (Exception)
+            {
+                // Handle other errors
+            }
+
+            #endregion Code snippet
+
+            await pusher.DisconnectAsync().ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task SubscribeThenConnectPresenceChannelAsync()
+        {
+            #region Code snippet
+
+            // Create client
+            Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+            {
+                Authorizer = new FakeAuthoriser(),
+                Cluster = Config.Cluster,
+            });
+            pusher.Error += ErrorHandler;
+
+            // Lists all current peresence channel members
+            void ListMembers(GenericPresenceChannel<ChatMember> channel)
+            {
+                Dictionary<string, ChatMember> members = channel.GetMembers();
+                foreach (var member in members)
+                {
+                    Trace.TraceInformation($"Id: {member.Key}, Name: {member.Value.Name}");
+                }
+            }
+
+            // MemberAdded event handler
+            void ChatMemberAdded(object sender, KeyValuePair<string, ChatMember> member)
+            {
+                Trace.TraceInformation($"Member {member.Value.Name} has joined");
+                ListMembers(sender as GenericPresenceChannel<ChatMember>);
+            }
+
+            // MemberRemoved event handler
+            void ChatMemberRemoved(object sender, KeyValuePair<string, ChatMember> member)
+            {
+                Trace.TraceInformation($"Member {member.Value.Name} has left");
+                ListMembers(sender as GenericPresenceChannel<ChatMember>);
+            }
+
+            // Subscribe
+            GenericPresenceChannel<ChatMember> memberChannel =
+                await pusher.SubscribePresenceAsync<ChatMember>("presence-channel-1").ConfigureAwait(false);
+            memberChannel.MemberAdded += ChatMemberAdded;
+            memberChannel.MemberRemoved += ChatMemberRemoved;
+            Assert.AreEqual(false, memberChannel.IsSubscribed);
+
+            // Connect
+            await pusher.ConnectAsync().ConfigureAwait(false);
+
+            #endregion Code snippet
+
+            await pusher.DisconnectAsync().ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task ConnectThenSubscribePresenceChannelAsync()
+        {
+            #region Code snippet
+
+            // Create client
+            Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+            {
+                Authorizer = new FakeAuthoriser(),
+                Cluster = Config.Cluster,
+            });
+            pusher.Error += ErrorHandler;
+
+            // Lists all current peresence channel members
+            void ListMembers(GenericPresenceChannel<ChatMember> channel)
+            {
+                Dictionary<string, ChatMember> members = channel.GetMembers();
+                foreach (var member in members)
+                {
+                    Trace.TraceInformation($"Id: {member.Key}, Name: {member.Value.Name}");
+                }
+            }
+
+            // MemberAdded event handler
+            void ChatMemberAdded(object sender, KeyValuePair<string, ChatMember> member)
+            {
+                Trace.TraceInformation($"Member {member.Value.Name} has joined");
+                ListMembers(sender as GenericPresenceChannel<ChatMember>);
+            }
+
+            // MemberRemoved event handler
+            void ChatMemberRemoved(object sender, KeyValuePair<string, ChatMember> member)
+            {
+                Trace.TraceInformation($"Member {member.Value.Name} has left");
+                ListMembers(sender as GenericPresenceChannel<ChatMember>);
+            }
+
+            // Connect
+            await pusher.ConnectAsync().ConfigureAwait(false);
+
+            // Subscribe
+            try
+            {
+                GenericPresenceChannel<ChatMember> memberChannel =
+                    await pusher.SubscribePresenceAsync<ChatMember>("presence-channel-1").ConfigureAwait(false);
+                memberChannel.MemberAdded += ChatMemberAdded;
+                memberChannel.MemberRemoved += ChatMemberRemoved;
+                Assert.AreEqual(true, memberChannel.IsSubscribed);
+            }
+            catch (ChannelUnauthorizedException)
+            {
+                // Handle client unauthorized error
+            }
+            catch (Exception)
+            {
+                // Handle other errors
+            }
+
+            #endregion Code snippet
+
+            await pusher.DisconnectAsync().ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task PusherSubscribedDelegateAsync()
+        {
+            #region Code snippet
+
+            // Lists all current peresence channel members
+            void ListMembers(GenericPresenceChannel<ChatMember> channel)
+            {
+                Dictionary<string, ChatMember> members = channel.GetMembers();
+                foreach (var member in members)
+                {
+                    Trace.TraceInformation($"Id: {member.Key}, Name: {member.Value.Name}");
+                }
+            }
+
+            // Subscribed event handler
+            void SubscribedHandler(object sender, Channel channel)
+            {
+                if (channel is GenericPresenceChannel<ChatMember> presenceChannel)
+                {
+                    ListMembers(presenceChannel);
+                }
+                else if (channel.Name == "private-chat-channel-1")
+                {
+                    // Trigger event
+                    channel.Trigger("client-chat-event", new ChatMessage { Name = "Joe", Message = "Hello from Joe!" });
+                }
+            }
+
+            // Create client
+            Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+            {
+                Authorizer = new FakeAuthoriser(),
+                Cluster = Config.Cluster,
+            });
+            pusher.Error += ErrorHandler;
+
+            // Add subcribed event handler
+            pusher.Subscribed += SubscribedHandler;
+
+            // Create subscriptions
+            await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
+            await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false);
+            await pusher.SubscribePresenceAsync<ChatMember>("presence-channel-1").ConfigureAwait(false);
+
+            // Connect
+            await pusher.ConnectAsync().ConfigureAwait(false);
+
+            #endregion Code snippet
+
+            await pusher.DisconnectAsync().ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task ChannelSubscribedDelegateAsync()
+        {
+            #region Code snippet
+
+            // Lists all current peresence channel members
+            void ListMembers(GenericPresenceChannel<ChatMember> channel)
+            {
+                Dictionary<string, ChatMember> members = channel.GetMembers();
+                foreach (var member in members)
+                {
+                    Trace.TraceInformation($"Id: {member.Key}, Name: {member.Value.Name}");
+                }
+            }
+
+            // Presence channel subscribed event handler
+            void PresenceChannelSubscribed(object sender)
+            {
+                ListMembers(sender as GenericPresenceChannel<ChatMember>);
+            }
+
+            // Private channel subscribed event handler
+            void PrivateChannelSubscribed(object sender)
+            {
+                // Trigger event
+                ((Channel)sender).Trigger("client-chat-event", new ChatMessage { Name = "Joe", Message = "Hello from Joe!" });
+            }
+
+            // Create client
+            Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+            {
+                Authorizer = new FakeAuthoriser(),
+                Cluster = Config.Cluster,
+            });
+            pusher.Error += ErrorHandler;
+
+            // Create subscriptions
+            await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
+            await pusher.SubscribeAsync("private-chat-channel-1", PrivateChannelSubscribed).ConfigureAwait(false);
+            await pusher.SubscribePresenceAsync<ChatMember>("presence-channel-1", PresenceChannelSubscribed).ConfigureAwait(false);
+
+            // Connect
+            await pusher.ConnectAsync().ConfigureAwait(false);
+
+            #endregion Code snippet
+
+            await pusher.DisconnectAsync().ConfigureAwait(false);
+        }
+
+        private static void ErrorHandler(object sender, PusherException error)
+        {
+            if ((int)error.PusherCode < 5000)
+            {
+                // Error recevied from Pusher cluster, use PusherCode to filter.
+            }
+            else
+            {
+                if (error is ChannelUnauthorizedException unauthorizedAccess)
+                {
+                    // Private and Presence channel failed authorization with Forbidden (403)
+                }
+                else if (error is ChannelAuthorizationFailureException httpError)
+                {
+                    // Authorization endpoint returned an HTTP error other than Forbidden (403)
+                }
+                else if (error is OperationTimeoutException timeoutError)
+                {
+                    // A client operation has timed-out. Governed by PusherOptions.ClientTimeout
+                }
+                else
+                {
+                    // Handle other errors
+                }
+            }
         }
     }
 }

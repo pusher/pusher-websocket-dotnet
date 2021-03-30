@@ -21,6 +21,11 @@ namespace PusherClient.Tests.Utilities
 
         private readonly string _userName;
 
+        public FakeAuthoriser()
+        {
+            _userName = "Unknown";
+        }
+
         public FakeAuthoriser(string userName)
         {
             _userName = userName;

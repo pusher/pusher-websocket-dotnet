@@ -30,8 +30,14 @@ Contents:
 - [Connecting](#connecting)
 	- [Connection States](#connection-States)
 	- [Auto reconnect](#auto-reconnect)
+	- [Disconnecting](#disconnecting)
 	- [Connected and Disconnected delegates](#connected-and-disconnected-delegates)
-
+- [Subscribing](#subscribing)
+	- [Error handling](#error-handling)
+	- [Public channels](#public-channels)
+	- [Private channels](#private-channels)
+	- [Presence channels](#Presence-channels)
+	- [Subscribed delegate](#subscribed-delegate)
 
 ## Installation
 
@@ -78,14 +84,14 @@ void ListMembers(GenericPresenceChannel<ChatMember> channel)
     Dictionary<string, ChatMember> members = channel.GetMembers();
     foreach (var member in members)
     {
-        Trace.TraceInformation($"Id: {member.Key}, Name: {member.Value.Name}\n");
+        Trace.TraceInformation($"Id: {member.Key}, Name: {member.Value.Name}");
     }
 }
 
 // MemberAdded event handler
 void ChatMemberAdded(object sender, KeyValuePair<string, ChatMember> member)
 {
-    Trace.TraceInformation($"Member {member.Value.Name} has joined\n");
+    Trace.TraceInformation($"Member {member.Value.Name} has joined");
     if (sender is GenericPresenceChannel<ChatMember> channel)
     {
         ListMembers(channel);
@@ -95,14 +101,14 @@ void ChatMemberAdded(object sender, KeyValuePair<string, ChatMember> member)
 // MemberRemoved event handler
 void ChatMemberRemoved(object sender, KeyValuePair<string, ChatMember> member)
 {
-    Trace.TraceInformation($"Member {member.Value.Name} has left\n");
+    Trace.TraceInformation($"Member {member.Value.Name} has left");
     if (sender is GenericPresenceChannel<ChatMember> channel)
     {
         ListMembers(channel);
     }
 }
 
-// Handles and records errors
+// Handle errors
 void HandleError(object sender, PusherException error)
 {
     if ((int)error.PusherCode < 5000)
@@ -129,7 +135,7 @@ void HandleError(object sender, PusherException error)
         }
     }
 
-    Trace.TraceError($"{error}\n");
+    Trace.TraceError($"{error}");
 }
 
 // Subscribed event handler
@@ -149,7 +155,7 @@ void SubscribedHandler(object sender, Channel channel)
 // Connection state change event handler
 void StateChangedEventHandler(object sender, ConnectionState state)
 {
-    Trace.TraceInformation($"SocketId: {((Pusher)sender).SocketID}, State: {state}\n");
+    Trace.TraceInformation($"SocketId: {((Pusher)sender).SocketID}, State: {state}");
     if (state == ConnectionState.Connected)
     {
         readyEvent.Set();
@@ -188,12 +194,12 @@ pusher.ConnectionStateChanged += StateChangedEventHandler;
 pusher.Error += HandleError;
 
 // Create subscriptions
-await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false); ;
-Channel chatChannel = await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false); ;
-GenericPresenceChannel<ChatMember> presenceCh =
-    await pusher.SubscribePresenceAsync<ChatMember>("presence-channel-1").ConfigureAwait(false); ;
-presenceCh.MemberAdded += ChatMemberAdded;
-presenceCh.MemberRemoved += ChatMemberRemoved;
+await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
+await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false);
+GenericPresenceChannel<ChatMember> memberChannel =
+    await pusher.SubscribePresenceAsync<ChatMember>("presence-channel-1").ConfigureAwait(false);
+memberChannel.MemberAdded += ChatMemberAdded;
+memberChannel.MemberRemoved += ChatMemberRemoved;
 
 // Connect
 try
@@ -256,7 +262,7 @@ Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 
 ```
 
-Construction of an authorized channel subscriber
+Construction of authorized private and presence channels subscriber
 
 ```cs
 
@@ -312,6 +318,10 @@ Call to `Pusher.DisconnectAsync()` fails:
 Sample code:
 
 ```cs
+pusher = new Pusher("YOUR_APP_KEY");
+pusher.ConnectionStateChanged += StateChanged;
+pusher.Error += ErrorHandler;
+
 void StateChanged(object sender, ConnectionState state)
 {
     Console.WriteLine("Connection state: " + state.ToString());
@@ -321,10 +331,6 @@ void ErrorHandler(object sender, PusherException error)
 {
     Console.WriteLine("Pusher error: " + error.ToString());
 }
-
-pusher = new Pusher("YOUR_APP_KEY");
-pusher.ConnectionStateChanged += StateChanged;
-pusher.Error += ErrorHandler;
 
 try
 {
@@ -336,7 +342,6 @@ catch(Exception error)
     // Handle error
 }
 ```
-
 ### Auto reconnect
 After entering a state of `Connected`, auto reconnect is enabled. If the connection is dropped the channel client will attempt to re-establish the connection.
 
@@ -354,6 +359,17 @@ After entering a state of `Connected`, auto reconnect is enabled. If the connect
 * Connection attempt succeeds
 * State transition: `Connecting -> Connected`
 
+### Disconnecting
+
+After disconnecting, all subscriptions are stopped and no events will be received from the Pusher server host. Calling ConnectAsync will re-enable any subscriptions that were stopped when disconnecting. To permanently stop receiving events, unsubscribe from the channel.
+
+```cs
+
+// Disconnect
+await pusher.DisconnectAsync().ConfigureAwait(false);
+Assert.AreEqual(ConnectionState.Disconnected, pusher.State);
+
+```
 ### Connected and Disconnected delegates
 
 The Pusher client has delegates for `Connected` and `Disconnected` events.
@@ -365,6 +381,13 @@ The `Disconnected` event is raised after disconnecting from the cluster host.
 Sample code:
 
 ```cs
+pusher = new Pusher("YOUR_APP_KEY", new PusherOptions(){
+    Authorizer = new HttpAuthorizer("YOUR_ENDPOINT")
+});
+
+pusher.Connected += OnConnected;
+pusher.Disconnected += OnDisconnected;
+
 void OnConnected(object sender)
 {
     Console.WriteLine("Connected: " + ((Pusher)sender).SocketID);
@@ -375,44 +398,396 @@ void OnDisconnected(object sender)
     Console.WriteLine("Disconnected: " + ((Pusher)sender).SocketID);
 }
 
-pusher = new Pusher("YOUR_APP_KEY", new PusherOptions(){
-    Authorizer = new HttpAuthorizer("YOUR_ENDPOINT")
-});
-
-pusher.Connected += OnConnected;
-pusher.Disconnected += OnDisconnected;
-
 try
 {
     await pusher.ConnectAsync().ConfigureAwait(false);
-    // pusher.State will be ConnectionState.Connected
+    // pusher.State will now be ConnectionState.Connected
 }
 catch(Exception error)
 {
     // Handle error
 }
 
-```
-
-## Subscribe to a public or private channel
-
-### Event based
-```cs
-_myChannel = _pusher.Subscribe("my-channel");
-_myChannel.Subscribed += _myChannel_Subscribed;
-```
-where `_myChannel_Subscribed` is a custom event handler such as
-
-```cs
-static void _myChannel_Subscribed(object sender)
+do
 {
-    Console.WriteLine("Subscribed!");
-}
+    line = Console.ReadLine();
+    if (line == "quit") break;
+} while (line != null);
+
+// Disconnect
+await pusher.DisconnectAsync().ConfigureAwait(false);
+// pusher.State will now be ConnectionState.Disconnected
+
 ```
 
-### Asynchronous
+## Subscribing
+
+Three types of channels are supported
+* Public channels: can be subscribed to by anyone who knows their name.
+* Private channels: are private in that you control access to who can subscribe to the channel.
+* Presence channels: are extensions to private channels and let you add user information on a subscription, and let other members of the channel know who is online.
+
+There are two modes for creating channel subscriptions
+* Pre-connecting: setup all subscriptions first and then connect using `Pusher.ConnectAsync`. This is a purely asynchronous model. The subscriptions are created asynchronously after connecting. Error detection needs to be done via the error delegate `Pusher.Error`.
+* Post-connecting: setup all subscriptions after connecting using `Pusher.ConnectAsync`. This is a partly synchronous model. The subscriptions are created synchronously. The error handling is different because if calling the `SubscribeAsync` method fails; for example, the user is not authorized, an exception will be thrown. You will also receive an error via the delegate `Pusher.Error`.
+
+### Error handling
+
+Regardless of the mode used, it is good to have error handling via the `Pusher.Error` delegate. For example, if you were to lose the network connection and the client attempts to auto reconnect, things happen asynchronously and the error handler is the only way to detect errors. Here is a sample error handler:
+
 ```cs
-Channel _myChannel = await _pusher.SubscribeAsync("my-channel");
+
+void ErrorHandler(object sender, PusherException error)
+{
+    if ((int)error.PusherCode < 5000)
+    {
+        // Error recevied from Pusher cluster, use PusherCode to filter.
+    }
+    else
+    {
+        if (error is ChannelUnauthorizedException unauthorizedAccess)
+        {
+            // Private and Presence channel failed authorization with Forbidden (403)
+        }
+        else if (error is ChannelAuthorizationFailureException httpError)
+        {
+            // Authorization endpoint returned an HTTP error other than Forbidden (403)
+        }
+        else if (error is OperationTimeoutException timeoutError)
+        {
+            // A client operation has timed-out. Governed by PusherOptions.ClientTimeout
+        }
+        else
+        {
+            // Handle other errors
+        }
+    }
+}
+
+```
+
+ErrorHandler will be referred to in the channel subscription examples.
+
+### Public channels
+
+Setting up a public channel subscription before connecting
+
+```cs
+
+// Create client
+Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+{
+    Cluster = Config.Cluster,
+});
+pusher.Error += ErrorHandler;
+
+// Subscribe
+Channel publicChannel = await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
+Assert.AreEqual(false, publicChannel.IsSubscribed);
+
+// Connect
+await pusher.ConnectAsync().ConfigureAwait(false);
+
+```
+
+Setting up a public channel subscription after connecting
+
+```cs
+
+// Create client
+Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+{
+    Cluster = Config.Cluster,
+});
+pusher.Error += ErrorHandler;
+
+// Connect
+await pusher.ConnectAsync().ConfigureAwait(false);
+
+// Subscribe
+try
+{
+    Channel publicChannel = await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
+    Assert.AreEqual(true, publicChannel.IsSubscribed);
+}
+catch (Exception)
+{
+    // Handle error
+}
+
+```
+### Private channels
+
+The name of a private channel needs to start with `private-`.
+
+It's possible to subscribe to [private channels](https://pusher.com/docs/channels/using_channels/private-channels) that provide a mechanism for [authenticating channel subscriptions](https://pusher.com/docs/channels/server_api/authenticating-users). In order to do this you need to provide an `IAuthorizer` when creating the `Pusher` instance.
+
+The library provides an `HttpAuthorizer` implementation of `IAuthorizer` which makes an HTTP `POST` request to an authenticating endpoint. However, you can implement your own authentication mechanism if required.
+
+Setting up a private channel subscription before connecting
+
+```cs
+
+// Create client
+Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+{
+    Authorizer = new FakeAuthoriser(),
+    Cluster = Config.Cluster,
+});
+pusher.Error += ErrorHandler;
+
+// Subscribe
+Channel publicChannel = await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false);
+Assert.AreEqual(false, publicChannel.IsSubscribed);
+
+// Connect
+await pusher.ConnectAsync().ConfigureAwait(false);
+
+```
+
+Setting up a private channel subscription after connecting
+
+```cs
+
+// Create client
+Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+{
+    Authorizer = new FakeAuthoriser(),
+    Cluster = Config.Cluster,
+});
+pusher.Error += ErrorHandler;
+
+// Connect
+await pusher.ConnectAsync().ConfigureAwait(false);
+
+try
+{
+    // Subscribe
+    Channel publicChannel = await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false);
+    Assert.AreEqual(true, publicChannel.IsSubscribed);
+}
+catch (ChannelUnauthorizedException)
+{
+    // Handle client unauthorized error
+}
+catch (Exception)
+{
+    // Handle other errors
+}
+
+```
+
+### Presence channels
+
+The name of a presence channel needs to start with `presence-`.
+
+The recommended way of subscribing to a presence channel is to use the `SubscribePresenceAsync` function, as opposed to the standard subscribe function. This function returns a strongly typed presence channel object with extra presence channel specific functions available to it, such as `GetMember` and `GetMembers`.
+
+Setting up a presence channel subscription before connecting
+
+```cs
+
+// Create client
+Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+{
+    Authorizer = new FakeAuthoriser(),
+    Cluster = Config.Cluster,
+});
+pusher.Error += ErrorHandler;
+
+// Lists all current peresence channel members
+void ListMembers(GenericPresenceChannel<ChatMember> channel)
+{
+    Dictionary<string, ChatMember> members = channel.GetMembers();
+    foreach (var member in members)
+    {
+        Trace.TraceInformation($"Id: {member.Key}, Name: {member.Value.Name}");
+    }
+}
+
+// MemberAdded event handler
+void ChatMemberAdded(object sender, KeyValuePair<string, ChatMember> member)
+{
+    Trace.TraceInformation($"Member {member.Value.Name} has joined");
+    ListMembers(sender as GenericPresenceChannel<ChatMember>);
+}
+
+// MemberRemoved event handler
+void ChatMemberRemoved(object sender, KeyValuePair<string, ChatMember> member)
+{
+    Trace.TraceInformation($"Member {member.Value.Name} has left");
+    ListMembers(sender as GenericPresenceChannel<ChatMember>);
+}
+
+// Subscribe
+GenericPresenceChannel<ChatMember> memberChannel =
+    await pusher.SubscribePresenceAsync<ChatMember>("presence-channel-1").ConfigureAwait(false);
+memberChannel.MemberAdded += ChatMemberAdded;
+memberChannel.MemberRemoved += ChatMemberRemoved;
+Assert.AreEqual(false, memberChannel.IsSubscribed);
+
+// Connect
+await pusher.ConnectAsync().ConfigureAwait(false);
+
+```
+
+Setting up a presence channel subscription after connecting
+
+```cs
+
+// Create client
+Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+{
+    Authorizer = new FakeAuthoriser(),
+    Cluster = Config.Cluster,
+});
+pusher.Error += ErrorHandler;
+
+// Lists all current peresence channel members
+void ListMembers(GenericPresenceChannel<ChatMember> channel)
+{
+    Dictionary<string, ChatMember> members = channel.GetMembers();
+    foreach (var member in members)
+    {
+        Trace.TraceInformation($"Id: {member.Key}, Name: {member.Value.Name}");
+    }
+}
+
+// MemberAdded event handler
+void ChatMemberAdded(object sender, KeyValuePair<string, ChatMember> member)
+{
+    Trace.TraceInformation($"Member {member.Value.Name} has joined");
+    ListMembers(sender as GenericPresenceChannel<ChatMember>);
+}
+
+// MemberRemoved event handler
+void ChatMemberRemoved(object sender, KeyValuePair<string, ChatMember> member)
+{
+    Trace.TraceInformation($"Member {member.Value.Name} has left");
+    ListMembers(sender as GenericPresenceChannel<ChatMember>);
+}
+
+// Connect
+await pusher.ConnectAsync().ConfigureAwait(false);
+
+// Subscribe
+try
+{
+    GenericPresenceChannel<ChatMember> memberChannel =
+        await pusher.SubscribePresenceAsync<ChatMember>("presence-channel-1").ConfigureAwait(false);
+    memberChannel.MemberAdded += ChatMemberAdded;
+    memberChannel.MemberRemoved += ChatMemberRemoved;
+    Assert.AreEqual(true, memberChannel.IsSubscribed);
+}
+catch (ChannelUnauthorizedException)
+{
+    // Handle client unauthorized error
+}
+catch (Exception)
+{
+    // Handle other errors
+}
+
+```
+
+### Subscribed delegate
+
+The `Subscribed` delegate is invoked when a channel is subscribed to. There are two different ways to specify a Subscribed event handler:
+* Add an event handler using the `Pusher.Subscribed` delegate property. This event handler can be used to detect all channel subscriptions.
+* Provide an event handler as an input parameter to the `SubscribeAsync` or `SubscribePresenceAsync` methods. This event handler is channel specific.
+
+Detect all channel subscriptions
+
+```cs
+
+// Lists all current peresence channel members
+void ListMembers(GenericPresenceChannel<ChatMember> channel)
+{
+    Dictionary<string, ChatMember> members = channel.GetMembers();
+    foreach (var member in members)
+    {
+        Trace.TraceInformation($"Id: {member.Key}, Name: {member.Value.Name}");
+    }
+}
+
+// Subscribed event handler
+void SubscribedHandler(object sender, Channel channel)
+{
+    if (channel is GenericPresenceChannel<ChatMember> presenceChannel)
+    {
+        ListMembers(presenceChannel);
+    }
+    else if (channel.Name == "private-chat-channel-1")
+    {
+        // Trigger event
+        channel.Trigger("client-chat-event", new ChatMessage { Name = "Joe", Message = "Hello from Joe!" });
+    }
+}
+
+// Create client
+Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+{
+    Authorizer = new FakeAuthoriser(),
+    Cluster = Config.Cluster,
+});
+pusher.Error += ErrorHandler;
+
+// Add subcribed event handler
+pusher.Subscribed += SubscribedHandler;
+
+// Create subscriptions
+await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
+await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false);
+await pusher.SubscribePresenceAsync<ChatMember>("presence-channel-1").ConfigureAwait(false);
+
+// Connect
+await pusher.ConnectAsync().ConfigureAwait(false);
+
+```
+
+Detect channel specific subscriptions
+
+```cs
+
+// Lists all current peresence channel members
+void ListMembers(GenericPresenceChannel<ChatMember> channel)
+{
+    Dictionary<string, ChatMember> members = channel.GetMembers();
+    foreach (var member in members)
+    {
+        Trace.TraceInformation($"Id: {member.Key}, Name: {member.Value.Name}");
+    }
+}
+
+// Presence channel subscribed event handler
+void PresenceChannelSubscribed(object sender)
+{
+    ListMembers(sender as GenericPresenceChannel<ChatMember>);
+}
+
+// Private channel subscribed event handler
+void PrivateChannelSubscribed(object sender)
+{
+    // Trigger event
+    ((Channel)sender).Trigger("client-chat-event", new ChatMessage { Name = "Joe", Message = "Hello from Joe!" });
+}
+
+// Create client
+Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+{
+    Authorizer = new FakeAuthoriser(),
+    Cluster = Config.Cluster,
+});
+pusher.Error += ErrorHandler;
+
+// Create subscriptions
+await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
+await pusher.SubscribeAsync("private-chat-channel-1", PrivateChannelSubscribed).ConfigureAwait(false);
+await pusher.SubscribePresenceAsync<ChatMember>("presence-channel-1", PresenceChannelSubscribed).ConfigureAwait(false);
+
+// Connect
+await pusher.ConnectAsync().ConfigureAwait(false);
+
 ```
 
 ## Bind to an event
@@ -422,40 +797,6 @@ _myChannel.Bind("my-event", (dynamic data) =>
 {
     Console.WriteLine(data.message);
 });
-```
-
-## Subscribe to a presence channel
-
-### Event based
-```cs
-_presenceChannel = (PresenceChannel)_pusher.Subscribe("presence-channel");
-_presenceChannel.Subscribed += _presenceChannel_Subscribed;
-_presenceChannel.MemberAdded += _presenceChannel_MemberAdded;
-_presenceChannel.MemberRemoved += _presenceChannel_MemberRemoved;
-```
-
-Where `_presenceChannel_Subscribed`, `_presenceChannel_MemberAdded`, and `_presenceChannel_MemberRemoved` are custom event handlers such as
-
-```cs
-static void _presenceChannel_MemberAdded(object sender, KeyValuePair<string, dynamic> member)
-{
-    Console.WriteLine((string)member.Value.name.Value + " has joined");
-    ListMembers();
-}
-
-static void _presenceChannel_MemberRemoved(object sender)
-{
-    ListMembers();
-}
-```
-
-### Asynchronous
-
-```cs
-_presenceChannel = await (PresenceChannel)_pusher.SubscribeAsync("presence-channel");
-_presenceChannel.Subscribed += _presenceChannel_Subscribed;
-_presenceChannel.MemberAdded += _presenceChannel_MemberAdded;
-_presenceChannel.MemberRemoved += _presenceChannel_MemberRemoved;
 ```
 
 ## Unbind
@@ -481,16 +822,6 @@ _myChannel.UnbindAll();
 ## Developer Notes
 
 The Pusher application settings are now loaded from a JSON config file stored in the root of the source tree and named `AppConfig.test.json`. Make a copy of `./AppConfig.sample.json` and name it `AppConfig.test.json`. Modify the contents of `AppConfig.test.json` with your test application settings. All tests should pass. The AuthHost and ExampleApplication should also run without any start-up errors.
-
-### Publish to NuGet
-
-You should be familiar with [creating an publishing NuGet packages](http://docs.nuget.org/docs/creating-packages/creating-and-publishing-a-package).
-
-From the `pusher-dotnet-client` directory:
-
-1. Update `PusherClient/PusherClient.csproj` and  `PusherClient/Pusher.cs` with new version number etc.
-2. Specify the correct path to `msbuild.exe` in `package.cmd` and run it.
-3. Run `nuget push PusherClient.{VERSION}.nupkg`
 
 ## License
 
