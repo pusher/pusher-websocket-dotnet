@@ -22,22 +22,28 @@ Contents:
 
 - [Installation](#installation)
 - [API](#api)
-	- [Overview](#overview)
-	- [Sample application](#sample-application)
+  - [Overview](#overview)
+  - [Sample application](#sample-application)
 - [Configuration](#configuration)
-	- [The PusherOptions object](#the-pusheroptions-object)
-	- [Application Key](#application-key)
+  - [The PusherOptions object](#the-pusheroptions-object)
+  - [Application Key](#application-key)
 - [Connecting](#connecting)
-	- [Connection States](#connection-States)
-	- [Auto reconnect](#auto-reconnect)
-	- [Disconnecting](#disconnecting)
-	- [Connected and Disconnected delegates](#connected-and-disconnected-delegates)
+  - [Connection States](#connection-States)
+  - [Auto reconnect](#auto-reconnect)
+  - [Disconnecting](#disconnecting)
+  - [Connected and Disconnected delegates](#connected-and-disconnected-delegates)
 - [Subscribing](#subscribing)
-	- [Error handling](#error-handling)
-	- [Public channels](#public-channels)
-	- [Private channels](#private-channels)
-	- [Presence channels](#Presence-channels)
-	- [Subscribed delegate](#subscribed-delegate)
+  - [Error handling](#error-handling)
+  - [Public channels](#public-channels)
+  - [Private channels](#private-channels)
+  - [Presence channels](#Presence-channels)
+  - [Subscribed delegate](#subscribed-delegate)
+- [Binding to events](#binding-to-events)
+  - [Per-channel](#per-channel)
+  - [Globally](#globally)
+- [Triggering events](#triggering-events)
+- [Developer notes](#developer-notes)
+- [License](#license)
 
 ## Installation
 
@@ -148,7 +154,11 @@ void SubscribedHandler(object sender, Channel channel)
     else if (channel.Name == "private-chat-channel-1")
     {
         // Trigger event
-        channel.Trigger("client-chat-event", new ChatMessage { Name = "Joe", Message = "Hello from Joe!" });
+        channel.Trigger("client-chat-event", new ChatMessage
+        {
+            Name = "Joe",
+            Message = "Hello from Joe!",
+        });
     }
 }
 
@@ -482,8 +492,8 @@ Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 pusher.Error += ErrorHandler;
 
 // Subscribe
-Channel publicChannel = await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
-Assert.AreEqual(false, publicChannel.IsSubscribed);
+Channel channel = await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
+Assert.AreEqual(false, channel.IsSubscribed);
 
 // Connect
 await pusher.ConnectAsync().ConfigureAwait(false);
@@ -507,8 +517,8 @@ await pusher.ConnectAsync().ConfigureAwait(false);
 // Subscribe
 try
 {
-    Channel publicChannel = await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
-    Assert.AreEqual(true, publicChannel.IsSubscribed);
+    Channel channel = await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
+    Assert.AreEqual(true, channel.IsSubscribed);
 }
 catch (Exception)
 {
@@ -537,8 +547,8 @@ Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 pusher.Error += ErrorHandler;
 
 // Subscribe
-Channel publicChannel = await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false);
-Assert.AreEqual(false, publicChannel.IsSubscribed);
+Channel channel = await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false);
+Assert.AreEqual(false, channel.IsSubscribed);
 
 // Connect
 await pusher.ConnectAsync().ConfigureAwait(false);
@@ -563,8 +573,8 @@ await pusher.ConnectAsync().ConfigureAwait(false);
 try
 {
     // Subscribe
-    Channel publicChannel = await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false);
-    Assert.AreEqual(true, publicChannel.IsSubscribed);
+    Channel channel = await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false);
+    Assert.AreEqual(true, channel.IsSubscribed);
 }
 catch (ChannelUnauthorizedException)
 {
@@ -720,7 +730,11 @@ void SubscribedHandler(object sender, Channel channel)
     else if (channel.Name == "private-chat-channel-1")
     {
         // Trigger event
-        channel.Trigger("client-chat-event", new ChatMessage { Name = "Joe", Message = "Hello from Joe!" });
+        channel.Trigger("client-chat-event", new ChatMessage
+        {
+            Name = "Joe",
+            Message = "Hello from Joe!",
+        });
     }
 }
 
@@ -769,7 +783,11 @@ void PresenceChannelSubscribed(object sender)
 void PrivateChannelSubscribed(object sender)
 {
     // Trigger event
-    ((Channel)sender).Trigger("client-chat-event", new ChatMessage { Name = "Joe", Message = "Hello from Joe!" });
+    ((Channel)sender).Trigger("client-chat-event", new ChatMessage
+    {
+        Name = "Joe",
+        Message = "Hello from Joe!",
+    });
 }
 
 // Create client
@@ -782,44 +800,148 @@ pusher.Error += ErrorHandler;
 
 // Create subscriptions
 await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
-await pusher.SubscribeAsync("private-chat-channel-1", PrivateChannelSubscribed).ConfigureAwait(false);
-await pusher.SubscribePresenceAsync<ChatMember>("presence-channel-1", PresenceChannelSubscribed).ConfigureAwait(false);
+await pusher.SubscribeAsync("private-chat-channel-1", PrivateChannelSubscribed)
+    .ConfigureAwait(false);
+await pusher.SubscribePresenceAsync<ChatMember>("presence-channel-1", PresenceChannelSubscribed)
+    .ConfigureAwait(false);
 
 // Connect
 await pusher.ConnectAsync().ConfigureAwait(false);
 
 ```
 
-## Bind to an event
+## Binding to events
+
+Events can be bound to at two levels; per-channel or globally.
+
+The binding samples make use of the following classes
 
 ```cs
-_myChannel.Bind("my-event", (dynamic data) =>
+
+class ChatMember
 {
-    Console.WriteLine(data.message);
+    public string Name { get; set; }
+}
+
+class ChatMessage : ChatMember
+{
+    public string Message { get; set; }
+}
+
+```
+
+### Per-channel
+
+These are bound to a specific channel, and mean that you can reuse event names in different parts of your client application.
+
+```cs
+
+// Create client
+Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+{
+    Authorizer = new FakeAuthoriser(),
+    Cluster = Config.Cluster,
 });
+pusher.Error += ErrorHandler;
+
+// Channel event listener
+void ChannelListener(PusherEvent eventData)
+{
+    ChatMessage data = JsonConvert.DeserializeObject<ChatMessage>(eventData.Data);
+    Trace.TraceInformation($"Message from '{data.Name}': {data.Message}");
+}
+
+// Subscribe
+Channel channel = await pusher.SubscribeAsync("private-chat-channel-1")
+    .ConfigureAwait(false);
+
+// Bind event listener to channel
+channel.Bind("client-chat-event", ChannelListener);
+
+// Unbind event listener from channel
+channel.Unbind("client-chat-event", ChannelListener);
+
+// Unbind all "client-chat-event" event listeners from the channel
+channel.Unbind("client-chat-event");
+
+// Unbind all event listeners from the channel
+channel.UnbindAll();
+
 ```
 
-## Unbind
+### Globally
 
-Remove a specific callback:
+You can attach behavior to these events regardless of the channel the event is broadcast to.
 
 ```cs
-_myChannel.Unbind("my-event", callback);
+
+// Create client
+Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+{
+    Authorizer = new FakeAuthoriser(),
+    Cluster = Config.Cluster,
+});
+pusher.Error += ErrorHandler;
+
+// Global event listener
+void GlobalListener(string eventName, PusherEvent eventData)
+{
+    if (eventName == "client-chat-event")
+    {
+        ChatMessage data = JsonConvert.DeserializeObject<ChatMessage>(eventData.Data);
+        Trace.TraceInformation($"Message from '{data.Name}': {data.Message}");
+    }
+}
+
+// Bind global event listener
+pusher.BindAll(GlobalListener);
+
+// Unbind global event listener
+pusher.Unbind(GlobalListener);
+
+// Unbind all event listeners associated with the Pusher client
+pusher.UnbindAll();
+
 ```
 
-Remove all callbacks for a specific event:
+## Triggering events
+
+Once a [private](https://pusher.com/docs/channels/using_channels/private-channels) or [presence](https://pusher.com/docs/channels/using_channels/presence-channels) subscription has been authorized (see [authenticating users](https://pusher.com/docs/channels/server_api/authenticating-users)) and the subscription has succeeded, it is possible to trigger events on those channels.
 
 ```cs
-_myChannel.Unbind("my-event");
+
+// Create client
+Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+{
+    Authorizer = new FakeAuthoriser(),
+    Cluster = Config.Cluster,
+});
+pusher.Error += ErrorHandler;
+
+// Connect
+await pusher.ConnectAsync().ConfigureAwait(false);
+
+// Subscribe
+Channel channel = await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false);
+
+// Trigger event
+channel.Trigger("client-chat-event", new ChatMessage
+{
+    Name = "Joe",
+    Message = "Hello from Joe!",
+});
+
 ```
 
-Remove all bindings on the channel:
+Events triggered by clients are called [client events](https://pusher.com/docs/channels/using_channels/events#triggering-client-events). Because they are being triggered from a client which may not be trusted there are a number of enforced rules when using them. Some of these rules include:
 
-```cs
-_myChannel.UnbindAll();
-```
+* Event names must have a `client-` prefix
+* Rate limits
+* You can only trigger an event when the subscription has succeeded
 
-## Developer Notes
+For full details see the [client events documentation](https://pusher.com/docs/channels/using_channels/events#triggering-client-events).
+
+## Developer notes
 
 The Pusher application settings are now loaded from a JSON config file stored in the root of the source tree and named `AppConfig.test.json`. Make a copy of `./AppConfig.sample.json` and name it `AppConfig.test.json`. Modify the contents of `AppConfig.test.json` with your test application settings. All tests should pass. The AuthHost and ExampleApplication should also run without any start-up errors.
 

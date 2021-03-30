@@ -18,9 +18,9 @@ namespace AuthHost
         {
             var provider = new Pusher(PusherApplicationId, PusherApplicationKey, PusherApplicationSecret);
 
-            Post["/auth/{username}", ctx => ctx.Request.Form.channel_name && ctx.Request.Form.socket_id] = _ => 
+            Post["/auth/{username}", ctx => ctx.Request.Form.channel_name && ctx.Request.Form.socket_id] = _ =>
             {
-                Console.WriteLine(string.Format("Processing auth request for '{0}' channel, for socket ID '{1}'", Request.Form.channel_name, Request.Form.socket_id));
+                Console.WriteLine($"Processing auth request for '{Request.Form.channel_name}' channel, for socket ID '{Request.Form.socket_id}'");
 
                 string channelName = Request.Form.channel_name;
                 string socketId = Request.Form.socket_id;
@@ -32,7 +32,7 @@ namespace AuthHost
                     var channelData = new PresenceChannelData
                     {
                         user_id = socketId,
-                        user_info = new {name = _.username.ToString()}
+                        user_info = new { Name = _.username.ToString() }
                     };
 
                     authData = provider.Authenticate(channelName, socketId, channelData).ToJson();

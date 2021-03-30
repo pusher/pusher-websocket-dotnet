@@ -503,6 +503,7 @@ namespace PusherClient
             Guard.ChannelName(channelName);
             if (Channels.TryRemove(channelName, out Channel channel))
             {
+                channel.UnbindAll();
                 if (channel.IsServerSubscribed && !_connection.IsConnected)
                 {
                     // No connection to send a pusher:unsubscribe message so add to the backlog until connected again.

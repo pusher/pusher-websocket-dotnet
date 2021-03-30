@@ -125,7 +125,11 @@ namespace PusherClient.Tests.AcceptanceTests
                 else if (channel.Name == "private-chat-channel-1")
                 {
                     // Trigger event
-                    channel.Trigger("client-chat-event", new ChatMessage { Name = "Joe", Message = "Hello from Joe!" });
+                    channel.Trigger("client-chat-event", new ChatMessage
+                    {
+                        Name = "Joe",
+                        Message = "Hello from Joe!",
+                    });
                 }
             }
 
@@ -286,8 +290,8 @@ namespace PusherClient.Tests.AcceptanceTests
             pusher.Error += ErrorHandler;
 
             // Subscribe
-            Channel publicChannel = await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
-            Assert.AreEqual(false, publicChannel.IsSubscribed);
+            Channel channel = await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
+            Assert.AreEqual(false, channel.IsSubscribed);
 
             // Connect
             await pusher.ConnectAsync().ConfigureAwait(false);
@@ -315,8 +319,8 @@ namespace PusherClient.Tests.AcceptanceTests
             // Subscribe
             try
             {
-                Channel publicChannel = await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
-                Assert.AreEqual(true, publicChannel.IsSubscribed);
+                Channel channel = await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
+                Assert.AreEqual(true, channel.IsSubscribed);
             }
             catch (Exception)
             {
@@ -342,8 +346,8 @@ namespace PusherClient.Tests.AcceptanceTests
             pusher.Error += ErrorHandler;
 
             // Subscribe
-            Channel publicChannel = await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false);
-            Assert.AreEqual(false, publicChannel.IsSubscribed);
+            Channel channel = await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false);
+            Assert.AreEqual(false, channel.IsSubscribed);
 
             // Connect
             await pusher.ConnectAsync().ConfigureAwait(false);
@@ -372,8 +376,8 @@ namespace PusherClient.Tests.AcceptanceTests
             try
             {
                 // Subscribe
-                Channel publicChannel = await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false);
-                Assert.AreEqual(true, publicChannel.IsSubscribed);
+                Channel channel = await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false);
+                Assert.AreEqual(true, channel.IsSubscribed);
             }
             catch (ChannelUnauthorizedException)
             {
@@ -529,7 +533,11 @@ namespace PusherClient.Tests.AcceptanceTests
                 else if (channel.Name == "private-chat-channel-1")
                 {
                     // Trigger event
-                    channel.Trigger("client-chat-event", new ChatMessage { Name = "Joe", Message = "Hello from Joe!" });
+                    channel.Trigger("client-chat-event", new ChatMessage
+                    {
+                        Name = "Joe",
+                        Message = "Hello from Joe!",
+                    });
                 }
             }
 
@@ -582,7 +590,11 @@ namespace PusherClient.Tests.AcceptanceTests
             void PrivateChannelSubscribed(object sender)
             {
                 // Trigger event
-                ((Channel)sender).Trigger("client-chat-event", new ChatMessage { Name = "Joe", Message = "Hello from Joe!" });
+                ((Channel)sender).Trigger("client-chat-event", new ChatMessage
+                {
+                    Name = "Joe",
+                    Message = "Hello from Joe!",
+                });
             }
 
             // Create client
@@ -595,11 +607,122 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Create subscriptions
             await pusher.SubscribeAsync("public-channel-1").ConfigureAwait(false);
-            await pusher.SubscribeAsync("private-chat-channel-1", PrivateChannelSubscribed).ConfigureAwait(false);
-            await pusher.SubscribePresenceAsync<ChatMember>("presence-channel-1", PresenceChannelSubscribed).ConfigureAwait(false);
+            await pusher.SubscribeAsync("private-chat-channel-1", PrivateChannelSubscribed)
+                .ConfigureAwait(false);
+            await pusher.SubscribePresenceAsync<ChatMember>("presence-channel-1", PresenceChannelSubscribed)
+                .ConfigureAwait(false);
 
             // Connect
             await pusher.ConnectAsync().ConfigureAwait(false);
+
+            #endregion Code snippet
+
+            await pusher.DisconnectAsync().ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task BindToChannelEventAsync()
+        {
+            #region Code snippet
+
+            // Create client
+            Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+            {
+                Authorizer = new FakeAuthoriser(),
+                Cluster = Config.Cluster,
+            });
+            pusher.Error += ErrorHandler;
+
+            // Channel event listener
+            void ChannelListener(PusherEvent eventData)
+            {
+                ChatMessage data = JsonConvert.DeserializeObject<ChatMessage>(eventData.Data);
+                Trace.TraceInformation($"Message from '{data.Name}': {data.Message}");
+            }
+
+            // Subscribe
+            Channel channel = await pusher.SubscribeAsync("private-chat-channel-1")
+                .ConfigureAwait(false);
+
+            // Bind event listener to channel
+            channel.Bind("client-chat-event", ChannelListener);
+
+            // Unbind event listener from channel
+            channel.Unbind("client-chat-event", ChannelListener);
+
+            // Unbind all "client-chat-event" event listeners from the channel
+            channel.Unbind("client-chat-event");
+
+            // Unbind all event listeners from the channel
+            channel.UnbindAll();
+
+            #endregion Code snippet
+
+            await pusher.DisconnectAsync().ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task BindToGlobalEventAsync()
+        {
+            #region Code snippet
+
+            // Create client
+            Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+            {
+                Authorizer = new FakeAuthoriser(),
+                Cluster = Config.Cluster,
+            });
+            pusher.Error += ErrorHandler;
+
+            // Global event listener
+            void GlobalListener(string eventName, PusherEvent eventData)
+            {
+                if (eventName == "client-chat-event")
+                {
+                    ChatMessage data = JsonConvert.DeserializeObject<ChatMessage>(eventData.Data);
+                    Trace.TraceInformation($"Message from '{data.Name}': {data.Message}");
+                }
+            }
+
+            // Bind global event listener
+            pusher.BindAll(GlobalListener);
+
+            // Unbind global event listener
+            pusher.Unbind(GlobalListener);
+
+            // Unbind all event listeners associated with the Pusher client
+            pusher.UnbindAll();
+
+            #endregion Code snippet
+
+            await pusher.DisconnectAsync().ConfigureAwait(false);
+        }
+
+        [Test]
+        public async Task TriggerClientEventAsync()
+        {
+            #region Code snippet
+
+            // Create client
+            Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+            {
+                Authorizer = new FakeAuthoriser(),
+                Cluster = Config.Cluster,
+            });
+            pusher.Error += ErrorHandler;
+
+            // Connect
+            await pusher.ConnectAsync().ConfigureAwait(false);
+
+            // Subscribe
+            Channel channel = await pusher.SubscribeAsync("private-chat-channel-1").ConfigureAwait(false);
+
+            // Trigger event
+            channel.Trigger("client-chat-event", new ChatMessage
+            {
+                Name = "Joe",
+                Message = "Hello from Joe!",
+            });
 
             #endregion Code snippet
 
