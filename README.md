@@ -44,9 +44,11 @@ Contents:
 - [Triggering events](#triggering-events)
 - [Developer notes](#developer-notes)
   - [Migrating from version 1 to version 2](#migrating-from-version-1-to-version-2)
-    - [Changes to the Pusher class](#changes-to-the-pusher-class)
-    - [Changes to the Channel class](#changes-to-the-channel-class)
-    - [Changes to the GenericPresenceChannel<T> class](#changes-to-the-genericpresencechannel<t>-class)
+    - [Added to the Pusher class](#added-to-the-pusher-class)
+    - [Removed from the Pusher class](#removed-from-the-pusher-class)
+    - [Removed from the Channel class](#removed-from-the-channel-class)
+    - [Added to the GenericPresenceChannel class](#added-to-the-genericpresencechannel-class)
+    - [Removed from the GenericPresenceChannel class](#removed-from-the-genericpresencechannel-class)
 - [License](#license)
 
 ## Installation
@@ -951,9 +953,7 @@ The Pusher application settings are now loaded from a JSON config file stored in
 
 ### Migrating from version 1 to version 2
 
-#### Changes to the Pusher class
-
-**Added**
+#### Added to the Pusher class
 
 An optional parameter `SubscriptionEventHandler subscribedEventHandler` has been added to the `SubscribeAsync` and `SubscribePresenceAsync<T>` methods.
 
@@ -1010,21 +1010,17 @@ public async Task UnsubscribeAllAsync()
 }
 ```
 
-**Removed**
+#### Removed from the Pusher class
 
 Removed the public property `ConcurrentDictionary<string, Channel> Channels`. Use the method `GetAllChannels()` instead.
 
 Removed the public static property `TraceSource Trace`. Use `PusherOptions.TraceLogger` instead.
 
-#### Changes to the Channel class
-
-**Removed**
+#### Removed from the Channel class
 
 Removed the public event delegate `SubscriptionEventHandler Subscribed`. Use the optional input parameter `SubscriptionEventHandler subscribedEventHandler` on `Pusher.SubscribeAsync` and `Pusher.SubscribePresenceAsync` instead. Alternatively, use `Pusher.Subscribed`.
 
-#### Changes to the GenericPresenceChannel<T> class
-
-**Added**
+#### Added to the GenericPresenceChannel class
 
 ```cs
 /// <summary>
@@ -1049,7 +1045,7 @@ public Dictionary<string, T> GetMembers()
 }
 ```
 
-**Removed**
+#### Removed from the GenericPresenceChannel class
 
 Removed the public property `ConcurrentDictionary<string, T> Members`. Use `GetMembers()` instead.
 
