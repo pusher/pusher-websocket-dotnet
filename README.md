@@ -43,6 +43,10 @@ Contents:
   - [Globally](#globally)
 - [Triggering events](#triggering-events)
 - [Developer notes](#developer-notes)
+  - [Migrating from version 1 to version 2](#migrating-from-version-1-to-version-2)
+    - [Changes to the Pusher class](#changes-to-the-pusher-class)
+    - [Changes to the Channel class](#changes-to-the-channel-class)
+    - [Changes to the GenericPresenceChannel<T> class](#changes-to-the-genericpresencechannel<t>-class)
 - [License](#license)
 
 ## Installation
@@ -439,7 +443,7 @@ Three types of channels are supported
 
 There are two modes for creating channel subscriptions
 * Pre-connecting: setup all subscriptions first and then connect using `Pusher.ConnectAsync`. This is a purely asynchronous model. The subscriptions are created asynchronously after connecting. Error detection needs to be done via the error delegate `Pusher.Error`.
-* Post-connecting: setup all subscriptions after connecting using `Pusher.ConnectAsync`. This is a partly synchronous model. The subscriptions are created synchronously. The error handling is different because if calling the `SubscribeAsync` method fails; for example, the user is not authorized, an exception will be thrown. You will also receive an error via the delegate `Pusher.Error`.
+* Post-connecting: setup all subscriptions after connecting using `Pusher.ConnectAsync`. This is a partly synchronous model. The subscriptions are created synchronously. If the method call fails; for example, the user is not authorized, an exception will be thrown. You will also receive an error via the delegate `Pusher.Error`.
 
 ### Error handling
 
@@ -706,7 +710,7 @@ The `Subscribed` delegate is invoked when a channel is subscribed to. There are 
 * Add an event handler using the `Pusher.Subscribed` delegate property. This event handler can be used to detect all channel subscriptions.
 * Provide an event handler as an input parameter to the `SubscribeAsync` or `SubscribePresenceAsync` methods. This event handler is channel specific.
 
-Detect all channel subscriptions
+Detect all channel subscribed events using `Pusher.Subscribed`
 
 ```cs
 
@@ -759,7 +763,7 @@ await pusher.ConnectAsync().ConfigureAwait(false);
 
 ```
 
-Detect channel specific subscriptions
+Detect a subscribed event on a channel
 
 ```cs
 
@@ -944,6 +948,110 @@ For full details see the [client events documentation](https://pusher.com/docs/c
 ## Developer notes
 
 The Pusher application settings are now loaded from a JSON config file stored in the root of the source tree and named `AppConfig.test.json`. Make a copy of `./AppConfig.sample.json` and name it `AppConfig.test.json`. Modify the contents of `AppConfig.test.json` with your test application settings. All tests should pass. The AuthHost and ExampleApplication should also run without any start-up errors.
+
+### Migrating from version 1 to version 2
+
+#### Changes to the Pusher class
+
+**Added**
+
+An optional parameter `SubscriptionEventHandler subscribedEventHandler` has been added to the `SubscribeAsync` and `SubscribePresenceAsync<T>` methods.
+
+```cs
+/// <summary>
+/// Fires when a channel becomes subscribed.
+/// </summary>
+public event SubscribedEventHandler Subscribed;
+```
+
+```cs
+/// <summary>
+/// Gets a channel.
+/// </summary>
+/// <param name="channelName">The name of the channel to get.</param>
+/// <returns>The <see cref="Channel"/> if it exists; otherwise <c>null</c>.</returns>
+public Channel GetChannel(string channelName)
+{
+    // ...
+}
+```
+
+```cs
+/// <summary>
+/// Get all current channels.
+/// </summary>
+/// <returns>A list of the current channels.</returns>
+public IList<Channel> GetAllChannels()
+{
+    // ...
+}
+```
+
+```cs
+/// <summary>
+/// Removes a channel subscription.
+/// </summary>
+/// <param name="channelName">The name of the channel to unsubscribe.</param>
+/// <returns>An awaitable task to use with async operations.</returns>
+public async Task UnsubscribeAsync(string channelName)
+{
+    // ...
+}
+```
+
+```cs
+/// <summary>
+/// Removes all channel subscriptions.
+/// </summary>
+/// <returns>An awaitable task to use with async operations.</returns>
+public async Task UnsubscribeAllAsync()
+{
+    // ...
+}
+```
+
+**Removed**
+
+Removed the public property `ConcurrentDictionary<string, Channel> Channels`. Use the method `GetAllChannels()` instead.
+
+Removed the public static property `TraceSource Trace`. Use `PusherOptions.TraceLogger` instead.
+
+#### Changes to the Channel class
+
+**Removed**
+
+Removed the public event delegate `SubscriptionEventHandler Subscribed`. Use the optional input parameter `SubscriptionEventHandler subscribedEventHandler` on `Pusher.SubscribeAsync` and `Pusher.SubscribePresenceAsync` instead. Alternatively, use `Pusher.Subscribed`.
+
+#### Changes to the GenericPresenceChannel<T> class
+
+**Added**
+
+```cs
+/// <summary>
+/// Gets a member using the member's user ID.
+/// </summary>
+/// <param name="userId">The member's user ID.</param>
+/// <returns>Retruns the member if found; otherwise returns null.</returns>
+public T GetMember(string userId)
+{
+    // ...
+}
+```
+
+```cs
+/// <summary>
+/// Gets the current list of members as a <see cref="Dictionary{TKey, TValue}"/> where the TKey is the user ID and TValue is the member detail.
+/// </summary>
+/// <returns>Returns a <see cref="Dictionary{TKey, TValue}"/> containing the current members.</returns>
+public Dictionary<string, T> GetMembers()
+{
+    // ...
+}
+```
+
+**Removed**
+
+Removed the public property `ConcurrentDictionary<string, T> Members`. Use `GetMembers()` instead.
 
 ## License
 

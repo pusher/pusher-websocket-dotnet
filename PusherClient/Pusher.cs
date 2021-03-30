@@ -542,7 +542,6 @@ namespace PusherClient
             }
         }
 
-
         private async Task<Channel> SubscribeAsync(string channelName, Channel channel, SubscriptionEventHandler subscribedEventHandler = null)
         {
             if (channel == null)
