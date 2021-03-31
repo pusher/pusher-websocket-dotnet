@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using System.Web;
+using Newtonsoft.Json;
 using PusherClient;
+using PusherClient.Tests.Utilities;
 
 namespace ExampleApplication
 {
@@ -11,10 +13,10 @@ namespace ExampleApplication
     {
         private static Pusher _pusher;
         private static Channel _chatChannel;
-        private static PresenceChannel _presenceChannel;
+        private static GenericPresenceChannel<ChatMember> _presenceChannel;
         private static string _name;
             
-        static void Main(string[] args)
+        static void Main()
         {
             // Get the user's name
             Console.WriteLine("What is your name?");
@@ -35,7 +37,7 @@ namespace ExampleApplication
                     break;
                 }
 
-                _chatChannel.Trigger("client-my-event", new {message = line, name = _name});
+                _chatChannel.Trigger("client-my-event", new ChatMessage(message: line, name: _name));
             } while (line != null);
 
             var disconnectResult = Task.Run(() => _pusher.DisconnectAsync());
@@ -44,14 +46,15 @@ namespace ExampleApplication
 
         static void ListMembers()
         {
-            var names = new List<string>();
-
-            foreach (var mem in _presenceChannel.Members)
+            StringBuilder builder = new StringBuilder($"{Environment.NewLine}[MEMBERS]{Environment.NewLine}");
+            int count = 1;
+            foreach (var mem in _presenceChannel.GetMembers())
             {
-                names.Add((string)mem.Value.name.Value);
+                builder.AppendLine($"{count}: {mem.Value.Name}");
+                count++;
             }
 
-            Console.WriteLine("[MEMBERS] " + names.Aggregate((i, j) => i + ", " + j));
+            Console.WriteLine(builder.ToString());
         }
 
         // Pusher Initiation / Connection
@@ -59,61 +62,69 @@ namespace ExampleApplication
         {
             _pusher = new Pusher(Config.AppKey, new PusherOptions
             {
-                Authorizer = new HttpAuthorizer("http://localhost:8888/auth/" + HttpUtility.UrlEncode(_name))
+                Authorizer = new HttpAuthorizer("http://localhost:8888/auth/" + HttpUtility.UrlEncode(_name)),
+                Cluster = Config.Cluster,
+                Encrypted = Config.Encrypted,
+                TraceLogger = new TraceLogger(),
             });
-            _pusher.ConnectionStateChanged += _pusher_ConnectionStateChanged;
-            _pusher.Error += _pusher_Error;
+            _pusher.ConnectionStateChanged += PusherConnectionStateChanged;
+            _pusher.Error += PusherError;
 
             // Setup private channel
-            _chatChannel = _pusher.SubscribeAsync("private-channel").Result;
-            _chatChannel.Subscribed += ChatChannel_Subscribed;
+            string privateChannelName = "private-channel";
+            _pusher.Subscribed += (sender, channel) =>
+            {
+                if (channel.Name == privateChannelName)
+                {
+                    string message = $"{Environment.NewLine}Hi {_name}! Type 'quit' to exit, otherwise type anything to chat!{Environment.NewLine}";
+                    Console.WriteLine(message);
+                }
+            };
+            _chatChannel = await _pusher.SubscribeAsync(privateChannelName).ConfigureAwait(false);
 
             // Inline binding!
-            _chatChannel.Bind("client-my-event", (dynamic data) =>
+            _chatChannel.Bind("client-my-event", (PusherEvent eventData) =>
             {
-                Console.WriteLine("[" + data.name + "] " + data.message);
+                ChatMessage data = JsonConvert.DeserializeObject<ChatMessage>(eventData.Data);
+                Console.WriteLine("[" + data.Name + "] " + data.Message);
             });
 
             // Setup presence channel
-            _presenceChannel = (PresenceChannel)_pusher.SubscribeAsync("presence-channel").Result;
-            _presenceChannel.Subscribed += PresenceChannel_Subscribed;
+            string presenceChannelName = "presence-channel";
+            _pusher.Subscribed += (sender, channel) =>
+            {
+                if (channel.Name == presenceChannelName)
+                {
+                    ListMembers();
+                }
+            };
+            _presenceChannel = (GenericPresenceChannel<ChatMember>)(await _pusher.SubscribePresenceAsync<ChatMember>(presenceChannelName).ConfigureAwait(false));
             _presenceChannel.MemberAdded += PresenceChannel_MemberAdded;
             _presenceChannel.MemberRemoved += PresenceChannel_MemberRemoved;
 
-            await _pusher.ConnectAsync();
+            await _pusher.ConnectAsync().ConfigureAwait(false);
         }
 
-        static void _pusher_Error(object sender, PusherException error)
+        static void PusherError(object sender, PusherException error)
         {
             Console.WriteLine("Pusher Error: " + error);
         }
 
-        static void _pusher_ConnectionStateChanged(object sender, ConnectionState state)
+        static void PusherConnectionStateChanged(object sender, ConnectionState state)
         {
             Console.WriteLine("Connection state: " + state);
         }
 
-        // Presence Channel Events
-        static void PresenceChannel_Subscribed(object sender)
+        static void PresenceChannel_MemberRemoved(object sender, KeyValuePair<string, ChatMember> member)
         {
+            Console.WriteLine($"Member {member.Value.Name} has left");
             ListMembers();
         }
 
-        static void PresenceChannel_MemberRemoved(object sender)
+        static void PresenceChannel_MemberAdded(object sender, KeyValuePair<string, ChatMember> member)
         {
+            Console.WriteLine($"Member {member.Value.Name} has joined");
             ListMembers();
-        }
-
-        static void PresenceChannel_MemberAdded(object sender, KeyValuePair<string, dynamic> member)
-        {
-            Console.WriteLine((string)member.Value.name.Value + " has joined");
-            ListMembers();
-        }
-
-        // Chat Channel Events
-        static void ChatChannel_Subscribed(object sender)
-        {
-            Console.WriteLine("Hi " + _name + "! Type 'quit' to exit, otherwise type anything to chat!");
         }
     }
 }

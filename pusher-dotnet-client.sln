@@ -5,9 +5,14 @@ VisualStudioVersion = 16.0.29009.5
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Files", "Files", "{2D9F07A0-C627-434A-8C94-CD7CD175720F}"
 	ProjectSection(SolutionItems) = preProject
+		.gitattributes = .gitattributes
+		.gitignore = .gitignore
+		AppConfig.sample.json = AppConfig.sample.json
 		CHANGELOG.md = CHANGELOG.md
+		CPU.count.2.runsettings = CPU.count.2.runsettings
 		package.cmd = package.cmd
 		README.md = README.md
+		Root.Build.props = Root.Build.props
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PusherClient.Tests", "PusherClient.Tests\PusherClient.Tests.csproj", "{F016BFD6-1BD2-4E30-A2C2-1A02A85C0478}"

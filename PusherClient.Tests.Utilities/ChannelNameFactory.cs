@@ -4,16 +4,23 @@ namespace PusherClient.Tests.Utilities
 {
     public static class ChannelNameFactory
     {
-        public static string CreateUniqueChannelName(bool privateChannel = false, bool presenceChannel = false, string channelNamePostfix = null)
+        public static string CreateUniqueChannelName(ChannelTypes channelType = ChannelTypes.Public)
         {
-            var channelPrefix = string.Empty;
+            string channelPrefix;
+            switch (channelType)
+            {
+                case ChannelTypes.Private:
+                    channelPrefix = "private-";
+                    break;
+                case ChannelTypes.Presence:
+                    channelPrefix = "presence-";
+                    break;
+                default:
+                    channelPrefix = string.Empty;
+                    break;
+            }
 
-            if (privateChannel)
-                channelPrefix = "private-";
-            else if (presenceChannel)
-                channelPrefix = "presence-";
-
-            var mockChannelName = $"{channelPrefix}myTestChannel{channelNamePostfix}{DateTime.Now.Ticks}";
+            var mockChannelName = $"{channelPrefix}myTestChannel{Guid.NewGuid():N}";
             return mockChannelName;
         }
     }

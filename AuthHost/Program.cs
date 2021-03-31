@@ -6,7 +6,7 @@ namespace AuthHost
 {
     class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
             var hostUrl = "http://localhost:" + ConfigurationManager.AppSettings["Port"];
             HostConfiguration hostConfigs = new HostConfiguration();

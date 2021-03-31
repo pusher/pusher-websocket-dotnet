@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+    <!-- Configurations that affect the Test Framework -->
+    <RunConfiguration>
+
+        <!-- Inline with the GitHub action's build server -->
+        <MaxCpuCount>2</MaxCpuCount>
+      
+        <!-- Path relative to directory that contains .runsettings file -->
+        <ResultsDirectory>.\TestResults</ResultsDirectory>
+
+        <!-- x86 or x64 -->
+        <!-- You can also change it from the Test menu; choose "Processor Architecture for AnyCPU Projects" -->
+        <TargetPlatform>x64</TargetPlatform>
+    </RunConfiguration>
+</RunSettings>

@@ -6,7 +6,7 @@ namespace PusherClient.Tests.Utilities
     {
         public static string CreateUniqueUserName()
         {
-            return $"testUser{DateTime.Now.Ticks}";
+            return $"testUser{Guid.NewGuid():N}";
         }
     }
 }

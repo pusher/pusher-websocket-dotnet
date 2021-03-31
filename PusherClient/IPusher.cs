@@ -1,16 +1,17 @@
-﻿using System.Collections.Generic;
-
-namespace PusherClient
+﻿namespace PusherClient
 {
     internal interface IPusher
     {
-        void ConnectionStateChanged(ConnectionState state);
-        void ErrorOccured(PusherException pusherException);
+        PusherOptions PusherOptions { get; set; }
 
-        void EmitPusherEvent(string eventName, PusherEvent data);
-        void EmitChannelEvent(string channelName, string eventName, PusherEvent data);
+        void ChangeConnectionState(ConnectionState state);
+        void ErrorOccured(PusherException pusherException);
         void AddMember(string channelName, string member);
         void RemoveMember(string channelName, string member);
         void SubscriptionSuceeded(string channelName, string data);
+        void SubscriptionFailed(string channelName, string data);
+        IEventBinder GetEventBinder(string eventBinderKey);
+        IEventBinder GetChannelEventBinder(string eventBinderKey, string channelName);
+
     }
 }

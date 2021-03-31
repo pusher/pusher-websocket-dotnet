@@ -1,6 +1,4 @@
-﻿using PusherServer;
-
-namespace PusherClient.Tests.Utilities
+﻿namespace PusherClient.Tests.Utilities
 {
     public class FakeUserInfo
     {
