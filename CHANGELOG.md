@@ -1,5 +1,35 @@
 # Changelog
 
+## 2.0.0
+* [FIXED] Infinite loop when failing to connect for the first time. 
+* [FIXED] Bug: GenericPresenceChannel<T>'s AddMember and RemoveMember events were not being emitted.
+* [FIXED] Change MemberRemovedEventHandler to MemberRemovedEventHandler<T>.
+* [FIXED] Introduce new ChannelUnauthorizedException class.
+* [FIXED] Bug: calling Channel.Unsubscribe would only set IsSubscribed to false and not remove the channel subscription.
+* [FIXED] Bug: Pusher can error if any of the delegate events raise errors.
+* [FIXED] Bug: PusherEvent.Data fails to serialize for types other than string.
+* [FIXED] Concurrency issues in EventEmmiter.
+* [FIXED] Failing tests for Pusher apps in a cluster other than the default.
+* [FIXED] Issues in the Example app and removed the use of dynamic types.
+* [CHANGED] PusherClient project structure to target .NET 4.5, .NET 4.7.2, .NET Standard 1.3 and .NET Standard 2.0.
+* [CHANGED] The events emitted by Pusher.ConnectionStateChanged. Connecting and Connected are new. Initialized has been removed. Disconnecting, Disconnected and WaitingToReconnect remain unchanged.
+* [CHANGED] Pusher methods ConnectAsync and DisconnectAsync to return void instead of ConnectionState.
+* [CHANGED] Pusher.SubscribeAsync to take an optional SubscriptionEventHandler parameter.
+* [CHANGED] Separate PusherEvent, string and dynamic emitters into separate classes.
+* [CHANGED] Bump PusherServer version to 4.4.0.
+* [CHANGED] PusherClient project structure to target .NET 4.5, .NET 4.7.2, .NET Standard 1.3 and .NET Standard 2.0.
+* [REMOVED] public property Pusher.Channels; it is now private.
+* [REMOVED] public property GenericPresenceChannel<T>.Members; it is now private.
+* [REMOVED] The following ConnectionState values: Initialized, NotConnected, AlreadyConnected, ConnectionFailed and DisconnectionFailed.
+* [REMOVED] public Channel.Subscribed; it is now internal.
+* [REMOVED] Pusher.Trace property.
+* [ADDED] To Pusher class: methods UnsubscribeAsync, UnsubscribeAllAsync, GetChannel and GetAllChannels; event delegate Subscribed.
+* [ADDED] To GenericPresenceChannel<T> class: methods GetMember and GetMembers.
+* [ADDED] ClientTimeout to PusherOptions and implemented client timeouts with tests.
+* [ADDED] Json config file for test application settings.
+* [ADDED] Client side event triggering validation.
+* [ADDED] ITraceLogger interface and TraceLogger class, tracing is disabled by default. New TraceLogger property added to PusherOptions.
+
 ## 1.1.2
 * [FIX] Switch to concurrent collections to avoid race in EventEmitter (issue #76, PR #93)
 * [FIX] Fix Reconnection issue and NRE on Disconnect() after websocket_Closed (issue #70, issue #71, issue #73, PR #95)
