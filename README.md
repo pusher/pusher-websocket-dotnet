@@ -38,6 +38,7 @@ Contents:
   - [Private channels](#private-channels)
   - [Presence channels](#Presence-channels)
   - [Subscribed delegate](#subscribed-delegate)
+  - [Unsubscribe](#unsubscribe)
 - [Binding to events](#binding-to-events)
   - [Per-channel](#per-channel)
   - [Globally](#globally)
@@ -45,10 +46,14 @@ Contents:
 - [Developer notes](#developer-notes)
   - [Migrating from version 1 to version 2](#migrating-from-version-1-to-version-2)
     - [Added to the Pusher class](#added-to-the-pusher-class)
+    - [Changed in the Pusher class](#changed-in-the-pusher-class)
     - [Removed from the Pusher class](#removed-from-the-pusher-class)
     - [Removed from the Channel class](#removed-from-the-channel-class)
     - [Added to the GenericPresenceChannel class](#added-to-the-genericpresencechannel-class)
+    - [Changed in the GenericPresenceChannel class](#changed-in-the-genericpresencechannel-class)
     - [Removed from the GenericPresenceChannel class](#removed-from-the-genericpresencechannel-class)
+    - [Removed from the ConnectionState enum](#removed-from-the-connectionstate-enum)
+    - [Added to the ErrorCodes enum](#added-to-the-errorcodes-enum)
 - [License](#license)
 
 ## Installation
@@ -815,6 +820,19 @@ await pusher.SubscribePresenceAsync<ChatMember>("presence-channel-1", PresenceCh
 await pusher.ConnectAsync().ConfigureAwait(false);
 
 ```
+### Unsubscribe
+
+You can use `UnsubscribeAsync` and `UnsubscribeAllAsync` to remove subscriptions.
+
+```cs
+
+// Remove a channel subscription
+await pusher.UnsubscribeAsync("public-channel-1").ConfigureAwait(false);
+
+// Remove all channel subscriptions
+await pusher.UnsubscribeAllAsync().ConfigureAwait(false);
+
+```
 
 ## Binding to events
 
@@ -953,6 +971,12 @@ The Pusher application settings are now loaded from a JSON config file stored in
 
 ### Migrating from version 1 to version 2
 
+You are encouraged to move to the Pusher Client SDK version 2. A number of bugs have been fixed; see the [changelog](https://github.com/pusher/pusher-websocket-dotnet/blob/master/CHANGELOG.md) for more information. The code coverage of the Pusher Client has improved from roughly 81% to 95%.
+
+There should also be performance improvements. All debug trace code has been removed by default and there is a reduction in the amount of JSON deserialization happening on receiving a message from the server.
+
+An attempt has been made to address the Unity issue with the iOS SDK; issue #83. It is untested and help from the community in testing this would be much appreciated. If you stick to using the `PusherEvent` only when binding to events and use GenericPresenceChannel<T>, where T is not `dynamic`, you should see some improvement.
+
 #### Added to the Pusher class
 
 An optional parameter `SubscriptionEventHandler subscribedEventHandler` has been added to the `SubscribeAsync` and `SubscribePresenceAsync<T>` methods.
@@ -1010,6 +1034,10 @@ public async Task UnsubscribeAllAsync()
 }
 ```
 
+#### Changed in the Pusher class
+
+Previously the `ConnectAsync` returned a `ConnectionState` enum value after an async await. This is no longer the case; it returns void now. After the async await the state is always `Connected` if the call succeeds. If the call fails an exception will be thrown.
+
 #### Removed from the Pusher class
 
 Removed the public property `ConcurrentDictionary<string, Channel> Channels`. Use the method `GetAllChannels()` instead.
@@ -1036,7 +1064,8 @@ public T GetMember(string userId)
 
 ```cs
 /// <summary>
-/// Gets the current list of members as a <see cref="Dictionary{TKey, TValue}"/> where the TKey is the user ID and TValue is the member detail.
+/// Gets the current list of members as a <see cref="Dictionary{TKey, TValue}"/>
+/// where the TKey is the user ID and TValue is the member detail.
 /// </summary>
 /// <returns>Returns a <see cref="Dictionary{TKey, TValue}"/> containing the current members.</returns>
 public Dictionary<string, T> GetMembers()
@@ -1045,9 +1074,36 @@ public Dictionary<string, T> GetMembers()
 }
 ```
 
+#### Changed in the GenericPresenceChannel class
+
+The signature of the `MemberRemoved` delegate has changed from `MemberRemovedEventHandler MemberRemoved` to `MemberRemovedEventHandler<T> MemberRemoved`. This addresses issue #35.
+
 #### Removed from the GenericPresenceChannel class
 
 Removed the public property `ConcurrentDictionary<string, T> Members`. Use `GetMembers()` instead.
+
+#### Removed from the ConnectionState enum
+
+Six states remain simplifying the state change model:
+* Uninitialized
+* Connecting - Unimplemented state change in SDK version 1
+* Connected - Unimplemented state change in SDK version 1
+* Disconnecting
+* Disconnected
+* WaitingToReconnect
+
+These states have been removed:
+* Initialized
+* NotConnected
+* AlreadyConnected
+* ConnectionFailed
+* DisconnectionFailed
+
+#### Added to the ErrorCodes enum
+
+Error codes less than 5000 remain the same. These are the error codes you can get from the Pusher server.
+
+Error codes 5000 and above have been added for Client SDK detected errors. Almost all of these codes can be associated with a new exception class that derives from `PusherException`.
 
 ## License
 
