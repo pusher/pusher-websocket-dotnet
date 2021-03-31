@@ -993,7 +993,7 @@ Remember to set it back to `true` as it is enabled by default for a reason.
 
 ### Migrating from version 1 to version 2
 
-You are encouraged to move to the Pusher Client SDK version 2. This major release includes a number of bug fixes and perfomance improvemnets. See the [changelog](https://github.com/pusher/pusher-websocket-dotnet/blob/master/CHANGELOG.md) for more information.
+You are encouraged to move to the Pusher Client SDK version 2. This major release includes a number of bug fixes and performance improvements. See the [changelog](https://github.com/pusher/pusher-websocket-dotnet/blob/master/CHANGELOG.md) for more information.
 
 The following sections describe the changes in detail and describes how to update your code to the new version 2.x. If you run into problems you can always contact support@pusher.com.
 
