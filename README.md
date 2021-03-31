@@ -988,11 +988,9 @@ Remember to set it back to `true` as it is enabled by default for a reason.
 
 ### Migrating from version 1 to version 2
 
-You are encouraged to move to the Pusher Client SDK version 2. A number of bugs have been fixed; see the [changelog](https://github.com/pusher/pusher-websocket-dotnet/blob/master/CHANGELOG.md) for more information. The code coverage of the Pusher Client has improved from roughly 81% to 95%.
+You are encouraged to move to the Pusher Client SDK version 2. This major release includes a number of bug fixes and perfomance improvemnets. See the [changelog](https://github.com/pusher/pusher-websocket-dotnet/blob/master/CHANGELOG.md) for more information.
 
-There should also be performance improvements. All debug trace code has been removed by default and there is a reduction in the amount of JSON deserialization happening on receiving a message from the server.
-
-An attempt has been made to address the Unity issue with the iOS SDK; issue #83. It is untested and help from the community in testing this would be much appreciated. If you stick to using the `PusherEvent` only when binding to events and use GenericPresenceChannel<T>, where T is not `dynamic`, you should see some improvement.
+The following sections describe the changes in detail and describes how to update your code to the new version 2.x. If you run into problems you can always contact support@pusher.com.
 
 #### Added to the Pusher class
 
