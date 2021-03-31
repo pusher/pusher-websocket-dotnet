@@ -44,6 +44,7 @@ Contents:
   - [Globally](#globally)
 - [Triggering events](#triggering-events)
 - [Developer notes](#developer-notes)
+  - [Testing](#testing)
   - [Migrating from version 1 to version 2](#migrating-from-version-1-to-version-2)
     - [Added to the Pusher class](#added-to-the-pusher-class)
     - [Changed in the Pusher class](#changed-in-the-pusher-class)
@@ -968,6 +969,22 @@ For full details see the [client events documentation](https://pusher.com/docs/c
 ## Developer notes
 
 The Pusher application settings are now loaded from a JSON config file stored in the root of the source tree and named `AppConfig.test.json`. Make a copy of `./AppConfig.sample.json` and name it `AppConfig.test.json`. Modify the contents of `AppConfig.test.json` with your test application settings. All tests should pass. The AuthHost and ExampleApplication should also run without any start-up errors.
+
+### Testing
+
+The majority of the tests are concurrency tests and the more the number of CPU(s) used the better. All tests should pass. However, some of the error code test paths fail intermittently when running on 2 CPU(s) - default build server configuration. With this in mind it is good to test on a 2 CPU configuration. A test settings file has been added to the root (CPU.count.2.runsettings) and you can specify it when running the tests via the menu option [Test]/[Configure Run Settings].
+
+Also, a random latency is induced when authorizing a subscription. This is to weed out some of the concurrency issues. This adds to the time it takes to run all the tests. If you are running the tests often, you can speed things up by disabling the latency induction. Modify the property:
+
+```cs
+/// <summary>
+/// Gets or sets whether this latency inducer is enabled.
+/// </summary>
+public bool Enabled { get; set; } = true;
+```
+
+Remember to set it back to `true` as it is enabled by default for a reason.
+
 
 ### Migrating from version 1 to version 2
 
