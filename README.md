@@ -1,6 +1,9 @@
 # Pusher Channels .NET Client library
 
-This is a .NET library for interacting with the Channels WebSocket API.
+[![NuGet Badge](https://buildstats.info/nuget/pusherclient)](https://www.nuget.org/packages/PusherClient/)
+![Build](https://github.com/pusher/pusher-websocket-dotnet/workflows/Build/badge.svg)
+
+This is the official .NET library for interacting with the Channels WebSocket API.
 
 Register at [pusher.com/channels](https://pusher.com/channels) and use the application credentials within your app as shown below.
 
