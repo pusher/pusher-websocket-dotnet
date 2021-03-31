@@ -50,7 +50,7 @@ namespace PusherClient.Tests.AcceptanceTests
             // Create Pusher client ready to subscribe to public, private and presence channels
             Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
             {
-                Authorizer = new FakeAuthoriser("Jane"),
+                Authorizer = new FakeAuthoriser(),
                 Cluster = Config.Cluster,
                 Encrypted = true,
             });
