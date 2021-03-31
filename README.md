@@ -10,6 +10,8 @@ For integrating **Pusher Channels** with **Unity** follow the instructions at <h
 
 ## Supported platforms
 
+⚠️ we recently released a major version with many breaking changes! If you are coming from version 1.x, please see the [migration section](#migrating-from-version-1-to-version-2)
+
 * .NET Standard 1.3
 * .NET Standard 2.0
 * .NET 4.5
@@ -992,6 +994,45 @@ You are encouraged to move to the Pusher Client SDK version 2. This major releas
 
 The following sections describe the changes in detail and describes how to update your code to the new version 2.x. If you run into problems you can always contact support@pusher.com.
 
+#### Changed in the Pusher class
+
+Previously the `ConnectAsync` returned a `ConnectionState` enum value after an async await. This is no longer the case; it returns void now. After the async await the state is always `Connected` if the call succeeds. If the call fails an exception will be thrown.
+
+#### Removed from the Pusher class
+
+Removed the public property `ConcurrentDictionary<string, Channel> Channels`. Use the method `GetAllChannels()` instead.
+
+Removed the public static property `TraceSource Trace`. Use `PusherOptions.TraceLogger` instead.
+
+#### Removed from the Channel class
+
+Removed the public event delegate `SubscriptionEventHandler Subscribed`. Use the optional input parameter `SubscriptionEventHandler subscribedEventHandler` on `Pusher.SubscribeAsync` and `Pusher.SubscribePresenceAsync` instead. Alternatively, use `Pusher.Subscribed`.
+
+#### Removed from the GenericPresenceChannel class
+
+Removed the public property `ConcurrentDictionary<string, T> Members`. Use `GetMembers()` instead.
+
+#### Removed from the ConnectionState enum
+
+Six states remain simplifying the state change model:
+* Uninitialized
+* Connecting - Unimplemented state change in SDK version 1
+* Connected - Unimplemented state change in SDK version 1
+* Disconnecting
+* Disconnected
+* WaitingToReconnect
+
+These states have been removed:
+* Initialized
+* NotConnected
+* AlreadyConnected
+* ConnectionFailed
+* DisconnectionFailed
+
+#### Changed in the GenericPresenceChannel class
+
+The signature of the `MemberRemoved` delegate has changed from `MemberRemovedEventHandler MemberRemoved` to `MemberRemovedEventHandler<T> MemberRemoved`. This addresses issue #35.
+
 #### Added to the Pusher class
 
 An optional parameter `SubscriptionEventHandler subscribedEventHandler` has been added to the `SubscribeAsync` and `SubscribePresenceAsync<T>` methods.
@@ -1049,19 +1090,6 @@ public async Task UnsubscribeAllAsync()
 }
 ```
 
-#### Changed in the Pusher class
-
-Previously the `ConnectAsync` returned a `ConnectionState` enum value after an async await. This is no longer the case; it returns void now. After the async await the state is always `Connected` if the call succeeds. If the call fails an exception will be thrown.
-
-#### Removed from the Pusher class
-
-Removed the public property `ConcurrentDictionary<string, Channel> Channels`. Use the method `GetAllChannels()` instead.
-
-Removed the public static property `TraceSource Trace`. Use `PusherOptions.TraceLogger` instead.
-
-#### Removed from the Channel class
-
-Removed the public event delegate `SubscriptionEventHandler Subscribed`. Use the optional input parameter `SubscriptionEventHandler subscribedEventHandler` on `Pusher.SubscribeAsync` and `Pusher.SubscribePresenceAsync` instead. Alternatively, use `Pusher.Subscribed`.
 
 #### Added to the GenericPresenceChannel class
 
@@ -1088,31 +1116,6 @@ public Dictionary<string, T> GetMembers()
     // ...
 }
 ```
-
-#### Changed in the GenericPresenceChannel class
-
-The signature of the `MemberRemoved` delegate has changed from `MemberRemovedEventHandler MemberRemoved` to `MemberRemovedEventHandler<T> MemberRemoved`. This addresses issue #35.
-
-#### Removed from the GenericPresenceChannel class
-
-Removed the public property `ConcurrentDictionary<string, T> Members`. Use `GetMembers()` instead.
-
-#### Removed from the ConnectionState enum
-
-Six states remain simplifying the state change model:
-* Uninitialized
-* Connecting - Unimplemented state change in SDK version 1
-* Connected - Unimplemented state change in SDK version 1
-* Disconnecting
-* Disconnected
-* WaitingToReconnect
-
-These states have been removed:
-* Initialized
-* NotConnected
-* AlreadyConnected
-* ConnectionFailed
-* DisconnectionFailed
 
 #### Added to the ErrorCodes enum
 
