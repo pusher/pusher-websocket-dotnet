@@ -630,7 +630,7 @@ namespace PusherClient
                         jsonAuth = Options.Authorizer.Authorize(channelName, _connection.SocketId);
                     }
 
-                    message = CreateAuthorizedChannelSubscribeMessage(channelName, jsonAuth);
+                    message = CreateAuthorizedChannelSubscribeMessage(channel, jsonAuth);
                 }
                 else
                 {
@@ -681,8 +681,9 @@ namespace PusherClient
             RaiseError(error);
         }
 
-        private string CreateAuthorizedChannelSubscribeMessage(string channelName, string jsonAuth)
+        private string CreateAuthorizedChannelSubscribeMessage(Channel channel, string jsonAuth)
         {
+            string channelName = channel.Name;
             string auth = null;
             string channelData = null;
             JObject jObject = JObject.Parse(jsonAuth);
@@ -753,13 +754,14 @@ namespace PusherClient
         {
             if (Channel.GetChannelType(channelName) == ChannelTypes.Public)
             {
-                string errorMsg = $"Failed to trigger event '{eventName}'. Client events are only supported on private and presence channels.";
+                string errorMsg = $"Failed to trigger event '{eventName}'. Client events are only supported on private (non-encrypted) and presence channels.";
                 throw new TriggerEventException(errorMsg, ErrorCodes.TriggerEventPublicChannelError);
             }
 
-            if (eventName.IndexOf("client-", StringComparison.Ordinal) != 0)
+            string token = "client-";
+            if (eventName.IndexOf(token, StringComparison.OrdinalIgnoreCase) != 0)
             {
-                string errorMsg = $"Failed to trigger event '{eventName}'. Client events must start with 'client-'.";
+                string errorMsg = $"Failed to trigger event '{eventName}'. Client events must start with '{token}'.";
                 throw new TriggerEventException(errorMsg, ErrorCodes.TriggerEventNameInvalidError);
             }
 

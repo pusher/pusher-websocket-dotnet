@@ -3,5 +3,6 @@
   "AppKey": "",
   "AppSecret": "",
   "Cluster": "mt1",
-  "Encrypted": true
+  "Encrypted": true,
+  "EnableAuthorizationLatency": true
 }

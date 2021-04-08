@@ -11,7 +11,7 @@ namespace PusherClient.Tests.Utilities
         /// <summary>
         /// Gets or sets whether this latency inducer is enabled.
         /// </summary>
-        public bool Enabled { get; set; } = true;
+        public bool Enabled { get; set; } = Config.EnableAuthorizationLatency;
 
         /// <summary>
         /// If enabled, pauses for a random period between <paramref name="minLatency"/> and <paramref name="maxLatency"/>.

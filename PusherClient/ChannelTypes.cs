@@ -1,21 +1,23 @@
 ﻿namespace PusherClient
 {
     /// <summary>
-    /// An enum represnets the different types of <see cref="Channel"/>
+    /// An enum represnets the different types of <see cref="Channel"/>.
     /// </summary>
     public enum ChannelTypes
     {
         /// <summary>
-        /// A Public Channel
+        /// A public channel.
         /// </summary>
         Public,
+
         /// <summary>
-        /// A Private Channel
+        /// A private channel.
         /// </summary>
         Private,
+
         /// <summary>
-        /// Presence Channel
+        /// A presence channel.
         /// </summary>
-        Presence
+        Presence,
     }
 }
