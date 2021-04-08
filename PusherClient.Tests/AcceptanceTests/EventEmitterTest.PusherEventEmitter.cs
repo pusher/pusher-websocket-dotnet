@@ -82,6 +82,100 @@ namespace PusherClient.Tests.AcceptanceTests
             await PusherEventEmitterUnbindTestAsync(channelType, listenersToUnbind: new List<int> { 0 }).ConfigureAwait(false);
         }
 
+        [Test]
+        public async Task PusherEventEmitterPrivateChannelMultipleEventHandlersTestAsync()
+        {
+            // Arrange
+            var pusherServer = new PusherServer.Pusher(Config.AppId, Config.AppKey, Config.AppSecret, new PusherServer.PusherOptions()
+            {
+                HostName = Config.HttpHost,
+            });
+
+            Pusher localPusher = PusherFactory.GetPusher(channelType: ChannelTypes.Presence, saveTo: _clients);
+            Dictionary<string, AutoResetEvent> channelEventReceived = new Dictionary<string, AutoResetEvent>
+            {
+                {"my-event-1",  new AutoResetEvent(false)},
+                {"my-event-2",  new AutoResetEvent(false)},
+                {"my-event-3",  new AutoResetEvent(false)},
+            };
+
+            Dictionary<string, PusherEvent> channelEvent = new Dictionary<string, PusherEvent>
+            {
+                {"my-event-1",  null},
+                {"my-event-2",  null},
+                {"my-event-3",  null},
+            };
+
+            Dictionary<string, int> channelEventReceivedCount = new Dictionary<string, int>
+            {
+                {"my-event-1",  0},
+                {"my-event-2",  0},
+                {"my-event-3",  0},
+            };
+
+            await localPusher.ConnectAsync().ConfigureAwait(false);
+            Channel localChannel = await localPusher.SubscribeAsync("private-multiple-event-channel").ConfigureAwait(false);
+
+            void Listener1(PusherEvent eventData)
+            {
+                string key = "my-event-1";
+                channelEventReceivedCount[key]++;
+                if (eventData.EventName == key)
+                {
+                    channelEvent[key] = eventData;
+                    channelEventReceived[key].Set();
+                }
+            }
+
+            void Listener2(PusherEvent eventData)
+            {
+                string key = "my-event-2";
+                channelEventReceivedCount[key]++;
+                if (eventData.EventName == key)
+                {
+                    channelEvent[key] = eventData;
+                    channelEventReceived[key].Set();
+                }
+            }
+
+            void Listener3(PusherEvent eventData)
+            {
+                string key = "my-event-3";
+                channelEventReceivedCount[key]++;
+                if (eventData.EventName == key)
+                {
+                    channelEvent[key] = eventData;
+                    channelEventReceived[key].Set();
+                }
+            }
+
+            List<EventTestData> data = new List<EventTestData>()
+            {
+                new EventTestData { TextField = "1", IntegerField = 1, },
+                new EventTestData { TextField = "2", IntegerField = 2, },
+                new EventTestData { TextField = "3", IntegerField = 3, },
+            };
+
+            // Act
+            localChannel.Bind("my-event-1", Listener1);
+            localChannel.Bind("my-event-2", Listener2);
+            localChannel.Bind("my-event-3", Listener3);
+            await pusherServer.TriggerAsync(localChannel.Name, "my-event-1", data[0]).ConfigureAwait(false);
+            await pusherServer.TriggerAsync(localChannel.Name, "my-event-2", data[1]).ConfigureAwait(false);
+            await pusherServer.TriggerAsync(localChannel.Name, "my-event-3", data[2]).ConfigureAwait(false);
+
+            // Assert
+            foreach (var eventReceived in channelEventReceived)
+            {
+                Assert.IsTrue(eventReceived.Value.WaitOne(TimeSpan.FromSeconds(5)), $"Event not received for {eventReceived.Key}");
+            }
+
+            foreach (var eventReceivedCount in channelEventReceivedCount)
+            {
+                Assert.AreEqual(1, eventReceivedCount.Value, $"#Events received for {eventReceivedCount.Key}");
+            }
+        }
+
         #endregion
 
         #region Test helper functions

@@ -164,9 +164,9 @@ namespace PusherClient
 
                     if (_listeners.Count > 0)
                     {
-                        foreach (var list in _listeners.Values)
+                        if (_listeners.ContainsKey(eventName))
                         {
-                            listeners.AddRange(list);
+                            listeners.AddRange(_listeners[eventName]);
                         }
                     }
                 }

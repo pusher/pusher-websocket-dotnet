@@ -29,5 +29,10 @@
         /// Gets or sets whether the connection will be encrypted.
         /// </summary>
         bool Encrypted { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether an artificial latency is induced when authorizing a channel.
+        /// </summary>
+        bool? EnableAuthorizationLatency { get; set; }
     }
 }

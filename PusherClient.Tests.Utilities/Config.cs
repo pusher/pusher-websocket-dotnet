@@ -18,6 +18,7 @@
             AppSecret = config.AppSecret;
             Cluster = config.Cluster;
             Encrypted = config.Encrypted;
+            EnableAuthorizationLatency = config.EnableAuthorizationLatency ?? true;
         }
 
         /// <summary>
@@ -44,5 +45,21 @@
         /// Gets or sets whether the connection will be encrypted.
         /// </summary>
         public static bool Encrypted { get; private set; }
+
+        /// <summary>
+        /// Gets or sets whether an artificial latency is induced when authorizing a channel.
+        /// </summary>
+        public static bool EnableAuthorizationLatency { get; set; }
+
+        /// <summary>
+        /// Gets the PusherServer HTTP host.
+        /// </summary>
+        public static string HttpHost
+        {
+            get
+            {
+                return $"api-{Cluster}.pusher.com";
+            }
+        }
     }
 }
