@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.0.1
+* [FIXED] Filter on event name in event emitter.
+
 ## 2.0.0
 * [FIXED] Infinite loop when failing to connect for the first time. 
 * [FIXED] Bug: GenericPresenceChannel<T>'s AddMember and RemoveMember events were not being emitted.
