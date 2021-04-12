@@ -702,6 +702,16 @@ namespace PusherClient
                 channelData = jToken.Value<string>();
             }
 
+            jToken = jObject.SelectToken("shared_secret");
+            if (jToken != null &&
+                jToken.Type == JTokenType.String &&
+                channel.ChannelType == ChannelTypes.PrivateEncrypted &&
+                channel is PrivateChannel privateChannel)
+            {
+                string secret = jToken.Value<string>();
+                privateChannel.SharedSecret = Convert.FromBase64String(secret);
+            }
+
             PusherChannelSubscriptionData data = new PusherAuthorizedChannelSubscriptionData(channelName, auth, channelData);
             return DefaultSerializer.Default.Serialize(new PusherChannelSubscribeEvent(data));
         }
@@ -719,6 +729,7 @@ namespace PusherClient
             switch (type)
             {
                 case ChannelTypes.Private:
+                case ChannelTypes.PrivateEncrypted:
                     AuthEndpointCheck(channelName);
                     result = new PrivateChannel(channelName, this);
                     break;
@@ -756,6 +767,12 @@ namespace PusherClient
             {
                 string errorMsg = $"Failed to trigger event '{eventName}'. Client events are only supported on private (non-encrypted) and presence channels.";
                 throw new TriggerEventException(errorMsg, ErrorCodes.TriggerEventPublicChannelError);
+            }
+
+            if (Channel.GetChannelType(channelName) == ChannelTypes.PrivateEncrypted)
+            {
+                string errorMsg = $"Failed to trigger event '{eventName}'. Client events are not supported on private encrypted channels.";
+                throw new TriggerEventException(errorMsg, ErrorCodes.TriggerEventPrivateEncryptedChannelError);
             }
 
             string token = "client-";

@@ -134,7 +134,11 @@ namespace PusherClient
             Guard.ChannelName(channelName);
 
             ChannelTypes channelType = ChannelTypes.Public;
-            if (channelName.StartsWith(Constants.PRIVATE_CHANNEL, StringComparison.OrdinalIgnoreCase))
+            if (channelName.StartsWith(Constants.PRIVATE_ENCRYPTED_CHANNEL, StringComparison.OrdinalIgnoreCase))
+            {
+                channelType = ChannelTypes.PrivateEncrypted;
+            }
+            else if (channelName.StartsWith(Constants.PRIVATE_CHANNEL, StringComparison.OrdinalIgnoreCase))
             {
                 channelType = ChannelTypes.Private;
             }

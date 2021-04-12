@@ -193,7 +193,7 @@ namespace PusherClient
             ChangeState(ConnectionState.Disconnected);
         }
 
-        private void ProcessChannelEvent(string eventName, string jsonMessage, string channelName, Dictionary<string, object> message)
+        private void EmitChannelEvent(string eventName, string jsonMessage, string channelName, Dictionary<string, object> message)
         {
             foreach (string key in EventEmitter.EmitterKeys)
             {
@@ -202,7 +202,7 @@ namespace PusherClient
             }
         }
 
-        private void ProcessEvent(string eventName, string jsonMessage, Dictionary<string, object> message)
+        private void EmitEvent(string eventName, string jsonMessage, Dictionary<string, object> message)
         {
             foreach (string key in EventEmitter.EmitterKeys)
             {
@@ -302,8 +302,8 @@ namespace PusherClient
                             string channelName = (string)message["channel"];
                             if (!ProcessPusherChannelEvent(eventName, channelName, messageData))
                             {
-                                ProcessEvent(eventName, rawJson, message);
-                                ProcessChannelEvent(eventName, rawJson, channelName, message);
+                                EmitEvent(eventName, rawJson, message);
+                                EmitChannelEvent(eventName, rawJson, channelName, message);
                             }
                         }
                         else

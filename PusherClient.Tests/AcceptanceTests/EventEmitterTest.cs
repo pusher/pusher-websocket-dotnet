@@ -56,6 +56,32 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         [Test]
+        public async Task TriggerPrivateEncryptedChannelErrorTestAsync()
+        {
+            // Arrange
+            ChannelTypes channelType = ChannelTypes.PrivateEncrypted;
+            Pusher localPusher = PusherFactory.GetPusher(channelType: ChannelTypes.Presence, saveTo: _clients);
+            string testEventName = "client-pusher-event-test";
+            PusherEvent pusherEvent = CreatePusherEvent(channelType, testEventName);
+            Channel localChannel = await localPusher.SubscribeAsync(pusherEvent.ChannelName).ConfigureAwait(false);
+            TriggerEventException exception = null;
+
+            // Act
+            try
+            {
+                await localChannel.TriggerAsync(testEventName, pusherEvent.Data);
+            }
+            catch (TriggerEventException error)
+            {
+                exception = error;
+            }
+
+            // Assert
+            Assert.IsNotNull(exception, $"Expected a {nameof(TriggerEventException)}");
+            Assert.AreEqual(ErrorCodes.TriggerEventPrivateEncryptedChannelError, exception.PusherCode);
+        }
+
+        [Test]
         public async Task TriggerInvalidEventNameErrorTestAsync()
         {
             // Arrange

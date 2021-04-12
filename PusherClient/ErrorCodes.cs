@@ -102,6 +102,11 @@
         TriggerEventPublicChannelError = 5104,
 
         /// <summary>
+        /// Attempt to trigger an event using a private encrypted channel.
+        /// </summary>
+        TriggerEventPrivateEncryptedChannelError = 5105,
+
+        /// <summary>
         /// The presence or private channel has not had its Authorizer set.
         /// </summary>
         ChannelAuthorizerNotSet = 7500,

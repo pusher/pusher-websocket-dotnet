@@ -21,9 +21,7 @@ For integrating **Pusher Channels** with **Unity** follow the instructions at <h
 * .NET 4.7.2
 * Unity 2018 and greater via [pusher-websocket-unity](https://github.com/pusher/pusher-websocket-unity)
 
-## TOC
-
-Contents:
+## Contents
 
 - [Installation](#installation)
 - [API](#api)
@@ -51,14 +49,14 @@ Contents:
 - [Developer notes](#developer-notes)
   - [Testing](#testing)
   - [Migrating from version 1 to version 2](#migrating-from-version-1-to-version-2)
-    - [Added to the Pusher class](#added-to-the-pusher-class)
     - [Changed in the Pusher class](#changed-in-the-pusher-class)
     - [Removed from the Pusher class](#removed-from-the-pusher-class)
     - [Removed from the Channel class](#removed-from-the-channel-class)
-    - [Added to the GenericPresenceChannel class](#added-to-the-genericpresencechannel-class)
-    - [Changed in the GenericPresenceChannel class](#changed-in-the-genericpresencechannel-class)
     - [Removed from the GenericPresenceChannel class](#removed-from-the-genericpresencechannel-class)
     - [Removed from the ConnectionState enum](#removed-from-the-connectionstate-enum)
+    - [Changed in the GenericPresenceChannel class](#changed-in-the-genericpresencechannel-class)
+    - [Added to the Pusher class](#added-to-the-pusher-class)
+    - [Added to the GenericPresenceChannel class](#added-to-the-genericpresencechannel-class)
     - [Added to the ErrorCodes enum](#added-to-the-errorcodes-enum)
 - [License](#license)
 
@@ -1024,7 +1022,7 @@ These states have been removed:
 
 #### Changed in the GenericPresenceChannel class
 
-The signature of the `MemberRemoved` delegate has changed from `MemberRemovedEventHandler MemberRemoved` to `MemberRemovedEventHandler<T> MemberRemoved`. This addresses issue #35.
+The signature of the `MemberRemoved` delegate has changed from `MemberRemovedEventHandler MemberRemoved` to `MemberRemovedEventHandler<T> MemberRemoved`.
 
 #### Added to the Pusher class
 
@@ -1082,7 +1080,6 @@ public async Task UnsubscribeAllAsync()
     // ...
 }
 ```
-
 
 #### Added to the GenericPresenceChannel class
 
