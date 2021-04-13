@@ -13,7 +13,7 @@ For integrating **Pusher Channels** with **Unity** follow the instructions at <h
 
 ## Supported platforms
 
-⚠️ we recently released a major version with many breaking changes! If you are coming from version 1.x, please see the [migration section](#migrating-from-version-1-to-version-2)
+⚠️ we recently released a major version -- if you are coming from version 1.x, please see the [migration section](#migrating-from-version-1-to-version-2)
 
 * .NET Standard 1.3
 * .NET Standard 2.0
