@@ -16,7 +16,7 @@ namespace PusherClient.Tests.Utilities
         /// Instantiates an instance of a <see cref="JsonFileConfigLoader"/> using the default file name.
         /// </summary>
         public JsonFileConfigLoader()
-            : this(Path.Combine(Assembly.GetExecutingAssembly().Location, $"../../../../{DefaultFileName}"))
+            : this(Path.Combine(Assembly.GetExecutingAssembly().Location, $"../../../../../{DefaultFileName}"))
         {
         }
 
