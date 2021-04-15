@@ -7,7 +7,16 @@
     <Product>PusherClient</Product>
     <Copyright>Copyright © Pusher 2021</Copyright>
     <Description>Tests for the .NET Pusher Client</Description>
+    <SignAssembly>false</SignAssembly>
   </PropertyGroup>
+
+  <PropertyGroup Condition="$(SignAssembly) == 'true'">
+    <AssemblyOriginatorKeyFile>..\PusherClient.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\PusherClient.snk" Link="PusherClient.snk" Pack="false" Condition="$(SignAssembly) == 'true'" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />

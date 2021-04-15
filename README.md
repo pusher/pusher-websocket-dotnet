@@ -1070,6 +1070,24 @@ The majority of the tests are concurrency tests and the more the number of CPU(s
 
 Also, a random latency is induced when authorizing a subscription. This is to weed out some of the concurrency issues. This adds to the time it takes to run all the tests. If you are running the tests often, you can speed things up by disabling the latency induction. Set the property `EnableAuthorizationLatency` to false in `AppConfig.test.json`.
 
+### Code signing key generation
+
+To generate a new signing key, open a PowerShell command console and execute the command
+
+```powershell
+./StrongName/GeneratePusherKey.ps1
+```
+
+Copy the public key file `PusherClient.public.snk` to the source root folder.
+
+Take the base 64 encoded string and add it to the environment secret named CI_CODE_SIGN_KEY. This is used by `publish.yml`. Once this step is done remove all traces of the private signing key file.
+
+Also copy the PublicKey text and apply it to the code file ./PusherClient/Properties/AssemblyInfo.Signed.cs; for example
+
+```cs
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("PusherClient.Tests, PublicKey=0024...7dd")]
+```
+
 ### Migrating from version 1 to version 2
 
 You are encouraged to move to the Pusher Client SDK version 2. This major release includes a number of bug fixes and performance improvements. See the [changelog](https://github.com/pusher/pusher-websocket-dotnet/blob/master/CHANGELOG.md) for more information.

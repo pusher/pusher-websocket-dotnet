@@ -27,5 +27,12 @@ jobs:
         PUSHER_APP_SECRET: ${{ secrets.CI_APP_SECRET }}
         PUSHER_APP_CLUSTER: ${{ secrets.CI_APP_CLUSTER }}
       run: vstest.console.exe /Parallel /Platform:x64 "./PusherClient.Tests/bin/Release/PusherClient.Tests.dll" /TestAdapterPath:"./PusherClient.Tests/bin/Release/"
-    - name: Test pack
-      run: msbuild /t:Pack /p:configuration=release PusherClient/PusherClient.csproj
+    - name: Write code signing key
+      env:
+        CI_CODE_SIGN_KEY: ${{ secrets.CI_CODE_SIGN_KEY }}
+      run: |
+        ./StrongName/WritePusherKey.ps1
+    - name: Test strong name signing
+      run: msbuild /p:SignAssembly=true /p:deterministic=true /p:msbuildArchitecture=x64 /p:configuration=Release pusher-dotnet-client.sln
+    - name: Test pack with strong named assembly
+      run: msbuild /t:Pack /p:SignAssembly=true /p:configuration=release PusherClient/PusherClient.csproj

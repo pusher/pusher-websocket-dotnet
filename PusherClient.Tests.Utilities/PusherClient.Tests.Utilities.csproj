@@ -7,7 +7,16 @@
     <Product>PusherClient</Product>
     <Copyright>Copyright © Pusher 2021</Copyright>
     <Description>Utilities for the Pusher Tests</Description>
+    <SignAssembly>false</SignAssembly>
   </PropertyGroup>
+
+  <PropertyGroup Condition="$(SignAssembly) == 'true'">
+    <AssemblyOriginatorKeyFile>..\PusherClient.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\PusherClient.snk" Link="PusherClient.snk" Pack="false" Condition="$(SignAssembly) == 'true'" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="PusherServer" Version="4.6.0" />
