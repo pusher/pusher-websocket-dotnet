@@ -55,7 +55,7 @@ namespace PusherClient.Tests.AcceptanceTests
                 Encrypted = true,
             });
 
-            // Lists all current peresence channel members
+            // Lists all current presence channel members
             void ListMembers(GenericPresenceChannel<ChatMember> channel)
             {
                 Dictionary<string, ChatMember> members = channel.GetMembers();
@@ -105,6 +105,10 @@ namespace PusherClient.Tests.AcceptanceTests
                     else if (error is OperationTimeoutException timeoutError)
                     {
                         // A client operation has timed-out. Governed by PusherOptions.ClientTimeout
+                    }
+                    else if (error is ChannelDecryptionException decryptionError)
+                    {
+                        // Failed to decrypt the data for a private encrypted channel
                     }
                     else
                     {
@@ -406,7 +410,7 @@ namespace PusherClient.Tests.AcceptanceTests
             });
             pusher.Error += ErrorHandler;
 
-            // Lists all current peresence channel members
+            // Lists all current presence channel members
             void ListMembers(GenericPresenceChannel<ChatMember> channel)
             {
                 Dictionary<string, ChatMember> members = channel.GetMembers();
@@ -458,7 +462,7 @@ namespace PusherClient.Tests.AcceptanceTests
             });
             pusher.Error += ErrorHandler;
 
-            // Lists all current peresence channel members
+            // Lists all current presence channel members
             void ListMembers(GenericPresenceChannel<ChatMember> channel)
             {
                 Dictionary<string, ChatMember> members = channel.GetMembers();
@@ -513,7 +517,7 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             #region Code snippet
 
-            // Lists all current peresence channel members
+            // Lists all current presence channel members
             void ListMembers(GenericPresenceChannel<ChatMember> channel)
             {
                 Dictionary<string, ChatMember> members = channel.GetMembers();
@@ -570,7 +574,7 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             #region Code snippet
 
-            // Lists all current peresence channel members
+            // Lists all current presence channel members
             void ListMembers(GenericPresenceChannel<ChatMember> channel)
             {
                 Dictionary<string, ChatMember> members = channel.GetMembers();
@@ -748,6 +752,10 @@ namespace PusherClient.Tests.AcceptanceTests
                 else if (error is OperationTimeoutException timeoutError)
                 {
                     // A client operation has timed-out. Governed by PusherOptions.ClientTimeout
+                }
+                else if (error is ChannelDecryptionException decryptionError)
+                {
+                    // Failed to decrypt the data for a private encrypted channel
                 }
                 else
                 {

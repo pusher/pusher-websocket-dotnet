@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using PusherClient.Tests.Utilities;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Security.Cryptography;
 
 namespace PusherClient.Tests.AcceptanceTests
 {
@@ -92,13 +93,15 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task PusherEventEmitterPrivateEncryptedChannelTestAsync()
         {
             // Arrange
-            var pusherServer = new PusherServer.Pusher(Config.AppId, Config.AppKey, Config.AppSecret, new PusherServer.PusherOptions()
+            byte[] encryptionKey = GenerateEncryptionMasterKey();
+            var pusherServer = new PusherServer.Pusher(Config.AppId, Config.AppKey, Config.AppSecret, new PusherServer.PusherOptions
             {
-                HostName = Config.HttpHost,
+                Cluster = Config.Cluster,
+                EncryptionMasterKey = encryptionKey,
             });
 
             ChannelTypes channelType = ChannelTypes.PrivateEncrypted;
-            Pusher localPusher = PusherFactory.GetPusher(channelType: ChannelTypes.Presence, saveTo: _clients);
+            Pusher localPusher = PusherFactory.GetPusher(channelType: ChannelTypes.Presence, saveTo: _clients, encryptionKey: encryptionKey);
             string testEventName = "private-encrypted-event-test";
             AutoResetEvent globalEventReceived = new AutoResetEvent(false);
             AutoResetEvent channelEventReceived = new AutoResetEvent(false);
@@ -143,15 +146,92 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         [Test]
+        public async Task PusherEventEmitterPrivateEncryptedChannelDecryptionFailureTestAsync()
+        {
+            // Arrange
+            var pusherServer = new PusherServer.Pusher(Config.AppId, Config.AppKey, Config.AppSecret, new PusherServer.PusherOptions
+            {
+                Cluster = Config.Cluster,
+                EncryptionMasterKey = GenerateEncryptionMasterKey(),
+            });
+
+            ChannelDecryptionException decryptionException = null;
+            ChannelTypes channelType = ChannelTypes.PrivateEncrypted;
+
+            // Use a different encryption master key - decryption should fail
+            Pusher localPusher = PusherFactory.GetPusher(channelType: ChannelTypes.Presence, saveTo: _clients, encryptionKey: GenerateEncryptionMasterKey());
+            string testEventName = "private-encrypted-event-test";
+            AutoResetEvent globalEventReceived = new AutoResetEvent(false);
+            AutoResetEvent channelEventReceived = new AutoResetEvent(false);
+            AutoResetEvent errorReceived = new AutoResetEvent(false);
+            PusherEvent pusherEvent = CreatePusherEvent(channelType, testEventName);
+
+            await localPusher.ConnectAsync().ConfigureAwait(false);
+            Channel localChannel = await localPusher.SubscribeAsync(pusherEvent.ChannelName).ConfigureAwait(false);
+
+            void GeneralListener(string eventName, PusherEvent eventData)
+            {
+                if (eventName == testEventName)
+                {
+                    globalEventReceived.Set();
+                }
+            }
+
+            void Listener(PusherEvent eventData)
+            {
+                channelEventReceived.Set();
+            }
+
+            EventTestData data = new EventTestData
+            {
+                TextField = ExpectedTextField,
+                IntegerField = ExpectedIntegerField,
+            };
+
+            void ErrorHandler(object sender, PusherException error)
+            {
+                decryptionException = error as ChannelDecryptionException;
+                if (decryptionException != null)
+                {
+                    errorReceived.Set();
+                }
+            }
+
+            // Act
+            localPusher.Error += ErrorHandler;
+            localPusher.BindAll(GeneralListener);
+            localChannel.Bind(testEventName, Listener);
+            await pusherServer.TriggerAsync(pusherEvent.ChannelName, testEventName, data).ConfigureAwait(false);
+
+            // Assert
+            Assert.IsTrue(errorReceived.WaitOne(TimeSpan.FromSeconds(5)), "Expected to handle an error.");
+            Assert.IsNotNull(decryptionException.SocketID, nameof(decryptionException.SocketID));
+            Assert.AreEqual(testEventName, decryptionException.EventName, nameof(decryptionException.EventName));
+            Assert.AreEqual(localChannel.Name, decryptionException.ChannelName, nameof(decryptionException.ChannelName));
+            Assert.IsFalse(globalEventReceived.WaitOne(TimeSpan.FromSeconds(0.1)), "Did not expect to get a global event raised.");
+            Assert.IsFalse(channelEventReceived.WaitOne(TimeSpan.FromSeconds(0.1)), "Did not expect to get a channel event raised.");
+        }
+
+        [Test]
         public async Task PusherEventEmitterPrivateEncryptedChannelMultipleEventHandlersTestAsync()
         {
             await PusherMultipleEventEmitterTestAsync(ChannelTypes.PrivateEncrypted).ConfigureAwait(false);
         }
 
-
         #endregion
 
         #region Test helper functions
+
+        internal static byte[] GenerateEncryptionMasterKey()
+        {
+            byte[] encryptionMasterKey = new byte[32];
+            using (RandomNumberGenerator random = RandomNumberGenerator.Create())
+            {
+                random.GetBytes(encryptionMasterKey);
+            }
+
+            return encryptionMasterKey;
+        }
 
         private static PusherEvent CreatePusherEvent(ChannelTypes channelType, string eventName)
         {
@@ -407,13 +487,15 @@ namespace PusherClient.Tests.AcceptanceTests
         private async Task PusherMultipleEventEmitterTestAsync(ChannelTypes channelType)
         {
             // Arrange
+            byte[] encryptionKey = GenerateEncryptionMasterKey();
             string channelName = ChannelNameFactory.CreateUniqueChannelName(channelType: channelType);
             var pusherServer = new PusherServer.Pusher(Config.AppId, Config.AppKey, Config.AppSecret, new PusherServer.PusherOptions
             {
-                HostName = Config.HttpHost,
+                Cluster = Config.Cluster,
+                EncryptionMasterKey = encryptionKey,
             });
 
-            Pusher localPusher = PusherFactory.GetPusher(channelType: ChannelTypes.Presence, saveTo: _clients);
+            Pusher localPusher = PusherFactory.GetPusher(channelType: ChannelTypes.Presence, saveTo: _clients, encryptionKey: encryptionKey);
             string[] eventNames = new string[] { "my-event-1", "my-event-2", "my-event-3" };
             Dictionary<string, AutoResetEvent> channelEventReceived = new Dictionary<string, AutoResetEvent>(eventNames.Length);
             Dictionary<string, EventTestData> channelEvent = new Dictionary<string, EventTestData>(eventNames.Length);

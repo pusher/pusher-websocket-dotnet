@@ -86,7 +86,7 @@ namespace ExampleApplication
             _chatChannel.Bind("client-my-event", (PusherEvent eventData) =>
             {
                 ChatMessage data = JsonConvert.DeserializeObject<ChatMessage>(eventData.Data);
-                Console.WriteLine("[" + data.Name + "] " + data.Message);
+                Console.WriteLine($"{Environment.NewLine}[{data.Name}] {data.Message}");
             });
 
             // Setup presence channel
@@ -102,12 +102,41 @@ namespace ExampleApplication
             _presenceChannel.MemberAdded += PresenceChannel_MemberAdded;
             _presenceChannel.MemberRemoved += PresenceChannel_MemberRemoved;
 
+            // Listen for secret events
+            void GeneralListener(string eventName, PusherEvent eventData)
+            {
+                if (eventName == "secret-event")
+                {
+                    ChatMessage data = JsonConvert.DeserializeObject<ChatMessage>(eventData.Data);
+                    Console.WriteLine($"{Environment.NewLine}[{data.Name}] {data.Message}");
+                }
+            }
+
+            // Handle decryption error
+            void DecryptionErrorHandler(object sender, PusherException error)
+            {
+                if (error is ChannelDecryptionException exception)
+                {
+                    string errorMsg = $"{Environment.NewLine}Decryption of message failed";
+                    errorMsg += $" for ('{exception.ChannelName}',";
+                    errorMsg += $" '{exception.EventName}', ";
+                    errorMsg += $" '{exception.SocketID}')";
+                    errorMsg += $" for reason:{Environment.NewLine}{error.Message}";
+                    Console.WriteLine(errorMsg);
+                }
+            }
+
+            // Subcribe to private encrypted channel
+            _pusher.Error += DecryptionErrorHandler;
+            _pusher.BindAll(GeneralListener);
+            await _pusher.SubscribeAsync("private-encrypted-channel").ConfigureAwait(false);
+
             await _pusher.ConnectAsync().ConfigureAwait(false);
         }
 
         static void PusherError(object sender, PusherException error)
         {
-            Console.WriteLine("Pusher Error: " + error);
+            Console.WriteLine($"{Environment.NewLine}Pusher Error: {error.Message}{Environment.NewLine}{error}");
         }
 
         static void PusherConnectionStateChanged(object sender, ConnectionState state)

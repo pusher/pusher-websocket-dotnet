@@ -323,28 +323,35 @@ namespace PusherClient.Tests.AcceptanceTests
 
             pusher.Error += (sender, error) =>
             {
+                Trace.TraceError($"{error.Message}{Environment.NewLine}{error}");
                 errored = true;
             };
 
             // Act
-            await Task.Run(() =>
+            for (int i = 0; i < 1; i++)
             {
-                WebSocket socket = GetWebSocket(pusher);
-                socket.Close();
-            }).ConfigureAwait(false);
-            disconnectedEvent.WaitOne(TimeSpan.FromSeconds(5));
-            connectedEvent.WaitOne(TimeSpan.FromSeconds(5));
-            statusChangeEvent.WaitOne(TimeSpan.FromSeconds(5));
+                await Task.Run(() =>
+                {
+                    WebSocket socket = GetWebSocket(pusher);
+                    socket.Close();
+                }).ConfigureAwait(false);
+                disconnectedEvent.WaitOne(TimeSpan.FromSeconds(5));
+                disconnectedEvent.Reset();
+                connectedEvent.WaitOne(TimeSpan.FromSeconds(5));
+                connectedEvent.Reset();
+                statusChangeEvent.WaitOne(TimeSpan.FromSeconds(5));
+                statusChangeEvent.Reset();
+            }
 
             // Assert
             Assert.IsTrue(connected, nameof(connected));
             Assert.IsTrue(disconnected, nameof(disconnected));
-            Assert.IsFalse(errored, nameof(errored));
             Assert.AreEqual(expectedFinalCount, stateChangeLog.Count, nameof(expectedFinalCount));
-            Assert.AreEqual(ConnectionState.Disconnected, stateChangeLog[0]);
-            Assert.AreEqual(ConnectionState.WaitingToReconnect, stateChangeLog[1]);
-            Assert.AreEqual(ConnectionState.Connecting, stateChangeLog[2]);
-            Assert.AreEqual(ConnectionState.Connected, stateChangeLog[3]);
+            Assert.IsFalse(errored, nameof(errored));
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Disconnected), $"Expected state change {ConnectionState.Disconnected}");
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.WaitingToReconnect), $"Expected state change {ConnectionState.WaitingToReconnect}");
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Connecting), $"Expected state change {ConnectionState.Connecting}");
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Connected), $"Expected state change {ConnectionState.Connected}");
         }
 
         [Test]

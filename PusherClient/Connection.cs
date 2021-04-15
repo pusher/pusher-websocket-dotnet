@@ -14,6 +14,7 @@ namespace PusherClient
 
         private readonly string _url;
         private readonly IPusher _pusher;
+        private readonly IChannelDataDecrypter _dataDecrypter = new ChannelDataDecrypter();
 
         private int _backOffMillis;
 
@@ -253,6 +254,7 @@ namespace PusherClient
         private void WebsocketMessageReceived(object sender, MessageReceivedEventArgs e)
         {
             string eventName = null;
+            string channelName = null;
             try
             {
                 if (_pusher.PusherOptions.TraceLogger != null)
@@ -299,9 +301,15 @@ namespace PusherClient
 
                         if (message.ContainsKey("channel"))
                         {
-                            string channelName = (string)message["channel"];
+                            channelName = (string)message["channel"];
                             if (!ProcessPusherChannelEvent(eventName, channelName, messageData))
                             {
+                                byte[] decryptionKey = _pusher.GetSharedSecret(channelName);
+                                if (decryptionKey != null)
+                                {
+                                    message["data"] = _dataDecrypter.DecryptData(decryptionKey, EncryptedChannelData.CreateFromJson(messageData));
+                                }
+
                                 EmitEvent(eventName, rawJson, message);
                                 EmitChannelEvent(eventName, rawJson, channelName, message);
                             }
@@ -316,12 +324,35 @@ namespace PusherClient
             catch (Exception exception)
             {
                 string operation = nameof(WebsocketMessageReceived);
-                if (eventName != null)
+                PusherException error;
+                if (channelName != null)
                 {
-                    operation += $" for event '{eventName}'";
+                    if (exception is ChannelException channelException)
+                    {
+                        channelException.ChannelName = channelName;
+                        channelException.EventName = eventName;
+                        channelException.SocketID = SocketId;
+                        error = channelException;
+                    }
+                    else
+                    {
+                        error = new ChannelException($"An unexpected error was detected when performing the operation '{operation}'", ErrorCodes.MessageReceivedError, channelName, SocketId, exception)
+                        {
+                            EventName = eventName,
+                        };
+                    }
+                }
+                else
+                {
+                    if (eventName != null)
+                    {
+                        operation += $" for event '{eventName}'";
+                    }
+
+                    error = new OperationException(ErrorCodes.MessageReceivedError, operation, exception);
                 }
 
-                RaiseError(new OperationException(ErrorCodes.MessageReceivedError, operation, exception));
+                RaiseError(error);
             }
         }
 

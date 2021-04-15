@@ -15,7 +15,7 @@
     <PackageReference Include="nunit" Version="3.13.1" />
     <PackageReference Include="NUnit3TestAdapter" Version="3.17.0" />
     <PackageReference Include="NSubstitute" Version="1.10.0.0" />
-    <PackageReference Include="PusherServer" Version="4.4.0" />
+    <PackageReference Include="PusherServer" Version="4.6.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -129,7 +129,7 @@ namespace PusherClient
         /// </summary>
         /// <param name="channelName">The channel name</param>
         /// <returns>The channel type; Public, Private or Presence.</returns>
-        internal static ChannelTypes GetChannelType(string channelName)
+        public static ChannelTypes GetChannelType(string channelName)
         {
             Guard.ChannelName(channelName);
 

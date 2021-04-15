@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="PusherServer" Version="4.4.0" />
+    <PackageReference Include="PusherServer" Version="4.6.0" />
   </ItemGroup>
 
   <ItemGroup>

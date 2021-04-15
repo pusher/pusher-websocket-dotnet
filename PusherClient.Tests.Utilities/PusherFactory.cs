@@ -27,14 +27,14 @@ namespace PusherClient.Tests.Utilities
             return result;
         }
 
-        public static Pusher GetPusher(ChannelTypes channelType, string username = null, IList<Pusher> saveTo = null)
+        public static Pusher GetPusher(ChannelTypes channelType, string username = null, IList<Pusher> saveTo = null, byte[] encryptionKey = null)
         {
             Pusher result;
             switch (channelType)
             {
                 case ChannelTypes.Private:
                 case ChannelTypes.Presence:
-                    result = GetPusher(new FakeAuthoriser(username ?? UserNameFactory.CreateUniqueUserName()), saveTo: saveTo);
+                    result = GetPusher(new FakeAuthoriser(username ?? UserNameFactory.CreateUniqueUserName(), encryptionKey), saveTo: saveTo);
                     break;
 
                 default:

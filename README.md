@@ -39,6 +39,7 @@ For integrating **Pusher Channels** with **Unity** follow the instructions at <h
   - [Error handling](#error-handling)
   - [Public channels](#public-channels)
   - [Private channels](#private-channels)
+  - [Private encrypted channels](#private-encrypted-channels)
   - [Presence channels](#Presence-channels)
   - [Subscribed delegate](#subscribed-delegate)
   - [Unsubscribe](#unsubscribe)
@@ -99,7 +100,7 @@ Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
     Encrypted = true,
 });
 
-// Lists all current peresence channel members
+// Lists all current presence channel members
 void ListMembers(GenericPresenceChannel<ChatMember> channel)
 {
     Dictionary<string, ChatMember> members = channel.GetMembers();
@@ -149,6 +150,10 @@ void HandleError(object sender, PusherException error)
         else if (error is OperationTimeoutException timeoutError)
         {
             // A client operation has timed-out. Governed by PusherOptions.ClientTimeout
+        }
+        else if (error is ChannelDecryptionException decryptionError)
+        {
+            // Failed to decrypt the data for a private encrypted channel
         }
         else
         {
@@ -482,6 +487,10 @@ void ErrorHandler(object sender, PusherException error)
         {
             // A client operation has timed-out. Governed by PusherOptions.ClientTimeout
         }
+        else if (error is ChannelDecryptionException decryptionError)
+        {
+            // Failed to decrypt the data for a private encrypted channel
+        }
         else
         {
             // Handle other errors
@@ -602,6 +611,61 @@ catch (Exception)
 
 ```
 
+### Private encrypted channels
+
+Similar to Private channels, you can also subscribe to a
+[private encrypted channel](https://pusher.com/docs/channels/using_channels/encrypted-channels).
+This library now fully supports end-to-end encryption. This means that only you and your connected clients will be able to read your messages. Pusher cannot decrypt them.
+
+Like the private channel, you must provide your own authentication endpoint,
+with your own encryption master key. There is a
+[demonstration endpoint in the repo to look at using Nancy](https://github.com/pusher/pusher-websocket-dotnet/blob/master/AuthHost/AuthModule.cs).
+
+To get started you need to subscribe to your channel and bind to the events you are interested in;
+for example:
+
+```cs
+Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+{
+    Authorizer = new HttpAuthorizer("http://localhost:8888/auth/joe"),
+    Cluster = "eu",
+    Encrypted = true,
+});
+
+// Listen for secret events
+void GeneralListener(string eventName, PusherEvent eventData)
+{
+    if (eventName == "secret-event")
+    {
+        ChatMessage data = JsonConvert.DeserializeObject<ChatMessage>(eventData.Data);
+        Console.WriteLine($"{Environment.NewLine}[{data.Name}] {data.Message}");
+    }
+}
+
+// Handle decryption error
+void DecryptionErrorHandler(object sender, PusherException error)
+{
+    if (error is ChannelDecryptionException exception)
+    {
+        string errorMsg = $"{Environment.NewLine}Decryption of message failed";
+        errorMsg += $" for ('{exception.ChannelName}',";
+        errorMsg += $" '{exception.EventName}', ";
+        errorMsg += $" '{exception.SocketID}')";
+        errorMsg += $" for reason:{Environment.NewLine}{error.Message}";
+        Console.WriteLine(errorMsg);
+    }
+}
+
+// Subcribe to private encrypted channel
+pusher.Error += DecryptionErrorHandler;
+pusher.BindAll(GeneralListener);
+await pusher.SubscribeAsync("private-encrypted-channel").ConfigureAwait(false);
+
+await pusher.ConnectAsync().ConfigureAwait(false);
+```
+
+See [the example app](https://github.com/pusher/pusher-websocket-dotnet/tree/master/ExampleApplication) for the Pusher client implementation.
+
 ### Presence channels
 
 The name of a presence channel needs to start with `presence-`.
@@ -620,7 +684,7 @@ Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 });
 pusher.Error += ErrorHandler;
 
-// Lists all current peresence channel members
+// Lists all current presence channel members
 void ListMembers(GenericPresenceChannel<ChatMember> channel)
 {
     Dictionary<string, ChatMember> members = channel.GetMembers();
@@ -668,7 +732,7 @@ Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 });
 pusher.Error += ErrorHandler;
 
-// Lists all current peresence channel members
+// Lists all current presence channel members
 void ListMembers(GenericPresenceChannel<ChatMember> channel)
 {
     Dictionary<string, ChatMember> members = channel.GetMembers();
@@ -725,7 +789,7 @@ Detect all channel subscribed events using `Pusher.Subscribed`
 
 ```cs
 
-// Lists all current peresence channel members
+// Lists all current presence channel members
 void ListMembers(GenericPresenceChannel<ChatMember> channel)
 {
     Dictionary<string, ChatMember> members = channel.GetMembers();
@@ -778,7 +842,7 @@ Detect a subscribed event on a channel
 
 ```cs
 
-// Lists all current peresence channel members
+// Lists all current presence channel members
 void ListMembers(GenericPresenceChannel<ChatMember> channel)
 {
     Dictionary<string, ChatMember> members = channel.GetMembers();

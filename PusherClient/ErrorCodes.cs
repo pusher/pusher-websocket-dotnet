@@ -132,6 +132,11 @@
         PresenceChannelAlreadyDefined = 7504,
 
         /// <summary>
+        /// The data for a private encrypted channel could not be decrypted.
+        /// </summary>
+        ChannelDecryptionFailure = 7505,
+
+        /// <summary>
         /// An error was caught when emitting an event to the Pusher.Connected event handler.
         /// </summary>
         ConnectedEventHandlerError = 7601,

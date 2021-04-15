@@ -256,6 +256,18 @@ namespace PusherClient
             RaiseError(error);
         }
 
+        byte[] IPusher.GetSharedSecret(string channelName)
+        {
+            byte[] result = null;
+            Channel channel = GetChannel(channelName);
+            if (channel != null && channel is PrivateChannel privateChannel)
+            {
+                result = privateChannel.SharedSecret;
+            }
+
+            return result;
+        }
+
         /// <summary>
         /// Connect to the Pusher Server.
         /// </summary>
@@ -667,9 +679,11 @@ namespace PusherClient
             channel.IsSubscribed = false;
             if (exception is PusherException error)
             {
-                if (error is ChannelException channelException)
+                if (error is IChannelException channelException)
                 {
+                    channelException.ChannelName = channel.Name;
                     channelException.Channel = channel;
+                    channelException.SocketID = SocketID;
                     Channels.TryRemove(channel.Name, out _);
                 }
             }

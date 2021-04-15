@@ -5,7 +5,7 @@ namespace PusherClient
     /// <summary>
     /// This exception is raised when when a channel subscription error is detected.
     /// </summary>
-    public class ChannelException : PusherException
+    public class ChannelException : PusherException, IChannelException
     {
         /// <summary>
         /// Creates a new instance of a <see cref="ChannelException"/> class.
@@ -51,9 +51,14 @@ namespace PusherClient
         }
 
         /// <summary>
-        /// Gets the name of the channel for which the exception occured.
+        /// Gets or sets the name of the channel for which the exception occured.
         /// </summary>
-        public string ChannelName { get; private set; }
+        public string ChannelName { get; set; }
+
+        /// <summary>
+        /// Gets or sets the event name for which the exception occured. Note that this property is not always available and can be null.
+        /// </summary>
+        public string EventName { get; set; }
 
         /// <summary>
         /// Gets or sets the channel's message data if available.
@@ -61,12 +66,13 @@ namespace PusherClient
         public string MessageData { get; set; }
 
         /// <summary>
-        /// Gets the socket ID used in the authorization attempt.
+        /// Gets or sets the channel socket ID.
         /// </summary>
-        public string SocketID { get; private set; }
+        public string SocketID { get; set; }
 
         /// <summary>
-        /// Gets or sets the <see cref="Channel"/> that errored. Note that this value can be null.
+        /// Gets or sets the <see cref="Channel"/> that errored if available.
+        /// Note that this value can be null because the Channel object is not always available.
         /// </summary>
         public Channel Channel { get; set; }
     }
