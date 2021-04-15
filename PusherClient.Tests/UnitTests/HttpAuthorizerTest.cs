@@ -2,6 +2,7 @@
 using NUnit.Framework;
 using NUnit.Framework.Internal;
 using System;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 
 namespace PusherClient.Tests.UnitTests
@@ -34,6 +35,7 @@ namespace PusherClient.Tests.UnitTests
             var testHttpAuthorizer = new HttpAuthorizer(hostUrl + "/authz")
             {
                 Timeout = TimeSpan.FromSeconds(30),
+                AuthenticationHeader = new AuthenticationHeaderValue("Authorization", "Bearer noo6xaeN3cohYoozai4ar8doang7ai1elaeTh1di"),
             };
             var AuthToken = testHttpAuthorizer.Authorize("private-test", "fsfsdfsgsfs");
 
@@ -62,6 +64,7 @@ namespace PusherClient.Tests.UnitTests
             var testHttpAuthorizer = new HttpAuthorizer(hostUrl + "/authz")
             {
                 Timeout = TimeSpan.FromSeconds(30),
+                AuthenticationHeader = new AuthenticationHeaderValue("Authorization", "Bearer noo6xaeN3cohYoozai4ar8doang7ai1elaeTh1di"),
             };
             var AuthToken = await testHttpAuthorizer.AuthorizeAsync("private-test", "fsfsdfsgsfs").ConfigureAwait(false);
 

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 
 namespace PusherClient
@@ -21,6 +22,11 @@ namespace PusherClient
         {
             _authEndpoint = new Uri(authEndpoint);
         }
+
+        /// <summary>
+        /// Gets or sets the internal <see cref="HttpClient"/> authentication header.
+        /// </summary>
+        public AuthenticationHeaderValue AuthenticationHeader { get; set; }
 
         /// <summary>
         /// Gets or sets the timeout period for the authorizer. If not specified, the default timeout of 100 seconds is used.
@@ -67,11 +73,6 @@ namespace PusherClient
             string authToken = null;
             using (var httpClient = new HttpClient())
             {
-                if (Timeout.HasValue)
-                {
-                    httpClient.Timeout = Timeout.Value;
-                }
-
                 var data = new List<KeyValuePair<string, string>>
                 {
                     new KeyValuePair<string, string>("channel_name", channelName),
@@ -83,6 +84,7 @@ namespace PusherClient
                     HttpResponseMessage response = null;
                     try
                     {
+                        PreAuthorize(httpClient);
                         response = await httpClient.PostAsync(_authEndpoint, content).ConfigureAwait(false);
                     }
                     catch (Exception e)
@@ -118,6 +120,23 @@ namespace PusherClient
             }
 
             return authToken;
+        }
+
+        /// <summary>
+        /// Called before submitting the request to the authorization endpoint.
+        /// </summary>
+        /// <param name="httpClient">The <see cref="HttpClient"/> used to submit the authorization request.</param>
+        public virtual void PreAuthorize(HttpClient httpClient)
+        {
+            if (Timeout.HasValue)
+            {
+                httpClient.Timeout = Timeout.Value;
+            }
+
+            if (AuthenticationHeader != null)
+            {
+                httpClient.DefaultRequestHeaders.Authorization = AuthenticationHeader;
+            }
         }
     }
 }

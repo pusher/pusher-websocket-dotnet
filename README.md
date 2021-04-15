@@ -41,6 +41,7 @@ For integrating **Pusher Channels** with **Unity** follow the instructions at <h
   - [Private channels](#private-channels)
   - [Private encrypted channels](#private-encrypted-channels)
   - [Presence channels](#Presence-channels)
+  - [HttpAuthorizer](#httpauthorizer)
   - [Subscribed delegate](#subscribed-delegate)
   - [Unsubscribe](#unsubscribe)
 - [Binding to events](#binding-to-events)
@@ -777,6 +778,32 @@ catch (Exception)
     // Handle other errors
 }
 
+```
+
+### HttpAuthorizer
+
+The implementation of the `HttpAuthorizer` class which provides the default implementation of an 
+`IAuthorizer` has been modified to support the setting of an authentication header.
+
+Here is an example of how to set the bearer token in an authentication header:
+
+```cs
+var authorizer = new HttpAuthorizer("https:/some.authorizer.com/auth")
+{
+     AuthenticationHeader = new AuthenticationHeaderValue("Authorization", "Bearer noo6xaeN3cohYoozai4ar8doang7ai1elaeTh1di"),
+};
+var authToken = await authorizer.Authorize("private-test", "1234.9876");
+```
+
+If you require setting other headers you can override the `PreAuthorize` method on the `HttpAuthorizer` class.
+
+```cs
+public override void PreAuthorize(HttpClient httpClient)
+{
+    base.PreAuthorize(httpClient);
+
+    // Add headers or other settings to the httpClient before autorizing.
+}
 ```
 
 ### Subscribed delegate
