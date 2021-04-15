@@ -17,7 +17,7 @@ namespace PusherClient.Tests.AcceptanceTests
         private const int TimeoutRetryAttempts = 5;
         private readonly List<Pusher> _clients = new List<Pusher>(10);
 
-        private object _sync = new object();
+        private readonly object _sync = new object();
         private Pusher _client;
         private Exception _error;
 
@@ -34,6 +34,28 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             Pusher pusher = await ConnectTestAsync().ConfigureAwait(false);
             Assert.IsNotNull(pusher);
+        }
+
+        [Test]
+        public async Task PusherShouldSuccessfullyConnectWhenUsingTheHostOptionAsync()
+        {
+            // Arrange
+            PusherOptions options = new PusherOptions()
+            {
+                Host = $"ws-{Config.Cluster}.pusher.com",
+                Encrypted = Config.Encrypted,
+                TraceLogger = new TraceLogger(),
+            };
+
+            Pusher pusher = new Pusher(Config.AppKey, options);
+            _clients.Add(pusher);
+
+            // Act
+            await pusher.ConnectAsync().ConfigureAwait(false);
+
+            // Assert
+            Assert.IsNull(options.Cluster, nameof(options.Cluster));
+            Assert.AreEqual(ConnectionState.Connected, pusher.State, nameof(pusher.State));
         }
 
         [Test]
