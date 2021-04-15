@@ -98,7 +98,16 @@ namespace PusherClient
         /// </summary>
         public void Unsubscribe()
         {
-            Task.WaitAll(_pusher.ChannelUnsubscribeAsync(Name));
+            Task.WaitAll(UnsubscribeAsync());
+        }
+
+        /// <summary>
+        /// Removes the channel subscription.
+        /// </summary>
+        /// <returns>An awaitable <see cref="Task"/>.</returns>
+        public async Task UnsubscribeAsync()
+        {
+            await _pusher.ChannelUnsubscribeAsync(Name).ConfigureAwait(false);
         }
 
         /// <summary>
