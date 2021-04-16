@@ -803,7 +803,7 @@ public override void PreAuthorize(HttpClient httpClient)
 {
     base.PreAuthorize(httpClient);
 
-    // Add headers or other settings to the httpClient before autorizing.
+    // Add headers or other settings to the httpClient before authorizing.
 }
 ```
 
