@@ -23,6 +23,7 @@ namespace PusherClient
 
         private SemaphoreSlim _connectionSemaphore;
         private Exception _currentError;
+        private bool _autoReconnecting;
 
         public string SocketId { get; private set; }
 
@@ -182,16 +183,6 @@ namespace PusherClient
                     }
                 }
             }
-        }
-
-        private void DisposeWebsocket()
-        {
-            _currentError = null;
-            _websocket.Closed -= WebsocketAutoReconnect;
-            _websocket.Error -= WebsocketError;
-            _websocket.Dispose();
-            _websocket = null;
-            ChangeState(ConnectionState.Disconnected);
         }
 
         private void EmitChannelEvent(string eventName, string jsonMessage, string channelName, Dictionary<string, object> message)
@@ -392,12 +383,21 @@ namespace PusherClient
 
         private void WebsocketAutoReconnect(object sender, EventArgs e)
         {
-            DisposeWebsocket();
-            _websocket = new WebSocket(_url)
+            if (_autoReconnecting)
             {
-                EnableAutoSendPing = true,
-                AutoSendPingInterval = 1
-            };
+                return;
+            }
+
+            try
+            {
+                _autoReconnecting = true;
+                RecreateWebSocket();
+            }
+            catch
+            {
+                _autoReconnecting = false;
+                throw;
+            }
 
             Task.Run(() =>
             {
@@ -422,6 +422,7 @@ namespace PusherClient
                             }
 
                             ChangeState(ConnectionState.Connecting);
+
                             _websocket.MessageReceived += WebsocketMessageReceived;
                             _websocket.Closed += WebsocketAutoReconnect;
                             _websocket.Error += WebsocketError;
@@ -433,7 +434,32 @@ namespace PusherClient
                 {
                     RaiseError(new OperationException(ErrorCodes.ReconnectError, nameof(WebsocketAutoReconnect), error));
                 }
+                finally
+                {
+                    _autoReconnecting = false;
+                }
             });
+        }
+
+        private void DisposeWebsocket()
+        {
+            _currentError = null;
+            _websocket.MessageReceived -= WebsocketMessageReceived;
+            _websocket.Closed -= WebsocketAutoReconnect;
+            _websocket.Error -= WebsocketError;
+            _websocket.Dispose();
+            _websocket = null;
+            ChangeState(ConnectionState.Disconnected);
+        }
+
+        private void RecreateWebSocket()
+        {
+            DisposeWebsocket();
+            _websocket = new WebSocket(_url)
+            {
+                EnableAutoSendPing = true,
+                AutoSendPingInterval = 1
+            };
         }
 
         private void ParseError(JToken jToken)

@@ -377,6 +377,77 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         [Test]
+        public async Task PusherShouldSuccessfullyReconnectWhenTheUnderlyingSocketIsClosedMultipleTimesAsync()
+        {
+            // Arrange
+            AutoResetEvent connectedEvent = new AutoResetEvent(false);
+            AutoResetEvent disconnectedEvent = new AutoResetEvent(false);
+            AutoResetEvent statusChangeEvent = new AutoResetEvent(false);
+            bool connected = false;
+            bool disconnected = false;
+            bool errored = false;
+            int stateChangedCount = 0;
+            List<ConnectionState> stateChangeLog = new List<ConnectionState>();
+            object sync = new object();
+            var pusher = await ConnectTestAsync().ConfigureAwait(false);
+
+            pusher.Connected += sender =>
+            {
+                connected = true;
+                connectedEvent.Set();
+                connectedEvent.Reset();
+            };
+
+            pusher.ConnectionStateChanged += (sender, state) =>
+            {
+                Pusher origin = sender as Pusher;
+                lock (sync)
+                {
+                    stateChangedCount++;
+                    stateChangeLog.Add(state);
+                }
+            };
+
+            pusher.Disconnected += sender =>
+            {
+                Pusher origin = sender as Pusher;
+                Trace.TraceInformation($"Disconnected[{origin.SocketID}]");
+                disconnected = true;
+                disconnectedEvent.Set();
+                disconnectedEvent.Reset();
+            };
+
+            pusher.Error += (sender, error) =>
+            {
+                Pusher origin = sender as Pusher;
+                Trace.TraceError($"Error[{origin.SocketID}]: {error.Message}{Environment.NewLine}{error}");
+                errored = true;
+            };
+
+            // Act
+            for (int i = 0; i < 3; i++)
+            {
+                await Task.Run(() =>
+                {
+                    WebSocket socket = GetWebSocket(pusher);
+                    socket.Close();
+                }).ConfigureAwait(false);
+                disconnectedEvent.WaitOne(TimeSpan.FromSeconds(5));
+                connectedEvent.WaitOne(TimeSpan.FromSeconds(5));
+            }
+
+            // Assert
+            Assert.IsTrue(connected, nameof(connected));
+            Assert.IsTrue(disconnected, nameof(disconnected));
+            Assert.IsFalse(errored, nameof(errored));
+            Assert.AreEqual(ConnectionState.Connected, pusher.State, nameof(pusher.State));
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Disconnected), $"Expected state change {ConnectionState.Disconnected}");
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.WaitingToReconnect), $"Expected state change {ConnectionState.WaitingToReconnect}");
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Connecting), $"Expected state change {ConnectionState.Connecting}");
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Connected), $"Expected state change {ConnectionState.Connected}");
+        }
+
+        [Test]
         public async Task PusherShouldErrorWhenGivenAnInvalidAppKeyAsync()
         {
             // Arrange
@@ -628,9 +699,10 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 lock (sync)
                 {
+                    Pusher origin = sender as Pusher;
                     stateChangedCount++;
                     stateChangeLog.Add(state);
-                    Trace.TraceInformation($"[{stateChangedCount}, {DateTime.Now:O}]: {state}");
+                    Trace.TraceInformation($"[{stateChangedCount}, {DateTime.Now:O}, {origin.SocketID}]: {state}");
                 }
 
                 try

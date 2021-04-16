@@ -37,6 +37,11 @@
         PathNotFound = 4005,
 
         /// <summary>
+        /// Connection not authorized within timeout.
+        /// </summary>
+        ConnectionNotAuthorizedWithinTimeout = 4009,
+
+        /// <summary>
         /// The client has exceeded its rate limit.
         /// </summary>
         ClientOverRateLimit = 4301,

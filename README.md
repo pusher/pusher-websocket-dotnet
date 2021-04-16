@@ -50,6 +50,7 @@ For integrating **Pusher Channels** with **Unity** follow the instructions at <h
 - [Triggering events](#triggering-events)
 - [Developer notes](#developer-notes)
   - [Testing](#testing)
+  - [Code signing key generation](#code-signing-key-generation)
   - [Migrating from version 1 to version 2](#migrating-from-version-1-to-version-2)
     - [Changed in the Pusher class](#changed-in-the-pusher-class)
     - [Removed from the Pusher class](#removed-from-the-pusher-class)
@@ -1070,6 +1071,8 @@ The majority of the tests are concurrency tests and the more the number of CPU(s
 
 Also, a random latency is induced when authorizing a subscription. This is to weed out some of the concurrency issues. This adds to the time it takes to run all the tests. If you are running the tests often, you can speed things up by disabling the latency induction. Set the property `EnableAuthorizationLatency` to false in `AppConfig.test.json`.
 
+Some of the tests have trace statements using `System.Diagnostics.Trace`. One way to view them is to debug a test and open the Output\Debug window.
+
 ### Code signing key generation
 
 To generate a new signing key, open a PowerShell command console and execute the command
@@ -1085,7 +1088,8 @@ Take the base 64 encoded string and add it to the environment secret named CI_CO
 Also copy the PublicKey text and apply it to the code file ./PusherClient/Properties/AssemblyInfo.Signed.cs; for example
 
 ```cs
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("PusherClient.Tests, PublicKey=0024...7dd")]
+[assembly: InternalsVisibleTo("PusherClient.Tests, PublicKey=00240...8c1")]
+[assembly: InternalsVisibleTo("PusherClient.Tests.Utilities, PublicKey=00240...8c1")]
 ```
 
 ### Migrating from version 1 to version 2
