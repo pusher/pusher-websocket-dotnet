@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Nancy;
+using PusherClient;
 using PusherClient.Tests.Utilities;
 using PusherServer;
 
@@ -14,9 +16,16 @@ namespace AuthHost
 
         public string PusherApplicationSecret => Config.AppSecret;
 
+        public const string EncryptionMasterKeyText = "Rk4twMwEogcmx5dpV+6puT+nNidXoRd3smLvWR57FbQ=";
+
         public AuthModule()
         {
-            var provider = new Pusher(PusherApplicationId, PusherApplicationKey, PusherApplicationSecret);
+            PusherServer.PusherOptions options = new PusherServer.PusherOptions
+            {
+                EncryptionMasterKey = Convert.FromBase64String(EncryptionMasterKeyText),
+                Cluster = Config.Cluster,
+            };
+            var provider = new PusherServer.Pusher(PusherApplicationId, PusherApplicationKey, PusherApplicationSecret, options);
 
             Post["/auth/{username}", ctx => ctx.Request.Form.channel_name && ctx.Request.Form.socket_id] = _ =>
             {
@@ -27,7 +36,7 @@ namespace AuthHost
 
                 string authData = null;
 
-                if (channelName.StartsWith("presence-"))
+                if (Channel.GetChannelType(channelName) == ChannelTypes.Presence)
                 {
                     var channelData = new PresenceChannelData
                     {
@@ -42,8 +51,35 @@ namespace AuthHost
                     authData = provider.Authenticate(channelName, socketId).ToJson();
                 }
 
+                if (Channel.GetChannelType(channelName) == ChannelTypes.PrivateEncrypted)
+                {
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+                    SendSecretMessageAsync();
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+                }
+
                 return authData;
             };
+        }
+
+        private async Task SendSecretMessageAsync()
+        {
+            await Task.Delay(5000).ConfigureAwait(false);
+            PusherServer.PusherOptions options = new PusherServer.PusherOptions
+            {
+                EncryptionMasterKey = Convert.FromBase64String(EncryptionMasterKeyText),
+                Cluster = Config.Cluster,
+            };
+            string channelName = "private-encrypted-channel";
+            string eventName = "secret-event";
+            var provider = new PusherServer.Pusher(PusherApplicationId, PusherApplicationKey, PusherApplicationSecret, options);
+            string secretMessage = $"sent secret at {DateTime.Now} on '{channelName}' using event '{eventName}'.";
+            await provider.TriggerAsync(channelName, eventName, new
+            {
+                Name = nameof(AuthModule),
+                Message = secretMessage,
+            }).ConfigureAwait(false);
+            Console.WriteLine(secretMessage);
         }
     }
 }

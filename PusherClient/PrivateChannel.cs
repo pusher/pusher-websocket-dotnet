@@ -9,5 +9,7 @@
             : base(channelName, pusher)
         {
         }
+
+        internal byte[] SharedSecret { get; set; }
     }
 }

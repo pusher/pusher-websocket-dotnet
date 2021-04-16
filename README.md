@@ -21,9 +21,7 @@ For integrating **Pusher Channels** with **Unity** follow the instructions at <h
 * .NET 4.7.2
 * Unity 2018 and greater via [pusher-websocket-unity](https://github.com/pusher/pusher-websocket-unity)
 
-## TOC
-
-Contents:
+## Contents
 
 - [Installation](#installation)
 - [API](#api)
@@ -41,7 +39,9 @@ Contents:
   - [Error handling](#error-handling)
   - [Public channels](#public-channels)
   - [Private channels](#private-channels)
+  - [Private encrypted channels](#private-encrypted-channels)
   - [Presence channels](#Presence-channels)
+  - [HttpAuthorizer](#httpauthorizer)
   - [Subscribed delegate](#subscribed-delegate)
   - [Unsubscribe](#unsubscribe)
 - [Binding to events](#binding-to-events)
@@ -50,15 +50,16 @@ Contents:
 - [Triggering events](#triggering-events)
 - [Developer notes](#developer-notes)
   - [Testing](#testing)
+  - [Code signing key generation](#code-signing-key-generation)
   - [Migrating from version 1 to version 2](#migrating-from-version-1-to-version-2)
-    - [Added to the Pusher class](#added-to-the-pusher-class)
     - [Changed in the Pusher class](#changed-in-the-pusher-class)
     - [Removed from the Pusher class](#removed-from-the-pusher-class)
     - [Removed from the Channel class](#removed-from-the-channel-class)
-    - [Added to the GenericPresenceChannel class](#added-to-the-genericpresencechannel-class)
-    - [Changed in the GenericPresenceChannel class](#changed-in-the-genericpresencechannel-class)
     - [Removed from the GenericPresenceChannel class](#removed-from-the-genericpresencechannel-class)
     - [Removed from the ConnectionState enum](#removed-from-the-connectionstate-enum)
+    - [Changed in the GenericPresenceChannel class](#changed-in-the-genericpresencechannel-class)
+    - [Added to the Pusher class](#added-to-the-pusher-class)
+    - [Added to the GenericPresenceChannel class](#added-to-the-genericpresencechannel-class)
     - [Added to the ErrorCodes enum](#added-to-the-errorcodes-enum)
 - [License](#license)
 
@@ -101,7 +102,7 @@ Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
     Encrypted = true,
 });
 
-// Lists all current peresence channel members
+// Lists all current presence channel members
 void ListMembers(GenericPresenceChannel<ChatMember> channel)
 {
     Dictionary<string, ChatMember> members = channel.GetMembers();
@@ -151,6 +152,10 @@ void HandleError(object sender, PusherException error)
         else if (error is OperationTimeoutException timeoutError)
         {
             // A client operation has timed-out. Governed by PusherOptions.ClientTimeout
+        }
+        else if (error is ChannelDecryptionException decryptionError)
+        {
+            // Failed to decrypt the data for a private encrypted channel
         }
         else
         {
@@ -484,6 +489,10 @@ void ErrorHandler(object sender, PusherException error)
         {
             // A client operation has timed-out. Governed by PusherOptions.ClientTimeout
         }
+        else if (error is ChannelDecryptionException decryptionError)
+        {
+            // Failed to decrypt the data for a private encrypted channel
+        }
         else
         {
             // Handle other errors
@@ -604,6 +613,61 @@ catch (Exception)
 
 ```
 
+### Private encrypted channels
+
+Similar to Private channels, you can also subscribe to a
+[private encrypted channel](https://pusher.com/docs/channels/using_channels/encrypted-channels).
+This library now fully supports end-to-end encryption. This means that only you and your connected clients will be able to read your messages. Pusher cannot decrypt them.
+
+Like the private channel, you must provide your own authentication endpoint,
+with your own encryption master key. There is a
+[demonstration endpoint in the repo to look at using Nancy](https://github.com/pusher/pusher-websocket-dotnet/blob/master/AuthHost/AuthModule.cs).
+
+To get started you need to subscribe to your channel and bind to the events you are interested in;
+for example:
+
+```cs
+Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+{
+    Authorizer = new HttpAuthorizer("http://localhost:8888/auth/joe"),
+    Cluster = "eu",
+    Encrypted = true,
+});
+
+// Listen for secret events
+void GeneralListener(string eventName, PusherEvent eventData)
+{
+    if (eventName == "secret-event")
+    {
+        ChatMessage data = JsonConvert.DeserializeObject<ChatMessage>(eventData.Data);
+        Console.WriteLine($"{Environment.NewLine}[{data.Name}] {data.Message}");
+    }
+}
+
+// Handle decryption error
+void DecryptionErrorHandler(object sender, PusherException error)
+{
+    if (error is ChannelDecryptionException exception)
+    {
+        string errorMsg = $"{Environment.NewLine}Decryption of message failed";
+        errorMsg += $" for ('{exception.ChannelName}',";
+        errorMsg += $" '{exception.EventName}', ";
+        errorMsg += $" '{exception.SocketID}')";
+        errorMsg += $" for reason:{Environment.NewLine}{error.Message}";
+        Console.WriteLine(errorMsg);
+    }
+}
+
+// Subcribe to private encrypted channel
+pusher.Error += DecryptionErrorHandler;
+pusher.BindAll(GeneralListener);
+await pusher.SubscribeAsync("private-encrypted-channel").ConfigureAwait(false);
+
+await pusher.ConnectAsync().ConfigureAwait(false);
+```
+
+See [the example app](https://github.com/pusher/pusher-websocket-dotnet/tree/master/ExampleApplication) for the Pusher client implementation.
+
 ### Presence channels
 
 The name of a presence channel needs to start with `presence-`.
@@ -622,7 +686,7 @@ Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 });
 pusher.Error += ErrorHandler;
 
-// Lists all current peresence channel members
+// Lists all current presence channel members
 void ListMembers(GenericPresenceChannel<ChatMember> channel)
 {
     Dictionary<string, ChatMember> members = channel.GetMembers();
@@ -670,7 +734,7 @@ Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 });
 pusher.Error += ErrorHandler;
 
-// Lists all current peresence channel members
+// Lists all current presence channel members
 void ListMembers(GenericPresenceChannel<ChatMember> channel)
 {
     Dictionary<string, ChatMember> members = channel.GetMembers();
@@ -717,6 +781,32 @@ catch (Exception)
 
 ```
 
+### HttpAuthorizer
+
+The implementation of the `HttpAuthorizer` class which provides the default implementation of an 
+`IAuthorizer` has been modified to support the setting of an authentication header.
+
+Here is an example of how to set the bearer token in an authentication header:
+
+```cs
+var authorizer = new HttpAuthorizer("https:/some.authorizer.com/auth")
+{
+     AuthenticationHeader = new AuthenticationHeaderValue("Authorization", "Bearer noo6xaeN3cohYoozai4ar8doang7ai1elaeTh1di"),
+};
+var authToken = await authorizer.Authorize("private-test", "1234.9876");
+```
+
+If you require setting other headers you can override the `PreAuthorize` method on the `HttpAuthorizer` class.
+
+```cs
+public override void PreAuthorize(HttpClient httpClient)
+{
+    base.PreAuthorize(httpClient);
+
+    // Add headers or other settings to the httpClient before autorizing.
+}
+```
+
 ### Subscribed delegate
 
 The `Subscribed` delegate is invoked when a channel is subscribed to. There are two different ways to specify a Subscribed event handler:
@@ -727,7 +817,7 @@ Detect all channel subscribed events using `Pusher.Subscribed`
 
 ```cs
 
-// Lists all current peresence channel members
+// Lists all current presence channel members
 void ListMembers(GenericPresenceChannel<ChatMember> channel)
 {
     Dictionary<string, ChatMember> members = channel.GetMembers();
@@ -780,7 +870,7 @@ Detect a subscribed event on a channel
 
 ```cs
 
-// Lists all current peresence channel members
+// Lists all current presence channel members
 void ListMembers(GenericPresenceChannel<ChatMember> channel)
 {
     Dictionary<string, ChatMember> members = channel.GetMembers();
@@ -981,6 +1071,27 @@ The majority of the tests are concurrency tests and the more the number of CPU(s
 
 Also, a random latency is induced when authorizing a subscription. This is to weed out some of the concurrency issues. This adds to the time it takes to run all the tests. If you are running the tests often, you can speed things up by disabling the latency induction. Set the property `EnableAuthorizationLatency` to false in `AppConfig.test.json`.
 
+Some of the tests have trace statements using `System.Diagnostics.Trace`. One way to view them is to debug a test and open the Output\Debug window.
+
+### Code signing key generation
+
+To generate a new signing key, open a PowerShell command console and execute the command
+
+```powershell
+./StrongName/GeneratePusherKey.ps1
+```
+
+Copy the public key file `PusherClient.public.snk` to the source root folder.
+
+Take the base 64 encoded string and add it to the environment secret named CI_CODE_SIGN_KEY. This is used by `publish.yml`. Once this step is done remove all traces of the private signing key file.
+
+Also copy the PublicKey text and apply it to the code file ./PusherClient/Properties/AssemblyInfo.Signed.cs; for example
+
+```cs
+[assembly: InternalsVisibleTo("PusherClient.Tests, PublicKey=00240...8c1")]
+[assembly: InternalsVisibleTo("PusherClient.Tests.Utilities, PublicKey=00240...8c1")]
+```
+
 ### Migrating from version 1 to version 2
 
 You are encouraged to move to the Pusher Client SDK version 2. This major release includes a number of bug fixes and performance improvements. See the [changelog](https://github.com/pusher/pusher-websocket-dotnet/blob/master/CHANGELOG.md) for more information.
@@ -1024,7 +1135,7 @@ These states have been removed:
 
 #### Changed in the GenericPresenceChannel class
 
-The signature of the `MemberRemoved` delegate has changed from `MemberRemovedEventHandler MemberRemoved` to `MemberRemovedEventHandler<T> MemberRemoved`. This addresses issue #35.
+The signature of the `MemberRemoved` delegate has changed from `MemberRemovedEventHandler MemberRemoved` to `MemberRemovedEventHandler<T> MemberRemoved`.
 
 #### Added to the Pusher class
 
@@ -1082,7 +1193,6 @@ public async Task UnsubscribeAllAsync()
     // ...
 }
 ```
-
 
 #### Added to the GenericPresenceChannel class
 

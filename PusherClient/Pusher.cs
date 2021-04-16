@@ -256,6 +256,18 @@ namespace PusherClient
             RaiseError(error);
         }
 
+        byte[] IPusher.GetSharedSecret(string channelName)
+        {
+            byte[] result = null;
+            Channel channel = GetChannel(channelName);
+            if (channel != null && channel is PrivateChannel privateChannel)
+            {
+                result = privateChannel.SharedSecret;
+            }
+
+            return result;
+        }
+
         /// <summary>
         /// Connect to the Pusher Server.
         /// </summary>
@@ -667,9 +679,11 @@ namespace PusherClient
             channel.IsSubscribed = false;
             if (exception is PusherException error)
             {
-                if (error is ChannelException channelException)
+                if (error is IChannelException channelException)
                 {
+                    channelException.ChannelName = channel.Name;
                     channelException.Channel = channel;
+                    channelException.SocketID = SocketID;
                     Channels.TryRemove(channel.Name, out _);
                 }
             }
@@ -702,6 +716,16 @@ namespace PusherClient
                 channelData = jToken.Value<string>();
             }
 
+            jToken = jObject.SelectToken("shared_secret");
+            if (jToken != null &&
+                jToken.Type == JTokenType.String &&
+                channel.ChannelType == ChannelTypes.PrivateEncrypted &&
+                channel is PrivateChannel privateChannel)
+            {
+                string secret = jToken.Value<string>();
+                privateChannel.SharedSecret = Convert.FromBase64String(secret);
+            }
+
             PusherChannelSubscriptionData data = new PusherAuthorizedChannelSubscriptionData(channelName, auth, channelData);
             return DefaultSerializer.Default.Serialize(new PusherChannelSubscribeEvent(data));
         }
@@ -719,6 +743,7 @@ namespace PusherClient
             switch (type)
             {
                 case ChannelTypes.Private:
+                case ChannelTypes.PrivateEncrypted:
                     AuthEndpointCheck(channelName);
                     result = new PrivateChannel(channelName, this);
                     break;
@@ -756,6 +781,12 @@ namespace PusherClient
             {
                 string errorMsg = $"Failed to trigger event '{eventName}'. Client events are only supported on private (non-encrypted) and presence channels.";
                 throw new TriggerEventException(errorMsg, ErrorCodes.TriggerEventPublicChannelError);
+            }
+
+            if (Channel.GetChannelType(channelName) == ChannelTypes.PrivateEncrypted)
+            {
+                string errorMsg = $"Failed to trigger event '{eventName}'. Client events are not supported on private encrypted channels.";
+                throw new TriggerEventException(errorMsg, ErrorCodes.TriggerEventPrivateEncryptedChannelError);
             }
 
             string token = "client-";

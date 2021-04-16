@@ -17,7 +17,7 @@ namespace PusherClient.Tests.AcceptanceTests
         private const int TimeoutRetryAttempts = 5;
         private readonly List<Pusher> _clients = new List<Pusher>(10);
 
-        private object _sync = new object();
+        private readonly object _sync = new object();
         private Pusher _client;
         private Exception _error;
 
@@ -34,6 +34,28 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             Pusher pusher = await ConnectTestAsync().ConfigureAwait(false);
             Assert.IsNotNull(pusher);
+        }
+
+        [Test]
+        public async Task PusherShouldSuccessfullyConnectWhenUsingTheHostOptionAsync()
+        {
+            // Arrange
+            PusherOptions options = new PusherOptions()
+            {
+                Host = $"ws-{Config.Cluster}.pusher.com",
+                Encrypted = Config.Encrypted,
+                TraceLogger = new TraceLogger(),
+            };
+
+            Pusher pusher = new Pusher(Config.AppKey, options);
+            _clients.Add(pusher);
+
+            // Act
+            await pusher.ConnectAsync().ConfigureAwait(false);
+
+            // Assert
+            Assert.IsNull(options.Cluster, nameof(options.Cluster));
+            Assert.AreEqual(ConnectionState.Connected, pusher.State, nameof(pusher.State));
         }
 
         [Test]
@@ -323,28 +345,106 @@ namespace PusherClient.Tests.AcceptanceTests
 
             pusher.Error += (sender, error) =>
             {
+                Trace.TraceError($"{error.Message}{Environment.NewLine}{error}");
                 errored = true;
             };
 
             // Act
-            await Task.Run(() =>
+            for (int i = 0; i < 1; i++)
             {
-                WebSocket socket = GetWebSocket(pusher);
-                socket.Close();
-            }).ConfigureAwait(false);
-            disconnectedEvent.WaitOne(TimeSpan.FromSeconds(5));
-            connectedEvent.WaitOne(TimeSpan.FromSeconds(5));
-            statusChangeEvent.WaitOne(TimeSpan.FromSeconds(5));
+                await Task.Run(() =>
+                {
+                    WebSocket socket = GetWebSocket(pusher);
+                    socket.Close();
+                }).ConfigureAwait(false);
+                disconnectedEvent.WaitOne(TimeSpan.FromSeconds(5));
+                disconnectedEvent.Reset();
+                connectedEvent.WaitOne(TimeSpan.FromSeconds(5));
+                connectedEvent.Reset();
+                statusChangeEvent.WaitOne(TimeSpan.FromSeconds(5));
+                statusChangeEvent.Reset();
+            }
+
+            // Assert
+            Assert.IsTrue(connected, nameof(connected));
+            Assert.IsTrue(disconnected, nameof(disconnected));
+            Assert.AreEqual(expectedFinalCount, stateChangeLog.Count, nameof(expectedFinalCount));
+            Assert.IsFalse(errored, nameof(errored));
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Disconnected), $"Expected state change {ConnectionState.Disconnected}");
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.WaitingToReconnect), $"Expected state change {ConnectionState.WaitingToReconnect}");
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Connecting), $"Expected state change {ConnectionState.Connecting}");
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Connected), $"Expected state change {ConnectionState.Connected}");
+        }
+
+        [Test]
+        public async Task PusherShouldSuccessfullyReconnectWhenTheUnderlyingSocketIsClosedMultipleTimesAsync()
+        {
+            // Arrange
+            AutoResetEvent connectedEvent = new AutoResetEvent(false);
+            AutoResetEvent disconnectedEvent = new AutoResetEvent(false);
+            AutoResetEvent statusChangeEvent = new AutoResetEvent(false);
+            bool connected = false;
+            bool disconnected = false;
+            bool errored = false;
+            int stateChangedCount = 0;
+            List<ConnectionState> stateChangeLog = new List<ConnectionState>();
+            object sync = new object();
+            var pusher = await ConnectTestAsync().ConfigureAwait(false);
+
+            pusher.Connected += sender =>
+            {
+                connected = true;
+                connectedEvent.Set();
+                connectedEvent.Reset();
+            };
+
+            pusher.ConnectionStateChanged += (sender, state) =>
+            {
+                Pusher origin = sender as Pusher;
+                lock (sync)
+                {
+                    stateChangedCount++;
+                    stateChangeLog.Add(state);
+                }
+            };
+
+            pusher.Disconnected += sender =>
+            {
+                Pusher origin = sender as Pusher;
+                Trace.TraceInformation($"Disconnected[{origin.SocketID}]");
+                disconnected = true;
+                disconnectedEvent.Set();
+                disconnectedEvent.Reset();
+            };
+
+            pusher.Error += (sender, error) =>
+            {
+                Pusher origin = sender as Pusher;
+                Trace.TraceError($"Error[{origin.SocketID}]: {error.Message}{Environment.NewLine}{error}");
+                errored = true;
+            };
+
+            // Act
+            for (int i = 0; i < 3; i++)
+            {
+                await Task.Run(() =>
+                {
+                    WebSocket socket = GetWebSocket(pusher);
+                    socket.Close();
+                }).ConfigureAwait(false);
+                disconnectedEvent.WaitOne(TimeSpan.FromSeconds(5));
+                connectedEvent.WaitOne(TimeSpan.FromSeconds(5));
+            }
 
             // Assert
             Assert.IsTrue(connected, nameof(connected));
             Assert.IsTrue(disconnected, nameof(disconnected));
             Assert.IsFalse(errored, nameof(errored));
-            Assert.AreEqual(expectedFinalCount, stateChangeLog.Count, nameof(expectedFinalCount));
-            Assert.AreEqual(ConnectionState.Disconnected, stateChangeLog[0]);
-            Assert.AreEqual(ConnectionState.WaitingToReconnect, stateChangeLog[1]);
-            Assert.AreEqual(ConnectionState.Connecting, stateChangeLog[2]);
-            Assert.AreEqual(ConnectionState.Connected, stateChangeLog[3]);
+            Assert.AreEqual(ConnectionState.Connected, pusher.State, nameof(pusher.State));
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Disconnected), $"Expected state change {ConnectionState.Disconnected}");
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.WaitingToReconnect), $"Expected state change {ConnectionState.WaitingToReconnect}");
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Connecting), $"Expected state change {ConnectionState.Connecting}");
+            Assert.IsTrue(stateChangeLog.Contains(ConnectionState.Connected), $"Expected state change {ConnectionState.Connected}");
         }
 
         [Test]
@@ -599,9 +699,10 @@ namespace PusherClient.Tests.AcceptanceTests
             {
                 lock (sync)
                 {
+                    Pusher origin = sender as Pusher;
                     stateChangedCount++;
                     stateChangeLog.Add(state);
-                    Trace.TraceInformation($"[{stateChangedCount}, {DateTime.Now:O}]: {state}");
+                    Trace.TraceInformation($"[{stateChangedCount}, {DateTime.Now:O}, {origin.SocketID}]: {state}");
                 }
 
                 try

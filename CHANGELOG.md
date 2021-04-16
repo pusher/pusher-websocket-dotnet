@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.0
+* [ADDED] Strong name to the PusherClient assembly.
+* [ADDED] Support for the authentication header on the HttpAuthorizer.
+* [ADDED] End-to-end encryption for private encrypted channels.
+* [ADDED] Method Channel.UnsubscribeAsync.
+* [ADDED] Host to PusherOptions.
+* [FIXED] The intermittent WebsocketAutoReconnect issue The socket is connecting, cannot connect again!
+
 ## 2.0.1
 * [FIXED] Filter on event name in event emitter.
 

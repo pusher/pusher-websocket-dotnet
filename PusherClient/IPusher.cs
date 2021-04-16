@@ -12,6 +12,6 @@
         void SubscriptionFailed(string channelName, string data);
         IEventBinder GetEventBinder(string eventBinderKey);
         IEventBinder GetChannelEventBinder(string eventBinderKey, string channelName);
-
+        byte[] GetSharedSecret(string channelName);
     }
 }

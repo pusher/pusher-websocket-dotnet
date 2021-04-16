@@ -14,6 +14,7 @@ namespace PusherClient
 
         private readonly string _url;
         private readonly IPusher _pusher;
+        private readonly IChannelDataDecrypter _dataDecrypter = new ChannelDataDecrypter();
 
         private int _backOffMillis;
 
@@ -22,6 +23,7 @@ namespace PusherClient
 
         private SemaphoreSlim _connectionSemaphore;
         private Exception _currentError;
+        private bool _autoReconnecting;
 
         public string SocketId { get; private set; }
 
@@ -183,17 +185,7 @@ namespace PusherClient
             }
         }
 
-        private void DisposeWebsocket()
-        {
-            _currentError = null;
-            _websocket.Closed -= WebsocketAutoReconnect;
-            _websocket.Error -= WebsocketError;
-            _websocket.Dispose();
-            _websocket = null;
-            ChangeState(ConnectionState.Disconnected);
-        }
-
-        private void ProcessChannelEvent(string eventName, string jsonMessage, string channelName, Dictionary<string, object> message)
+        private void EmitChannelEvent(string eventName, string jsonMessage, string channelName, Dictionary<string, object> message)
         {
             foreach (string key in EventEmitter.EmitterKeys)
             {
@@ -202,7 +194,7 @@ namespace PusherClient
             }
         }
 
-        private void ProcessEvent(string eventName, string jsonMessage, Dictionary<string, object> message)
+        private void EmitEvent(string eventName, string jsonMessage, Dictionary<string, object> message)
         {
             foreach (string key in EventEmitter.EmitterKeys)
             {
@@ -253,6 +245,7 @@ namespace PusherClient
         private void WebsocketMessageReceived(object sender, MessageReceivedEventArgs e)
         {
             string eventName = null;
+            string channelName = null;
             try
             {
                 if (_pusher.PusherOptions.TraceLogger != null)
@@ -299,11 +292,17 @@ namespace PusherClient
 
                         if (message.ContainsKey("channel"))
                         {
-                            string channelName = (string)message["channel"];
+                            channelName = (string)message["channel"];
                             if (!ProcessPusherChannelEvent(eventName, channelName, messageData))
                             {
-                                ProcessEvent(eventName, rawJson, message);
-                                ProcessChannelEvent(eventName, rawJson, channelName, message);
+                                byte[] decryptionKey = _pusher.GetSharedSecret(channelName);
+                                if (decryptionKey != null)
+                                {
+                                    message["data"] = _dataDecrypter.DecryptData(decryptionKey, EncryptedChannelData.CreateFromJson(messageData));
+                                }
+
+                                EmitEvent(eventName, rawJson, message);
+                                EmitChannelEvent(eventName, rawJson, channelName, message);
                             }
                         }
                         else
@@ -316,12 +315,35 @@ namespace PusherClient
             catch (Exception exception)
             {
                 string operation = nameof(WebsocketMessageReceived);
-                if (eventName != null)
+                PusherException error;
+                if (channelName != null)
                 {
-                    operation += $" for event '{eventName}'";
+                    if (exception is ChannelException channelException)
+                    {
+                        channelException.ChannelName = channelName;
+                        channelException.EventName = eventName;
+                        channelException.SocketID = SocketId;
+                        error = channelException;
+                    }
+                    else
+                    {
+                        error = new ChannelException($"An unexpected error was detected when performing the operation '{operation}'", ErrorCodes.MessageReceivedError, channelName, SocketId, exception)
+                        {
+                            EventName = eventName,
+                        };
+                    }
+                }
+                else
+                {
+                    if (eventName != null)
+                    {
+                        operation += $" for event '{eventName}'";
+                    }
+
+                    error = new OperationException(ErrorCodes.MessageReceivedError, operation, exception);
                 }
 
-                RaiseError(new OperationException(ErrorCodes.MessageReceivedError, operation, exception));
+                RaiseError(error);
             }
         }
 
@@ -361,12 +383,21 @@ namespace PusherClient
 
         private void WebsocketAutoReconnect(object sender, EventArgs e)
         {
-            DisposeWebsocket();
-            _websocket = new WebSocket(_url)
+            if (_autoReconnecting)
             {
-                EnableAutoSendPing = true,
-                AutoSendPingInterval = 1
-            };
+                return;
+            }
+
+            try
+            {
+                _autoReconnecting = true;
+                RecreateWebSocket();
+            }
+            catch
+            {
+                _autoReconnecting = false;
+                throw;
+            }
 
             Task.Run(() =>
             {
@@ -391,6 +422,7 @@ namespace PusherClient
                             }
 
                             ChangeState(ConnectionState.Connecting);
+
                             _websocket.MessageReceived += WebsocketMessageReceived;
                             _websocket.Closed += WebsocketAutoReconnect;
                             _websocket.Error += WebsocketError;
@@ -402,7 +434,32 @@ namespace PusherClient
                 {
                     RaiseError(new OperationException(ErrorCodes.ReconnectError, nameof(WebsocketAutoReconnect), error));
                 }
+                finally
+                {
+                    _autoReconnecting = false;
+                }
             });
+        }
+
+        private void DisposeWebsocket()
+        {
+            _currentError = null;
+            _websocket.MessageReceived -= WebsocketMessageReceived;
+            _websocket.Closed -= WebsocketAutoReconnect;
+            _websocket.Error -= WebsocketError;
+            _websocket.Dispose();
+            _websocket = null;
+            ChangeState(ConnectionState.Disconnected);
+        }
+
+        private void RecreateWebSocket()
+        {
+            DisposeWebsocket();
+            _websocket = new WebSocket(_url)
+            {
+                EnableAutoSendPing = true,
+                AutoSendPingInterval = 1
+            };
         }
 
         private void ParseError(JToken jToken)

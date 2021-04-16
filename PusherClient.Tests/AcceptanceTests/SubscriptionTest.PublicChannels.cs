@@ -67,6 +67,23 @@ namespace PusherClient.Tests.AcceptanceTests
             ValidateUnsubscribedChannel(pusher, channel);
         }
 
+        [Test]
+        public async Task PublicChannelUnsubscribeUsingChannelUnsubscribeDeadlockBugAsync()
+        {
+            // Arrange
+            var pusher = PusherFactory.GetPusher(saveTo: _clients);
+            var mockChannelName = ChannelNameFactory.CreateUniqueChannelName();
+
+            // Act
+            await pusher.ConnectAsync().ConfigureAwait(false);
+            var channel = await pusher.SubscribeAsync(mockChannelName).ConfigureAwait(false);
+
+            // Assert
+            ValidateSubscribedChannel(pusher, mockChannelName, channel, ChannelTypes.Public);
+
+            await DeadlockBugShutdown(channel, pusher);
+        }
+
         #endregion
 
         #region Subscribe then connect tests
@@ -109,6 +126,17 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task PublicChannelSubscribeThenUnsubscribeWithoutConnectingAsync()
         {
             await SubscribeThenUnsubscribeWithoutConnectingTestAsync(ChannelTypes.Public).ConfigureAwait(false);
+        }
+
+        #endregion
+
+        #region Helper methods
+
+        private Task DeadlockBugShutdown(Channel channel, Pusher pusherClient)
+        {
+            channel.UnbindAll();
+            channel.Unsubscribe();
+            return pusherClient.DisconnectAsync();
         }
 
         #endregion

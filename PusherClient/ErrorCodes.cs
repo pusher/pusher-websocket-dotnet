@@ -37,6 +37,11 @@
         PathNotFound = 4005,
 
         /// <summary>
+        /// Connection not authorized within timeout.
+        /// </summary>
+        ConnectionNotAuthorizedWithinTimeout = 4009,
+
+        /// <summary>
         /// The client has exceeded its rate limit.
         /// </summary>
         ClientOverRateLimit = 4301,
@@ -102,6 +107,11 @@
         TriggerEventPublicChannelError = 5104,
 
         /// <summary>
+        /// Attempt to trigger an event using a private encrypted channel.
+        /// </summary>
+        TriggerEventPrivateEncryptedChannelError = 5105,
+
+        /// <summary>
         /// The presence or private channel has not had its Authorizer set.
         /// </summary>
         ChannelAuthorizerNotSet = 7500,
@@ -125,6 +135,11 @@
         /// The presence channel is already defined using a different member type.
         /// </summary>
         PresenceChannelAlreadyDefined = 7504,
+
+        /// <summary>
+        /// The data for a private encrypted channel could not be decrypted.
+        /// </summary>
+        ChannelDecryptionFailure = 7505,
 
         /// <summary>
         /// An error was caught when emitting an event to the Pusher.Connected event handler.

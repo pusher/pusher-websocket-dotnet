@@ -21,14 +21,22 @@ namespace PusherClient.Tests.Utilities
 
         private readonly string _userName;
 
+        private readonly byte[] _encryptionKey;
+
         public FakeAuthoriser()
+            : this("Unknown")
         {
-            _userName = "Unknown";
         }
 
         public FakeAuthoriser(string userName)
+            : this(userName, null)
+        {
+        }
+
+        public FakeAuthoriser(string userName, byte[] encryptionKey)
         {
             _userName = userName;
+            _encryptionKey = encryptionKey;
         }
 
         public TimeSpan? Timeout { get; set; }
@@ -45,7 +53,12 @@ namespace PusherClient.Tests.Utilities
             Trace.TraceInformation($"{this.GetType().Name} paused for {Math.Round(delay, 3)} second(s)");
             await Task.Run(() =>
             {
-                var provider = new PusherServer.Pusher(Config.AppId, Config.AppKey, Config.AppSecret);
+                PusherServer.PusherOptions options = new PusherServer.PusherOptions
+                {
+                    EncryptionMasterKey = _encryptionKey,
+                    Cluster = Config.Cluster,
+                };
+                var provider = new PusherServer.Pusher(Config.AppId, Config.AppKey, Config.AppSecret, options);
                 if (channelName.StartsWith("presence-"))
                 {
                     var channelData = new PresenceChannelData

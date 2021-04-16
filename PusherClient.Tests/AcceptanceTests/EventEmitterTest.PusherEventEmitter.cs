@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using PusherClient.Tests.Utilities;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Security.Cryptography;
 
 namespace PusherClient.Tests.AcceptanceTests
 {
@@ -62,6 +63,12 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         [Test]
+        public async Task PusherEventEmitterPrivateChannelMultipleEventHandlersTestAsync()
+        {
+            await PusherMultipleEventEmitterTestAsync(ChannelTypes.Private).ConfigureAwait(false);
+        }
+
+        [Test]
         public async Task PusherEventEmitterPrivateChannelActionErrorTestAsync()
         {
             ChannelTypes channelType = ChannelTypes.Private;
@@ -83,102 +90,148 @@ namespace PusherClient.Tests.AcceptanceTests
         }
 
         [Test]
-        public async Task PusherEventEmitterPrivateChannelMultipleEventHandlersTestAsync()
+        public async Task PusherEventEmitterPrivateEncryptedChannelTestAsync()
         {
             // Arrange
-            var pusherServer = new PusherServer.Pusher(Config.AppId, Config.AppKey, Config.AppSecret, new PusherServer.PusherOptions()
+            byte[] encryptionKey = GenerateEncryptionMasterKey();
+            var pusherServer = new PusherServer.Pusher(Config.AppId, Config.AppKey, Config.AppSecret, new PusherServer.PusherOptions
             {
-                HostName = Config.HttpHost,
+                Cluster = Config.Cluster,
+                EncryptionMasterKey = encryptionKey,
             });
 
-            Pusher localPusher = PusherFactory.GetPusher(channelType: ChannelTypes.Presence, saveTo: _clients);
-            Dictionary<string, AutoResetEvent> channelEventReceived = new Dictionary<string, AutoResetEvent>
-            {
-                {"my-event-1",  new AutoResetEvent(false)},
-                {"my-event-2",  new AutoResetEvent(false)},
-                {"my-event-3",  new AutoResetEvent(false)},
-            };
-
-            Dictionary<string, PusherEvent> channelEvent = new Dictionary<string, PusherEvent>
-            {
-                {"my-event-1",  null},
-                {"my-event-2",  null},
-                {"my-event-3",  null},
-            };
-
-            Dictionary<string, int> channelEventReceivedCount = new Dictionary<string, int>
-            {
-                {"my-event-1",  0},
-                {"my-event-2",  0},
-                {"my-event-3",  0},
-            };
+            ChannelTypes channelType = ChannelTypes.PrivateEncrypted;
+            Pusher localPusher = PusherFactory.GetPusher(channelType: ChannelTypes.Presence, saveTo: _clients, encryptionKey: encryptionKey);
+            string testEventName = "private-encrypted-event-test";
+            AutoResetEvent globalEventReceived = new AutoResetEvent(false);
+            AutoResetEvent channelEventReceived = new AutoResetEvent(false);
+            PusherEvent globalEvent = null;
+            PusherEvent channelEvent = null;
+            PusherEvent pusherEvent = CreatePusherEvent(channelType, testEventName);
 
             await localPusher.ConnectAsync().ConfigureAwait(false);
-            Channel localChannel = await localPusher.SubscribeAsync("private-multiple-event-channel").ConfigureAwait(false);
+            Channel localChannel = await localPusher.SubscribeAsync(pusherEvent.ChannelName).ConfigureAwait(false);
 
-            void Listener1(PusherEvent eventData)
+            void GeneralListener(string eventName, PusherEvent eventData)
             {
-                string key = "my-event-1";
-                channelEventReceivedCount[key]++;
-                if (eventData.EventName == key)
+                if (eventName == testEventName)
                 {
-                    channelEvent[key] = eventData;
-                    channelEventReceived[key].Set();
+                    globalEvent = eventData;
+                    globalEventReceived.Set();
                 }
             }
 
-            void Listener2(PusherEvent eventData)
+            void Listener(PusherEvent eventData)
             {
-                string key = "my-event-2";
-                channelEventReceivedCount[key]++;
-                if (eventData.EventName == key)
-                {
-                    channelEvent[key] = eventData;
-                    channelEventReceived[key].Set();
-                }
+                channelEvent = eventData;
+                channelEventReceived.Set();
             }
 
-            void Listener3(PusherEvent eventData)
+            EventTestData data = new EventTestData
             {
-                string key = "my-event-3";
-                channelEventReceivedCount[key]++;
-                if (eventData.EventName == key)
-                {
-                    channelEvent[key] = eventData;
-                    channelEventReceived[key].Set();
-                }
-            }
-
-            List<EventTestData> data = new List<EventTestData>()
-            {
-                new EventTestData { TextField = "1", IntegerField = 1, },
-                new EventTestData { TextField = "2", IntegerField = 2, },
-                new EventTestData { TextField = "3", IntegerField = 3, },
+                TextField = ExpectedTextField,
+                IntegerField = ExpectedIntegerField,
             };
 
             // Act
-            localChannel.Bind("my-event-1", Listener1);
-            localChannel.Bind("my-event-2", Listener2);
-            localChannel.Bind("my-event-3", Listener3);
-            await pusherServer.TriggerAsync(localChannel.Name, "my-event-1", data[0]).ConfigureAwait(false);
-            await pusherServer.TriggerAsync(localChannel.Name, "my-event-2", data[1]).ConfigureAwait(false);
-            await pusherServer.TriggerAsync(localChannel.Name, "my-event-3", data[2]).ConfigureAwait(false);
+            localPusher.BindAll(GeneralListener);
+            localChannel.Bind(testEventName, Listener);
+            await pusherServer.TriggerAsync(pusherEvent.ChannelName, testEventName, data).ConfigureAwait(false);
 
             // Assert
-            foreach (var eventReceived in channelEventReceived)
+            Assert.IsTrue(globalEventReceived.WaitOne(TimeSpan.FromSeconds(5)));
+            Assert.IsTrue(channelEventReceived.WaitOne(TimeSpan.FromSeconds(5)));
+            AssertPusherEventsAreEqual(channelType, pusherEvent, globalEvent);
+            AssertPusherEventsAreEqual(channelType, pusherEvent, channelEvent);
+        }
+
+        [Test]
+        public async Task PusherEventEmitterPrivateEncryptedChannelDecryptionFailureTestAsync()
+        {
+            // Arrange
+            var pusherServer = new PusherServer.Pusher(Config.AppId, Config.AppKey, Config.AppSecret, new PusherServer.PusherOptions
             {
-                Assert.IsTrue(eventReceived.Value.WaitOne(TimeSpan.FromSeconds(5)), $"Event not received for {eventReceived.Key}");
+                Cluster = Config.Cluster,
+                EncryptionMasterKey = GenerateEncryptionMasterKey(),
+            });
+
+            ChannelDecryptionException decryptionException = null;
+            ChannelTypes channelType = ChannelTypes.PrivateEncrypted;
+
+            // Use a different encryption master key - decryption should fail
+            Pusher localPusher = PusherFactory.GetPusher(channelType: ChannelTypes.Presence, saveTo: _clients, encryptionKey: GenerateEncryptionMasterKey());
+            string testEventName = "private-encrypted-event-test";
+            AutoResetEvent globalEventReceived = new AutoResetEvent(false);
+            AutoResetEvent channelEventReceived = new AutoResetEvent(false);
+            AutoResetEvent errorReceived = new AutoResetEvent(false);
+            PusherEvent pusherEvent = CreatePusherEvent(channelType, testEventName);
+
+            await localPusher.ConnectAsync().ConfigureAwait(false);
+            Channel localChannel = await localPusher.SubscribeAsync(pusherEvent.ChannelName).ConfigureAwait(false);
+
+            void GeneralListener(string eventName, PusherEvent eventData)
+            {
+                if (eventName == testEventName)
+                {
+                    globalEventReceived.Set();
+                }
             }
 
-            foreach (var eventReceivedCount in channelEventReceivedCount)
+            void Listener(PusherEvent eventData)
             {
-                Assert.AreEqual(1, eventReceivedCount.Value, $"#Events received for {eventReceivedCount.Key}");
+                channelEventReceived.Set();
             }
+
+            EventTestData data = new EventTestData
+            {
+                TextField = ExpectedTextField,
+                IntegerField = ExpectedIntegerField,
+            };
+
+            void ErrorHandler(object sender, PusherException error)
+            {
+                decryptionException = error as ChannelDecryptionException;
+                if (decryptionException != null)
+                {
+                    errorReceived.Set();
+                }
+            }
+
+            // Act
+            localPusher.Error += ErrorHandler;
+            localPusher.BindAll(GeneralListener);
+            localChannel.Bind(testEventName, Listener);
+            await pusherServer.TriggerAsync(pusherEvent.ChannelName, testEventName, data).ConfigureAwait(false);
+
+            // Assert
+            Assert.IsTrue(errorReceived.WaitOne(TimeSpan.FromSeconds(5)), "Expected to handle an error.");
+            Assert.IsNotNull(decryptionException.SocketID, nameof(decryptionException.SocketID));
+            Assert.AreEqual(testEventName, decryptionException.EventName, nameof(decryptionException.EventName));
+            Assert.AreEqual(localChannel.Name, decryptionException.ChannelName, nameof(decryptionException.ChannelName));
+            Assert.IsFalse(globalEventReceived.WaitOne(TimeSpan.FromSeconds(0.1)), "Did not expect to get a global event raised.");
+            Assert.IsFalse(channelEventReceived.WaitOne(TimeSpan.FromSeconds(0.1)), "Did not expect to get a channel event raised.");
+        }
+
+        [Test]
+        public async Task PusherEventEmitterPrivateEncryptedChannelMultipleEventHandlersTestAsync()
+        {
+            await PusherMultipleEventEmitterTestAsync(ChannelTypes.PrivateEncrypted).ConfigureAwait(false);
         }
 
         #endregion
 
         #region Test helper functions
+
+        internal static byte[] GenerateEncryptionMasterKey()
+        {
+            byte[] encryptionMasterKey = new byte[32];
+            using (RandomNumberGenerator random = RandomNumberGenerator.Create())
+            {
+                random.GetBytes(encryptionMasterKey);
+            }
+
+            return encryptionMasterKey;
+        }
 
         private static PusherEvent CreatePusherEvent(ChannelTypes channelType, string eventName)
         {
@@ -428,6 +481,97 @@ namespace PusherClient.Tests.AcceptanceTests
                 }
 
                 Assert.AreEqual(totalEventsExpected[i], numberEventsReceived[i], $"# Event[{i}]");
+            }
+        }
+
+        private async Task PusherMultipleEventEmitterTestAsync(ChannelTypes channelType)
+        {
+            // Arrange
+            byte[] encryptionKey = GenerateEncryptionMasterKey();
+            string channelName = ChannelNameFactory.CreateUniqueChannelName(channelType: channelType);
+            var pusherServer = new PusherServer.Pusher(Config.AppId, Config.AppKey, Config.AppSecret, new PusherServer.PusherOptions
+            {
+                Cluster = Config.Cluster,
+                EncryptionMasterKey = encryptionKey,
+            });
+
+            Pusher localPusher = PusherFactory.GetPusher(channelType: ChannelTypes.Presence, saveTo: _clients, encryptionKey: encryptionKey);
+            string[] eventNames = new string[] { "my-event-1", "my-event-2", "my-event-3" };
+            Dictionary<string, AutoResetEvent> channelEventReceived = new Dictionary<string, AutoResetEvent>(eventNames.Length);
+            Dictionary<string, EventTestData> channelEvent = new Dictionary<string, EventTestData>(eventNames.Length);
+            Dictionary<string, int> channelEventReceivedCount = new Dictionary<string, int>(eventNames.Length);
+            List<EventTestData> data = new List<EventTestData>(eventNames.Length);
+
+            int count = 1;
+            foreach (string eventName in eventNames)
+            {
+                channelEventReceived[eventName] = new AutoResetEvent(false);
+                channelEvent[eventName] = null;
+                channelEventReceivedCount[eventName] = 0;
+                data.Add(new EventTestData { TextField = $"{count}", IntegerField = count++, });
+            }
+
+            await localPusher.ConnectAsync().ConfigureAwait(false);
+            Channel localChannel = await localPusher.SubscribeAsync(channelName).ConfigureAwait(false);
+
+            void Listener1(PusherEvent eventData)
+            {
+                string key = eventNames[0];
+                channelEventReceivedCount[key]++;
+                if (eventData.EventName == key && eventData.ChannelName == channelName)
+                {
+                    channelEvent[key] = JsonConvert.DeserializeObject<EventTestData>(eventData.Data);
+                    channelEventReceived[key].Set();
+                }
+            }
+
+            void Listener2(PusherEvent eventData)
+            {
+                string key = eventNames[1];
+                channelEventReceivedCount[key]++;
+                if (eventData.EventName == key && eventData.ChannelName == channelName)
+                {
+                    channelEvent[key] = JsonConvert.DeserializeObject<EventTestData>(eventData.Data);
+                    channelEventReceived[key].Set();
+                }
+            }
+
+            void Listener3(PusherEvent eventData)
+            {
+                string key = eventNames[2];
+                channelEventReceivedCount[key]++;
+                if (eventData.EventName == key && eventData.ChannelName == channelName)
+                {
+                    channelEvent[key] = JsonConvert.DeserializeObject<EventTestData>(eventData.Data);
+                    channelEventReceived[key].Set();
+                }
+            }
+
+            // Act
+            localChannel.Bind(eventNames[0], Listener1);
+            localChannel.Bind(eventNames[1], Listener2);
+            localChannel.Bind(eventNames[2], Listener3);
+            for (int i = 0; i < eventNames.Length; i++)
+            {
+                await pusherServer.TriggerAsync(localChannel.Name, eventNames[i], data[i]).ConfigureAwait(false);
+            }
+
+            // Assert
+            foreach (var eventReceived in channelEventReceived)
+            {
+                Assert.IsTrue(eventReceived.Value.WaitOne(TimeSpan.FromSeconds(5)), $"Event not received for {eventReceived.Key}");
+            }
+
+            foreach (var eventReceivedCount in channelEventReceivedCount)
+            {
+                Assert.AreEqual(1, eventReceivedCount.Value, $"#Events received for {eventReceivedCount.Key}");
+            }
+
+            for (int i = 0; i < eventNames.Length; i++)
+            {
+                string key = eventNames[i];
+                Assert.AreEqual(data[i].IntegerField, channelEvent[key].IntegerField, $"{key} IntegerField");
+                Assert.AreEqual(data[i].TextField, channelEvent[key].TextField, $"{key} TextField");
             }
         }
 

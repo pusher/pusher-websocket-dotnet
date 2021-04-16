@@ -18,6 +18,7 @@
         public const string SECURE_SCHEMA = "wss://";
 
         public const string PRIVATE_CHANNEL = "private-";
+        public const string PRIVATE_ENCRYPTED_CHANNEL = "private-encrypted-";
         public const string PRESENCE_CHANNEL = "presence-";
     }
 }

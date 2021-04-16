@@ -12,6 +12,9 @@ namespace PusherClient.Tests.Utilities
                 case ChannelTypes.Private:
                     channelPrefix = "private-";
                     break;
+                case ChannelTypes.PrivateEncrypted:
+                    channelPrefix = "private-encrypted-";
+                    break;
                 case ChannelTypes.Presence:
                     channelPrefix = "presence-";
                     break;

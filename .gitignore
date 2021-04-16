@@ -35,6 +35,9 @@ TestResults/
 # Secrets file
 AppConfig.test.json
 
+# Signing key
+PusherClient.snk
+
 # Custom
 _ReSharper.*/
 packages/

@@ -98,7 +98,16 @@ namespace PusherClient
         /// </summary>
         public void Unsubscribe()
         {
-            Task.WaitAll(_pusher.ChannelUnsubscribeAsync(Name));
+            Task.WaitAll(UnsubscribeAsync());
+        }
+
+        /// <summary>
+        /// Removes the channel subscription.
+        /// </summary>
+        /// <returns>An awaitable <see cref="Task"/>.</returns>
+        public async Task UnsubscribeAsync()
+        {
+            await _pusher.ChannelUnsubscribeAsync(Name).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -129,12 +138,16 @@ namespace PusherClient
         /// </summary>
         /// <param name="channelName">The channel name</param>
         /// <returns>The channel type; Public, Private or Presence.</returns>
-        internal static ChannelTypes GetChannelType(string channelName)
+        public static ChannelTypes GetChannelType(string channelName)
         {
             Guard.ChannelName(channelName);
 
             ChannelTypes channelType = ChannelTypes.Public;
-            if (channelName.StartsWith(Constants.PRIVATE_CHANNEL, StringComparison.OrdinalIgnoreCase))
+            if (channelName.StartsWith(Constants.PRIVATE_ENCRYPTED_CHANNEL, StringComparison.OrdinalIgnoreCase))
+            {
+                channelType = ChannelTypes.PrivateEncrypted;
+            }
+            else if (channelName.StartsWith(Constants.PRIVATE_CHANNEL, StringComparison.OrdinalIgnoreCase))
             {
                 channelType = ChannelTypes.Private;
             }

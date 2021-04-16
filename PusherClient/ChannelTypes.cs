@@ -19,5 +19,10 @@
         /// A presence channel.
         /// </summary>
         Presence,
+
+        /// <summary>
+        /// A private encrypted channel.
+        /// </summary>
+        PrivateEncrypted,
     }
 }
