@@ -8,6 +8,18 @@ using WebSocket4Net;
 
 namespace PusherClient
 {
+    public static class ConnectionEvents
+    {
+        public delegate void WebSocketHandler(WebSocket socket);
+
+        public static event WebSocketHandler OnPostWebSocketCreate;
+
+        internal static void TriggerPostWebSocketCreate(WebSocket socket)
+        {
+            ConnectionEvents.OnPostWebSocketCreate?.Invoke(socket);
+        }
+    }
+    
     internal class Connection : IConnection
     {
         private WebSocket _websocket;
@@ -31,6 +43,7 @@ namespace PusherClient
 
         public bool IsConnected => State == ConnectionState.Connected;
 
+
         public Connection(IPusher pusher, string url)
         {
             _pusher = pusher;
@@ -50,11 +63,7 @@ namespace PusherClient
 
                 ChangeState(ConnectionState.Connecting);
 
-                _websocket = new WebSocket(_url)
-                {
-                    EnableAutoSendPing = true,
-                    AutoSendPingInterval = 1
-                };
+                CreateWebSocket();
 
                 await Task.Run(() =>
                 {
@@ -357,9 +366,7 @@ namespace PusherClient
         private void WebsocketError(object sender, SuperSocket.ClientEngine.ErrorEventArgs e)
         {
             if (_pusher.PusherOptions.TraceLogger != null)
-            {
                 _pusher.PusherOptions.TraceLogger.TraceError($"Websocket error:{Environment.NewLine}{e.Exception}");
-            }
 
             RaiseError(new WebsocketException(State, e.Exception));
         }
@@ -441,6 +448,22 @@ namespace PusherClient
             });
         }
 
+        private void CreateWebSocket()
+        {
+            _websocket = new WebSocket(_url)
+            {
+                EnableAutoSendPing = true,
+                AutoSendPingInterval = 1
+            };
+            ConnectionEvents.TriggerPostWebSocketCreate(_websocket);
+        }
+
+        private void RecreateWebSocket()
+        {
+            DisposeWebsocket();
+            CreateWebSocket();
+        }
+
         private void DisposeWebsocket()
         {
             _currentError = null;
@@ -450,16 +473,6 @@ namespace PusherClient
             _websocket.Dispose();
             _websocket = null;
             ChangeState(ConnectionState.Disconnected);
-        }
-
-        private void RecreateWebSocket()
-        {
-            DisposeWebsocket();
-            _websocket = new WebSocket(_url)
-            {
-                EnableAutoSendPing = true,
-                AutoSendPingInterval = 1
-            };
         }
 
         private void ParseError(JToken jToken)
