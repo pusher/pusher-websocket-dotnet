@@ -233,6 +233,10 @@ namespace PusherClient
                 case Constants.CHANNEL_MEMBER_REMOVED:
                     _pusher.RemoveMember(channelName, messageData);
                     break;
+                
+                case Constants.CHANNEL_SUBSCRIPTION_COUNT:
+                    _pusher.SubscriptionCount(channelName, messageData);
+                    break;
 
                 default:
                     processed = false;
