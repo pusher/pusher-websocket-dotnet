@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks;
 using NUnit.Framework;
 using PusherClient.Tests.Utilities;
+using Newtonsoft.Json;
 
 namespace PusherClient.Tests.AcceptanceTests
 {
@@ -49,6 +50,19 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             ValidateSubscribedChannel(pusher, mockChannelName, channel, ChannelTypes.Public);
+        }
+
+        [Test]
+        public async Task PublicChannelSubscribeAndRecieveCountEvent() {
+            var definition = new { subscription_count = 1 };
+            var pusher = PusherFactory.GetPusher(saveTo: _clients);
+            void PusherCountEventHandler(object sender, string data) {
+                var dataAsObj = JsonConvert.DeserializeAnonymousType(data, definition);
+                Assert.Equals(dataAsObj.subscription_count, 1);
+            }
+            
+            pusher.Count += PusherCountEventHandler;
+            await ConnectThenSubscribeTestAsync(ChannelTypes.Public, pusher: pusher);
         }
 
         [Test]

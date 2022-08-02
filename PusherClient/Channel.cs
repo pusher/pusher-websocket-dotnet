@@ -181,13 +181,13 @@ namespace PusherClient
         public class SubscriptionCountData
         {
             [JsonProperty("subscription_count")]
-            public int subscription_count { get; set; }
+            public int subscriptionCount { get; set; }
         }
 
         private int ParseCount(string data)
         {
             var dataAsObj = JsonConvert.DeserializeObject<SubscriptionCountData>(data);
-            return dataAsObj.subscription_count;
+            return dataAsObj.subscriptionCount;
         }
     }
 }
