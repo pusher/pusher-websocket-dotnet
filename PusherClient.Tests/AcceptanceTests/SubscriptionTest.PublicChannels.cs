@@ -56,6 +56,7 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task PublicChannelSubscribeAndRecieveCountEvent() {
             var definition = new { subscription_count = 1 };
             var pusher = PusherFactory.GetPusher(saveTo: _clients);
+            
             void PusherCountEventHandler(object sender, string data) {
                 var dataAsObj = JsonConvert.DeserializeAnonymousType(data, definition);
                 Assert.Equals(dataAsObj.subscription_count, 1);
