@@ -23,45 +23,49 @@ For integrating **Pusher Channels** with **Unity** follow the instructions at <h
 
 ## Contents
 
-- [Installation](#installation)
-- [API](#api)
-  - [Overview](#overview)
-  - [Sample application](#sample-application)
-- [Configuration](#configuration)
-  - [The PusherOptions object](#the-pusheroptions-object)
-  - [Application Key](#application-key)
-- [Connecting](#connecting)
-  - [Connection States](#connection-States)
-  - [Auto reconnect](#auto-reconnect)
-  - [Disconnecting](#disconnecting)
-  - [Connected and Disconnected delegates](#connected-and-disconnected-delegates)
-- [Subscribing](#subscribing)
-  - [Error handling](#error-handling)
-  - [Public channels](#public-channels)
-  - [Private channels](#private-channels)
-  - [Private encrypted channels](#private-encrypted-channels)
-  - [Presence channels](#Presence-channels)
-  - [HttpAuthorizer](#httpauthorizer)
-  - [Subscribed delegate](#subscribed-delegate)
-  - [Unsubscribe](#unsubscribe)
-- [Binding to events](#binding-to-events)
-  - [Per-channel](#per-channel)
-  - [Globally](#globally)
-- [Triggering events](#triggering-events)
-- [Developer notes](#developer-notes)
-  - [Testing](#testing)
-  - [Code signing key generation](#code-signing-key-generation)
-  - [Migrating from version 1 to version 2](#migrating-from-version-1-to-version-2)
-    - [Changed in the Pusher class](#changed-in-the-pusher-class)
-    - [Removed from the Pusher class](#removed-from-the-pusher-class)
-    - [Removed from the Channel class](#removed-from-the-channel-class)
-    - [Removed from the GenericPresenceChannel class](#removed-from-the-genericpresencechannel-class)
-    - [Removed from the ConnectionState enum](#removed-from-the-connectionstate-enum)
-    - [Changed in the GenericPresenceChannel class](#changed-in-the-genericpresencechannel-class)
-    - [Added to the Pusher class](#added-to-the-pusher-class)
-    - [Added to the GenericPresenceChannel class](#added-to-the-genericpresencechannel-class)
-    - [Added to the ErrorCodes enum](#added-to-the-errorcodes-enum)
-- [License](#license)
+- [Pusher Channels .NET Client library](#pusher-channels-net-client-library)
+  - [Supported platforms](#supported-platforms)
+  - [Contents](#contents)
+  - [Installation](#installation)
+  - [API](#api)
+    - [Overview](#overview)
+    - [Sample application](#sample-application)
+  - [Configuration](#configuration)
+    - [The PusherOptions object](#the-pusheroptions-object)
+    - [Application Key](#application-key)
+  - [Connecting](#connecting)
+    - [Connection States](#connection-states)
+    - [Auto reconnect](#auto-reconnect)
+    - [Disconnecting](#disconnecting)
+    - [Connected and Disconnected delegates](#connected-and-disconnected-delegates)
+  - [Subscribing](#subscribing)
+    - [Error handling](#error-handling)
+    - [Public channels](#public-channels)
+    - [Private channels](#private-channels)
+    - [Private encrypted channels](#private-encrypted-channels)
+    - [Presence channels](#presence-channels)
+    - [HttpAuthorizer](#httpauthorizer)
+    - [Subscribed delegate](#subscribed-delegate)
+    - [Unsubscribe](#unsubscribe)
+  - [Subscription Count Handler](#subscription-count-handler)
+  - [Binding to events](#binding-to-events)
+    - [Per-channel](#per-channel)
+    - [Globally](#globally)
+  - [Triggering events](#triggering-events)
+  - [Developer notes](#developer-notes)
+    - [Testing](#testing)
+    - [Code signing key generation](#code-signing-key-generation)
+    - [Migrating from version 1 to version 2](#migrating-from-version-1-to-version-2)
+      - [Changed in the Pusher class](#changed-in-the-pusher-class)
+      - [Removed from the Pusher class](#removed-from-the-pusher-class)
+      - [Removed from the Channel class](#removed-from-the-channel-class)
+      - [Removed from the GenericPresenceChannel class](#removed-from-the-genericpresencechannel-class)
+      - [Removed from the ConnectionState enum](#removed-from-the-connectionstate-enum)
+      - [Changed in the GenericPresenceChannel class](#changed-in-the-genericpresencechannel-class)
+      - [Added to the Pusher class](#added-to-the-pusher-class)
+      - [Added to the GenericPresenceChannel class](#added-to-the-genericpresencechannel-class)
+      - [Added to the ErrorCodes enum](#added-to-the-errorcodes-enum)
+  - [License](#license)
 
 ## Installation
 
@@ -928,6 +932,19 @@ await pusher.UnsubscribeAsync("public-channel-1").ConfigureAwait(false);
 // Remove all channel subscriptions
 await pusher.UnsubscribeAllAsync().ConfigureAwait(false);
 
+```
+
+## Subscription Count Handler
+
+Add this handler to recieve subscription count events. Read more about it [here](https://pusher.com/docs/channels/using_channels/events/#pushersubscription_count-1165820117)
+
+```cs
+void PusherCountEventHandler(object sender, string data) {
+    var dataAsObj = JsonConvert.DeserializeObject<SubscriptionCountData>(data);
+    Console.WriteLine(dataAsObj.subscriptionCount);
+}
+
+pusher.CountHandler += PusherCountEventHandler;
 ```
 
 ## Binding to events
