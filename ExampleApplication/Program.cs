@@ -96,7 +96,7 @@ namespace ExampleApplication
                 }
             };
 
-            _pusher.Count += (sender, data) => 
+            _pusher.CountHandler += (sender, data) => 
             {
                 Console.WriteLine(data);
             };

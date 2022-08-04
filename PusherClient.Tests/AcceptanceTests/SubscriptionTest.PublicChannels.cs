@@ -62,7 +62,7 @@ namespace PusherClient.Tests.AcceptanceTests
                 Assert.Equals(dataAsObj.subscription_count, 1);
             }
             
-            pusher.Count += PusherCountEventHandler;
+            pusher.CountHandler += PusherCountEventHandler;
             await ConnectThenSubscribeTestAsync(ChannelTypes.Public, pusher: pusher);
         }
 

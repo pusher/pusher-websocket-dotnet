@@ -235,7 +235,7 @@ namespace PusherClient
                     break;
                 
                 case Constants.CHANNEL_SUBSCRIPTION_COUNT:
-                    _pusher.SubscriptionCount(channelName, messageData);
+                    _pusher.SubscriberCount(channelName, messageData);
                     break;
 
                 default:

@@ -21,9 +21,9 @@ namespace PusherClient
         /// Fired when the Channel has successfully been subscribed to.
         /// </summary>
         internal event SubscriptionEventHandler Subscribed;
-        internal event SubscriptionCountHandler Count;
+        internal event SubscriptionCountHandler CountHandler;
 
-        public int SubscriberCount = 0;
+        public int SubscriptionCount = 0;
 
         /// <summary>
         /// Gets whether the Channel is currently Subscribed
@@ -97,13 +97,13 @@ namespace PusherClient
             }
         }
 
-        internal virtual void SubscriptionCount(string data)
-        {   SubscriberCount = ParseCount(data);
-            if (Count != null)
+        internal virtual void SubscriberCount(string data)
+        {   SubscriptionCount = ParseCount(data);
+            if (CountHandler != null)
             {
                 try
                 {
-                    Count.Invoke(this, data);
+                    CountHandler.Invoke(this, data);
                 }
                 catch (Exception error)
                 {
