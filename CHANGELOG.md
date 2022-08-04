@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.0.0
+* [CHANGED] Describe your change here. Look at CHANGELOG.md to see the format.
+
 ## 2.1.0
 * [ADDED] Strong name to the PusherClient assembly.
 * [ADDED] Support for the authentication header on the HttpAuthorizer.
