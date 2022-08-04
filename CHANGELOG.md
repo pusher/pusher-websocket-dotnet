@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.0.0
+* [Added] Added subscription_count event handler
+
 ## 2.1.0
 * [ADDED] Strong name to the PusherClient assembly.
 * [ADDED] Support for the authentication header on the HttpAuthorizer.
