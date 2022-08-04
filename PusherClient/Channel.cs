@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace PusherClient
 {
@@ -20,6 +21,9 @@ namespace PusherClient
         /// Fired when the Channel has successfully been subscribed to.
         /// </summary>
         internal event SubscriptionEventHandler Subscribed;
+        internal event SubscriptionCountHandler CountHandler;
+
+        public int SubscriptionCount = 0;
 
         /// <summary>
         /// Gets whether the Channel is currently Subscribed
@@ -93,6 +97,21 @@ namespace PusherClient
             }
         }
 
+        internal virtual void SubscriberCount(string data)
+        {   SubscriptionCount = ParseCount(data);
+            if (CountHandler != null)
+            {
+                try
+                {
+                    CountHandler.Invoke(this, data);
+                }
+                catch (Exception error)
+                {
+                    _pusher.RaiseChannelError(new SubscribedEventHandlerException(this, error, data));
+                }
+            }
+        }
+
         /// <summary>
         /// Removes the channel subscription.
         /// </summary>
@@ -157,6 +176,18 @@ namespace PusherClient
             }
 
             return channelType;
+        }
+
+        public class SubscriptionCountData
+        {
+            [JsonProperty("subscription_count")]
+            public int subscriptionCount { get; set; }
+        }
+
+        private int ParseCount(string data)
+        {
+            var dataAsObj = JsonConvert.DeserializeObject<SubscriptionCountData>(data);
+            return dataAsObj.subscriptionCount;
         }
     }
 }

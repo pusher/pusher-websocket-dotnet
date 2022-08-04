@@ -61,4 +61,6 @@ namespace PusherClient
     /// To be deprecated, please use <see cref="SubscribedEventHandler"/> instead.
     /// </remarks>
     public delegate void SubscriptionEventHandler(object sender);
+
+    public delegate void SubscriptionCountHandler(object sender, string data);
 }

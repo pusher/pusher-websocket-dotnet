@@ -67,7 +67,7 @@ namespace ExampleApplication
         {
             _pusher = new Pusher(Config.AppKey, new PusherOptions
             {
-                Authorizer = new HttpAuthorizer("http://localhost:8888/auth/" + HttpUtility.UrlEncode(_name)),
+                Authorizer = new HttpAuthorizer("http://127.0.0.1:3030/pusher/auth" + HttpUtility.UrlEncode(_name)),
                 Cluster = Config.Cluster,
                 Encrypted = Config.Encrypted,
                 TraceLogger = new TraceLogger(),
@@ -94,6 +94,11 @@ namespace ExampleApplication
                 {
                     ListMembers();
                 }
+            };
+
+            _pusher.CountHandler += (sender, data) => 
+            {
+                Console.WriteLine(data);
             };
 
             // Setup private encrypted channel

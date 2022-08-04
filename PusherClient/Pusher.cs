@@ -38,6 +38,7 @@ namespace PusherClient
         /// Fires when a channel becomes subscribed.
         /// </summary>
         public event SubscribedEventHandler Subscribed;
+        public event SubscriptionCountHandler CountHandler;
 
         private static string Version { get; } = typeof(Pusher).GetTypeInfo().Assembly.GetName().Version.ToString(3);
 
@@ -209,6 +210,20 @@ namespace PusherClient
                 if (channel is IPresenceChannelManagement presenceChannel)
                 {
                     presenceChannel.RemoveMember(member);
+                }
+            }
+        }
+
+        void IPusher.SubscriberCount(string channelName, string data)
+        {
+            if (Channels.TryGetValue(channelName, out Channel channel))
+            {
+                channel.SubscriberCount(data);
+                if (CountHandler != null) {
+                    Task.Run(() =>
+                    {
+                        CountHandler.Invoke(this, data);
+                    });
                 }
             }
         }
