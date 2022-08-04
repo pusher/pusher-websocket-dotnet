@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.2.0
+* [Added] Added subscription_count event handler
+
 ## 3.0.0
 * [Added] Added subscription_count event handler
 
