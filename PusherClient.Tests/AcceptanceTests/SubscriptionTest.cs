@@ -29,7 +29,7 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task CombinedChannelsConnectThenSubscribeAsync()
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            var pusher = PusherFactory.GetPusher(new FakeChannelAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
             List<string> channelNames = CreateChannelNames();
 
             // Act and Assert
@@ -40,7 +40,7 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task CombinedChannelsConnectThenSubscribeThenDisconnectAsync()
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            var pusher = PusherFactory.GetPusher(new FakeChannelAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
             var disconnectedEvent = new AutoResetEvent(false);
             pusher.Disconnected += sender =>
             {
@@ -65,7 +65,7 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task CombinedChannelsConnectThenSubscribeThenDisconnectThenReconnectAsync()
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            var pusher = PusherFactory.GetPusher(new FakeChannelAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
             List<string> channelNames = CreateChannelNames();
             var subscribedEvent = new AutoResetEvent(false);
             var disconnectedEvent = new AutoResetEvent(false);
@@ -124,7 +124,7 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task CombinedChannelsConnectThenSubscribeThenUnsubscribeTest()
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            var pusher = PusherFactory.GetPusher(new FakeChannelAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
             List<string> channelNames = CreateChannelNames(numberOfChannels: 6);
 
             // Act
@@ -146,7 +146,7 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task CombinedChannelsConnectThenSubscribeThenUnsubscribeAllTest()
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            var pusher = PusherFactory.GetPusher(new FakeChannelAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
             List<string> channelNames = CreateChannelNames(numberOfChannels: 6);
 
             // Act
@@ -169,7 +169,7 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task CombinedChannelsSubscribeThenConnectAsync()
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            var pusher = PusherFactory.GetPusher(new FakeChannelAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
             List<string> channelNames = CreateChannelNames();
 
             // Act and Assert
@@ -180,7 +180,7 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task CombinedChannelsSubscribeThenConnectThenDisconnectAsync()
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            var pusher = PusherFactory.GetPusher(new FakeChannelAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
             List<string> channelNames = CreateChannelNames();
             var disconnectedEvent = new AutoResetEvent(false);
             pusher.Disconnected += sender =>
@@ -204,7 +204,7 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task CombinedChannelsSubscribeThenConnectThenDisconnectThenReconnectAsync()
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            var pusher = PusherFactory.GetPusher(new FakeChannelAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
             List<string> channelNames = CreateChannelNames();
             var subscribedEvent = new AutoResetEvent(false);
             var disconnectedEvent = new AutoResetEvent(false);
@@ -245,7 +245,7 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task CombinedChannelsSubscribeThenConnectThenReconnectWhenTheUnderlyingSocketIsClosedAsync()
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            var pusher = PusherFactory.GetPusher(new FakeChannelAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
             var subscribedEvent = new AutoResetEvent(false);
             List<string> channelNames = CreateChannelNames();
 
@@ -293,7 +293,7 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task CombinedChannelsSubscribeThenConnectThenUnsubscribeTest()
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            var pusher = PusherFactory.GetPusher(new FakeChannelAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
             List<string> channelNames = CreateChannelNames(numberOfChannels: 6);
 
             // Act
@@ -320,7 +320,7 @@ namespace PusherClient.Tests.AcceptanceTests
         public async Task CombinedChannelsSubscribeThenConnectThenUnsubscribeAllTest()
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            var pusher = PusherFactory.GetPusher(new FakeChannelAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
             List<string> channelNames = CreateChannelNames(numberOfChannels: 6);
 
             // Act
@@ -352,7 +352,7 @@ namespace PusherClient.Tests.AcceptanceTests
              */
 
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            var pusher = PusherFactory.GetPusher(new FakeChannelAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
             List<string> channelNames = CreateChannelNames(numberOfChannels: 6);
 
             // Act
@@ -381,7 +381,7 @@ namespace PusherClient.Tests.AcceptanceTests
              */
 
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
+            var pusher = PusherFactory.GetPusher(new FakeChannelAuthoriser(UserNameFactory.CreateUniqueUserName()), saveTo: _clients);
             List<string> channelNames = CreateChannelNames(numberOfChannels: 6);
 
             // Act
@@ -754,14 +754,14 @@ namespace PusherClient.Tests.AcceptanceTests
         private async Task SubscribeUnauthorizedChannelsAsync(bool connectBeforeSubscribing)
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeUnauthoriser(), saveTo: _clients);
+            var pusher = PusherFactory.GetPusher(new FakeChannelUnauthoriser(), saveTo: _clients);
             AutoResetEvent subscribedEvent = new AutoResetEvent(false);
             var errorEvent = new AutoResetEvent(false);
             int errorCount = 0;
             List<string> channelNames = new List<string>
             {
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private) + FakeUnauthoriser.UnauthoriseToken,
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence) + FakeUnauthoriser.UnauthoriseToken,
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private) + FakeChannelUnauthoriser.UnauthoriseToken,
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence) + FakeChannelUnauthoriser.UnauthoriseToken,
                 ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
             };
 
@@ -844,7 +844,7 @@ namespace PusherClient.Tests.AcceptanceTests
         private async Task SubscribeAuthorizationFailureChannelsAsync(bool connectBeforeSubscribing)
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeUnauthoriser(), saveTo: _clients);
+            var pusher = PusherFactory.GetPusher(new FakeChannelUnauthoriser(), saveTo: _clients);
             AutoResetEvent subscribedEvent = new AutoResetEvent(false);
             var errorEvent = new AutoResetEvent(false);
             int errorCount = 0;
@@ -934,14 +934,14 @@ namespace PusherClient.Tests.AcceptanceTests
         private async Task SubscribeFailureChannelsAsync(bool connectBeforeSubscribing)
         {
             // Arrange
-            var pusher = PusherFactory.GetPusher(new FakeAuthoriser("SabotagedUser"), saveTo: _clients);
+            var pusher = PusherFactory.GetPusher(new FakeChannelAuthoriser("SabotagedUser"), saveTo: _clients);
             AutoResetEvent subscribedEvent = new AutoResetEvent(false);
             var errorEvent = new AutoResetEvent(false);
             int errorCount = 0;
             List<string> channelNames = new List<string>
             {
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private) + FakeAuthoriser.TamperToken,
-                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence) + FakeAuthoriser.TamperToken,
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Private) + FakeChannelAuthoriser.TamperToken,
+                ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Presence) + FakeChannelAuthoriser.TamperToken,
                 ChannelNameFactory.CreateUniqueChannelName(channelType: ChannelTypes.Public),
             };
 

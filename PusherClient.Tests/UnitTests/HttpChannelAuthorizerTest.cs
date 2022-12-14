@@ -8,13 +8,13 @@ using System.Threading.Tasks;
 namespace PusherClient.Tests.UnitTests
 {
     [TestFixture]
-    public class HttpAuthorizerTest
+    public class HttpChannelAuthorizerTest
     {
         private const int TimeoutRetryAttempts = 5;
         private static int _HostPort = 3000;
 
         [Test]
-        public void HttpAuthorizerShouldReturnStringTokenIfAuthorized()
+        public void HttpChannelAuthorizerShouldReturnStringTokenIfAuthorized()
         {
             int hostPort = _HostPort++;
             string hostUrl = "http://localhost:" + (hostPort).ToString();
@@ -32,18 +32,18 @@ namespace PusherClient.Tests.UnitTests
                         .WithBody(FakeTokenAuth)
                 );
 
-            var testHttpAuthorizer = new HttpAuthorizer(hostUrl + "/authz")
+            var testHttpChannelAuthorizer = new HttpChannelAuthorizer(hostUrl + "/authz")
             {
                 Timeout = TimeSpan.FromSeconds(30),
                 AuthenticationHeader = new AuthenticationHeaderValue("Authorization", "Bearer noo6xaeN3cohYoozai4ar8doang7ai1elaeTh1di"),
             };
-            var AuthToken = testHttpAuthorizer.Authorize("private-test", "fsfsdfsgsfs");
+            var AuthToken = testHttpChannelAuthorizer.Authorize("private-test", "fsfsdfsgsfs");
 
             Assert.AreEqual(FakeTokenAuth, AuthToken);
         }
 
         [Test]
-        public async Task HttpAuthorizerShouldReturnStringTokenIfAuthorizedAsync()
+        public async Task HttpChannelAuthorizerShouldReturnStringTokenIfAuthorizedAsync()
         {
             int hostPort = _HostPort++;
             string hostUrl = "http://localhost:" + (hostPort).ToString();
@@ -61,18 +61,18 @@ namespace PusherClient.Tests.UnitTests
                         .WithBody(FakeTokenAuth)
                 );
 
-            var testHttpAuthorizer = new HttpAuthorizer(hostUrl + "/authz")
+            var testHttpChannelAuthorizer = new HttpChannelAuthorizer(hostUrl + "/authz")
             {
                 Timeout = TimeSpan.FromSeconds(30),
                 AuthenticationHeader = new AuthenticationHeaderValue("Authorization", "Bearer noo6xaeN3cohYoozai4ar8doang7ai1elaeTh1di"),
             };
-            var AuthToken = await testHttpAuthorizer.AuthorizeAsync("private-test", "fsfsdfsgsfs").ConfigureAwait(false);
+            var AuthToken = await testHttpChannelAuthorizer.AuthorizeAsync("private-test", "fsfsdfsgsfs").ConfigureAwait(false);
 
             Assert.AreEqual(FakeTokenAuth, AuthToken);
         }
 
         [Test]
-        public void HttpAuthorizerShouldRaiseExceptionIfUnauthorized()
+        public void HttpChannelAuthorizerShouldRaiseExceptionIfUnauthorized()
         {
             string channelName = "private-unauthorized-test";
             string socketId = Guid.NewGuid().ToString("N");
@@ -93,11 +93,11 @@ namespace PusherClient.Tests.UnitTests
                 );
 
             ChannelUnauthorizedException exception = null;
-            var testHttpAuthorizer = new PusherClient.HttpAuthorizer(hostUrl + "/unauthz");
+            var testHttpChannelAuthorizer = new PusherClient.HttpChannelAuthorizer(hostUrl + "/unauthz");
 
             try
             {
-                testHttpAuthorizer.Authorize(channelName, socketId);
+                testHttpChannelAuthorizer.Authorize(channelName, socketId);
             }
             catch (ChannelUnauthorizedException e)
             {
@@ -111,7 +111,7 @@ namespace PusherClient.Tests.UnitTests
         }
 
         [Test]
-        public async Task HttpAuthorizerShouldRaiseExceptionIfUnauthorizedAsync()
+        public async Task HttpChannelAuthorizerShouldRaiseExceptionIfUnauthorizedAsync()
         {
             string channelName = "private-unauthorized-test";
             string socketId = Guid.NewGuid().ToString("N");
@@ -132,11 +132,11 @@ namespace PusherClient.Tests.UnitTests
                 );
 
             ChannelUnauthorizedException exception = null;
-            var testHttpAuthorizer = new PusherClient.HttpAuthorizer(hostUrl + "/unauthz");
+            var testHttpChannelAuthorizer = new PusherClient.HttpChannelAuthorizer(hostUrl + "/unauthz");
 
             try
             {
-                await testHttpAuthorizer.AuthorizeAsync(channelName, socketId).ConfigureAwait(false);
+                await testHttpChannelAuthorizer.AuthorizeAsync(channelName, socketId).ConfigureAwait(false);
             }
             catch (ChannelUnauthorizedException e)
             {
@@ -150,7 +150,7 @@ namespace PusherClient.Tests.UnitTests
         }
 
         [Test]
-        public void HttpAuthorizerShouldRaiseExceptionIfAuthorizerUrlNotFound()
+        public void HttpChannelAuthorizerShouldRaiseExceptionIfAuthorizerUrlNotFound()
         {
             string channelName = "private-unauthorized-test";
             string socketId = Guid.NewGuid().ToString("N");
@@ -171,11 +171,11 @@ namespace PusherClient.Tests.UnitTests
                 );
 
             ChannelAuthorizationFailureException exception = null;
-            var testHttpAuthorizer = new HttpAuthorizer(hostUrl + "/notfound");
+            var testHttpChannelAuthorizer = new HttpChannelAuthorizer(hostUrl + "/notfound");
 
             try
             {
-                testHttpAuthorizer.Authorize(channelName, socketId);
+                testHttpChannelAuthorizer.Authorize(channelName, socketId);
             }
             catch (ChannelAuthorizationFailureException e)
             {
@@ -188,7 +188,7 @@ namespace PusherClient.Tests.UnitTests
         }
 
         [Test]
-        public async Task HttpAuthorizerShouldRaiseExceptionIfAuthorizerUrlNotFoundAsync()
+        public async Task HttpChannelAuthorizerShouldRaiseExceptionIfAuthorizerUrlNotFoundAsync()
         {
             string channelName = "private-unauthorized-test";
             string socketId = Guid.NewGuid().ToString("N");
@@ -209,11 +209,11 @@ namespace PusherClient.Tests.UnitTests
                 );
 
             ChannelAuthorizationFailureException exception = null;
-            var testHttpAuthorizer = new HttpAuthorizer(hostUrl + "/notfound");
+            var testHttpChannelAuthorizer = new HttpChannelAuthorizer(hostUrl + "/notfound");
 
             try
             {
-                await testHttpAuthorizer.AuthorizeAsync(channelName, socketId).ConfigureAwait(false);
+                await testHttpChannelAuthorizer.AuthorizeAsync(channelName, socketId).ConfigureAwait(false);
             }
             catch (ChannelAuthorizationFailureException e)
             {
@@ -226,7 +226,7 @@ namespace PusherClient.Tests.UnitTests
         }
 
         [Test]
-        public void HttpAuthorizerShouldRaiseExceptionWhenTimingOut()
+        public void HttpChannelAuthorizerShouldRaiseExceptionWhenTimingOut()
         {
             // Arrange
             int hostPort = _HostPort++;
@@ -248,14 +248,14 @@ namespace PusherClient.Tests.UnitTests
             ChannelAuthorizationFailureException channelException = null;
 
             // Act
-            var testHttpAuthorizer = new HttpAuthorizer(hostUrl + "/authz") { Timeout = TimeSpan.FromTicks(1), };
+            var testHttpChannelAuthorizer = new HttpChannelAuthorizer(hostUrl + "/authz") { Timeout = TimeSpan.FromTicks(1), };
 
             // Try to generate the error multiple times as it does not always error the first time
             for (int attempt = 0; attempt < TimeoutRetryAttempts; attempt++)
             {
                 try
                 {
-                    testHttpAuthorizer.Authorize("private-test", "fsfsdfsgsfs");
+                    testHttpChannelAuthorizer.Authorize("private-test", "fsfsdfsgsfs");
                 }
                 catch (Exception e)
                 {
@@ -273,7 +273,7 @@ namespace PusherClient.Tests.UnitTests
         }
 
         [Test]
-        public async Task HttpAuthorizerShouldRaiseExceptionWhenTimingOutAsync()
+        public async Task HttpChannelAuthorizerShouldRaiseExceptionWhenTimingOutAsync()
         {
             // Arrange
             int hostPort = _HostPort++;
@@ -295,14 +295,14 @@ namespace PusherClient.Tests.UnitTests
             ChannelAuthorizationFailureException channelException = null;
 
             // Act
-            var testHttpAuthorizer = new HttpAuthorizer(hostUrl + "/authz") { Timeout = TimeSpan.FromTicks(1), };
+            var testHttpChannelAuthorizer = new HttpChannelAuthorizer(hostUrl + "/authz") { Timeout = TimeSpan.FromTicks(1), };
 
             // Try to generate the error multiple times as it does not always error the first time
             for (int attempt = 0; attempt < TimeoutRetryAttempts; attempt++)
             {
                 try
                 {
-                    await testHttpAuthorizer.AuthorizeAsync("private-test", "fsfsdfsgsfs");
+                    await testHttpChannelAuthorizer.AuthorizeAsync("private-test", "fsfsdfsgsfs");
                 }
                 catch (Exception e)
                 {
@@ -320,7 +320,7 @@ namespace PusherClient.Tests.UnitTests
         }
 
         [Test]
-        public async Task HttpAuthorizerShouldRaiseExceptionWhenGatewayTimeouttAsync()
+        public async Task HttpChannelAuthorizerShouldRaiseExceptionWhenGatewayTimeouttAsync()
         {
             // Arrange
             int hostPort = _HostPort++;
@@ -342,10 +342,10 @@ namespace PusherClient.Tests.UnitTests
             ChannelAuthorizationFailureException channelException = null;
 
             // Act
-            var testHttpAuthorizer = new HttpAuthorizer(hostUrl + "/authz");
+            var testHttpChannelAuthorizer = new HttpChannelAuthorizer(hostUrl + "/authz");
             try
             {
-                await testHttpAuthorizer.AuthorizeAsync("private-test", "fsfsdfsgsfs");
+                await testHttpChannelAuthorizer.AuthorizeAsync("private-test", "fsfsdfsgsfs");
             }
             catch (Exception e)
             {
@@ -357,7 +357,7 @@ namespace PusherClient.Tests.UnitTests
         }
 
         [Test]
-        public async Task HttpAuthorizerShouldRaiseExceptionWhenRequestTimeoutAsync()
+        public async Task HttpChannelAuthorizerShouldRaiseExceptionWhenRequestTimeoutAsync()
         {
             // Arrange
             int hostPort = _HostPort++;
@@ -379,10 +379,10 @@ namespace PusherClient.Tests.UnitTests
             ChannelAuthorizationFailureException channelException = null;
 
             // Act
-            var testHttpAuthorizer = new HttpAuthorizer(hostUrl + "/authz");
+            var testHttpChannelAuthorizer = new HttpChannelAuthorizer(hostUrl + "/authz");
             try
             {
-                await testHttpAuthorizer.AuthorizeAsync("private-test", "fsfsdfsgsfs");
+                await testHttpChannelAuthorizer.AuthorizeAsync("private-test", "fsfsdfsgsfs");
             }
             catch (Exception e)
             {

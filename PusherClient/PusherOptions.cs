@@ -24,9 +24,9 @@ namespace PusherClient
         public bool Encrypted { get; set; }
 
         /// <summary>
-        /// Gets or set the <see cref="IAuthorizer"/> to use.
+        /// Gets or set the <see cref="IChannelAuthorizer"/> to use.
         /// </summary>
-        public IAuthorizer Authorizer { get; set; } = null;
+        public IChannelAuthorizer ChannelAuthorizer { get; set; } = null;
 
         /// <summary>
         /// Gets or sets the cluster to use for the host.

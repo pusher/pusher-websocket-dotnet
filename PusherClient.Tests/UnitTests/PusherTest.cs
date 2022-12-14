@@ -179,7 +179,7 @@ namespace PusherClient.Tests.UnitTests
             ChannelException caughtException = null;
 
             // Act
-            var pusher = new Pusher("FakeAppKey", new PusherOptions { Authorizer = new FakeAuthoriser("test") });
+            var pusher = new Pusher("FakeAppKey", new PusherOptions { ChannelAuthorizer = new FakeChannelAuthoriser("test") });
             await pusher.SubscribePresenceAsync<string>("presence-123").ConfigureAwait(false);
 
             try
@@ -203,7 +203,7 @@ namespace PusherClient.Tests.UnitTests
             ChannelException caughtException = null;
 
             // Act
-            var pusher = new Pusher("FakeAppKey", new PusherOptions { Authorizer = new FakeAuthoriser("test") });
+            var pusher = new Pusher("FakeAppKey", new PusherOptions { ChannelAuthorizer = new FakeChannelAuthoriser("test") });
             await pusher.SubscribeAsync("presence-123").ConfigureAwait(false);
 
             try

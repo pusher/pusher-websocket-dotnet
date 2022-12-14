@@ -67,7 +67,7 @@ namespace ExampleApplication
         {
             _pusher = new Pusher(Config.AppKey, new PusherOptions
             {
-                Authorizer = new HttpAuthorizer("http://127.0.0.1:3030/pusher/auth" + HttpUtility.UrlEncode(_name)),
+                ChannelAuthorizer = new HttpChannelAuthorizer("http://127.0.0.1:3030/pusher/auth" + HttpUtility.UrlEncode(_name)),
                 Cluster = Config.Cluster,
                 Encrypted = Config.Encrypted,
                 TraceLogger = new TraceLogger(),

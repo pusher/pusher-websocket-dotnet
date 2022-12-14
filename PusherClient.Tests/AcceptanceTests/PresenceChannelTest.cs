@@ -92,7 +92,7 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             Assert.IsNotNull(caughtException);
-            StringAssert.Contains("An Authorizer needs to be provided when subscribing to the private or presence channel", caughtException.Message);
+            StringAssert.Contains("A ChannelAuthorizer needs to be provided when subscribing to the private or presence channel", caughtException.Message);
         }
 
         #endregion
@@ -168,7 +168,7 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             Assert.IsNotNull(caughtException);
-            StringAssert.Contains("An Authorizer needs to be provided when subscribing to the private or presence channel", caughtException.Message);
+            StringAssert.Contains("A ChannelAuthorizer needs to be provided when subscribing to the private or presence channel", caughtException.Message);
         }
 
         #endregion
@@ -613,8 +613,8 @@ namespace PusherClient.Tests.AcceptanceTests
             }
 
             // Assert
-            Assert.IsTrue(subscribedEvent.WaitOne(TimeSpan.FromMilliseconds(FakeAuthoriser.MaxLatency * numberOfMembers)));
-            Assert.IsTrue(memberAddedEvent.WaitOne(TimeSpan.FromMilliseconds(FakeAuthoriser.MaxLatency * numberOfMembers)));
+            Assert.IsTrue(subscribedEvent.WaitOne(TimeSpan.FromMilliseconds(FakeChannelAuthoriser.MaxLatency * numberOfMembers)));
+            Assert.IsTrue(memberAddedEvent.WaitOne(TimeSpan.FromMilliseconds(FakeChannelAuthoriser.MaxLatency * numberOfMembers)));
             for (int i = 0; i < pusherMembers.Count; i++)
             {
                 ValidateSubscribedChannel(pusherMembers[i], channelName, presenceChannels[i], numMembersExpected: pusherMembers.Count);

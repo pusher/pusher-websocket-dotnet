@@ -6,11 +6,11 @@ namespace PusherClient.Tests.Utilities
 {
     public static class PusherFactory
     {
-        public static Pusher GetPusher(IAuthorizer authorizer = null, IList<Pusher> saveTo = null, int timeoutPeriodMilliseconds = 30 * 1000)
+        public static Pusher GetPusher(IChannelAuthorizer authorizer = null, IList<Pusher> saveTo = null, int timeoutPeriodMilliseconds = 30 * 1000)
         {
             PusherOptions options = new PusherOptions()
             {
-                Authorizer = authorizer,
+                ChannelAuthorizer = authorizer,
                 Cluster = Config.Cluster,
                 Encrypted = Config.Encrypted,
                 TraceLogger = new TraceLogger(),
@@ -34,7 +34,7 @@ namespace PusherClient.Tests.Utilities
             {
                 case ChannelTypes.Private:
                 case ChannelTypes.Presence:
-                    result = GetPusher(new FakeAuthoriser(username ?? UserNameFactory.CreateUniqueUserName(), encryptionKey), saveTo: saveTo);
+                    result = GetPusher(new FakeChannelAuthoriser(username ?? UserNameFactory.CreateUniqueUserName(), encryptionKey), saveTo: saveTo);
                     break;
 
                 default:
