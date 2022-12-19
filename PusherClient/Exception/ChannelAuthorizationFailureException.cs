@@ -3,7 +3,7 @@
 namespace PusherClient
 {
     /// <summary>
-    /// This exception is raised when calling <c>Authorize</c> or <c>AuthorizeAsync</c> on the <see cref="HttpAuthorizer"/>.
+    /// This exception is raised when calling <c>Authorize</c> or <c>AuthorizeAsync</c> on the <see cref="HttpChannelAuthorizer"/>.
     /// </summary>
     public class ChannelAuthorizationFailureException : ChannelException
     {

@@ -50,7 +50,7 @@ namespace PusherClient.Tests.AcceptanceTests
             // Create Pusher client ready to subscribe to public, private and presence channels
             Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
             {
-                Authorizer = new FakeAuthoriser(),
+                ChannelAuthorizer = new FakeChannelAuthoriser(),
                 Cluster = Config.Cluster,
                 Encrypted = true,
             });
@@ -231,7 +231,7 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
             {
-                Authorizer = new HttpAuthorizer("http://localhost:8888/auth/Jane"),
+                ChannelAuthorizer = new HttpChannelAuthorizer("http://localhost:8888/auth/Jane"),
                 Cluster = Config.Cluster,
                 Encrypted = true,
             });
@@ -245,7 +245,7 @@ namespace PusherClient.Tests.AcceptanceTests
         {
             Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
             {
-                Authorizer = new HttpAuthorizer("http://localhost:8888/auth/Jane"),
+                ChannelAuthorizer = new HttpChannelAuthorizer("http://localhost:8888/auth/Jane"),
                 Cluster = Config.Cluster,
                 Encrypted = true,
                 ClientTimeout = TimeSpan.FromSeconds(20),
@@ -344,7 +344,7 @@ namespace PusherClient.Tests.AcceptanceTests
             // Create client
             Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
             {
-                Authorizer = new FakeAuthoriser(),
+                ChannelAuthorizer = new FakeChannelAuthoriser(),
                 Cluster = Config.Cluster,
             });
             pusher.Error += ErrorHandler;
@@ -369,7 +369,7 @@ namespace PusherClient.Tests.AcceptanceTests
             // Create client
             Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
             {
-                Authorizer = new FakeAuthoriser(),
+                ChannelAuthorizer = new FakeChannelAuthoriser(),
                 Cluster = Config.Cluster,
             });
             pusher.Error += ErrorHandler;
@@ -405,7 +405,7 @@ namespace PusherClient.Tests.AcceptanceTests
             // Create client
             Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
             {
-                Authorizer = new FakeAuthoriser(),
+                ChannelAuthorizer = new FakeChannelAuthoriser(),
                 Cluster = Config.Cluster,
             });
             pusher.Error += ErrorHandler;
@@ -457,7 +457,7 @@ namespace PusherClient.Tests.AcceptanceTests
             // Create client
             Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
             {
-                Authorizer = new FakeAuthoriser(),
+                ChannelAuthorizer = new FakeChannelAuthoriser(),
                 Cluster = Config.Cluster,
             });
             pusher.Error += ErrorHandler;
@@ -548,7 +548,7 @@ namespace PusherClient.Tests.AcceptanceTests
             // Create client
             Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
             {
-                Authorizer = new FakeAuthoriser(),
+                ChannelAuthorizer = new FakeChannelAuthoriser(),
                 Cluster = Config.Cluster,
             });
             pusher.Error += ErrorHandler;
@@ -604,7 +604,7 @@ namespace PusherClient.Tests.AcceptanceTests
             // Create client
             Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
             {
-                Authorizer = new FakeAuthoriser(),
+                ChannelAuthorizer = new FakeChannelAuthoriser(),
                 Cluster = Config.Cluster,
             });
             pusher.Error += ErrorHandler;
@@ -632,7 +632,7 @@ namespace PusherClient.Tests.AcceptanceTests
             // Create client
             Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
             {
-                Authorizer = new FakeAuthoriser(),
+                ChannelAuthorizer = new FakeChannelAuthoriser(),
                 Cluster = Config.Cluster,
             });
             pusher.Error += ErrorHandler;
@@ -673,7 +673,7 @@ namespace PusherClient.Tests.AcceptanceTests
             // Create client
             Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
             {
-                Authorizer = new FakeAuthoriser(),
+                ChannelAuthorizer = new FakeChannelAuthoriser(),
                 Cluster = Config.Cluster,
             });
             pusher.Error += ErrorHandler;
@@ -710,7 +710,7 @@ namespace PusherClient.Tests.AcceptanceTests
             // Create client
             Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
             {
-                Authorizer = new FakeAuthoriser(),
+                ChannelAuthorizer = new FakeChannelAuthoriser(),
                 Cluster = Config.Cluster,
             });
             pusher.Error += ErrorHandler;

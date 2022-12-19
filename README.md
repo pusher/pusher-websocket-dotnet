@@ -44,7 +44,7 @@ For integrating **Pusher Channels** with **Unity** follow the instructions at <h
     - [Private channels](#private-channels)
     - [Private encrypted channels](#private-encrypted-channels)
     - [Presence channels](#presence-channels)
-    - [HttpAuthorizer](#httpauthorizer)
+    - [HttpChannelAuthorizer](#HttpChannelAuthorizer)
     - [Subscribed delegate](#subscribed-delegate)
     - [Unsubscribe](#unsubscribe)
   - [Subscription Count Handler](#subscription-count-handler)
@@ -101,7 +101,7 @@ AutoResetEvent doneEvent = new AutoResetEvent(false);
 // Create Pusher client ready to subscribe to public, private and presence channels
 Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 {
-    Authorizer = new FakeAuthoriser(),
+    ChannelAuthorizer = new FakeChannelAuthoriser(),
     Cluster = Config.Cluster,
     Encrypted = true,
 });
@@ -262,6 +262,7 @@ Assert.AreEqual(ConnectionState.Disconnected, pusher.State);
 Assert.IsTrue(doneEvent.WaitOne(TimeSpan.FromSeconds(5)));
 
 ```
+
 ### Sample application
 
 See [the example app](https://github.com/pusher/pusher-websocket-dotnet/tree/master/ExampleApplication) for details.
@@ -274,7 +275,7 @@ Constructing a Pusher client requires some options. These options are defined in
 
 | Property                    | Type              | Description                                                                                                                                   |
 |-----------------------------|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| Authorizer                  | IAuthorizer       | Required for authorizing private and presence channel subscriptions.                                                                          |
+| ChannelAuthorizer           | IChannelAuthorizer| Required for authorizing private and presence channel subscriptions.                                                                          |
 | ClientTimeout               | TimeSpan          | The timeout period to wait for an asynchrounous operation to complete. The default value is 30 seconds.                                       |
 | Cluster                     | String            | The Pusher host cluster name; for example, "eu". The default value is "mt1".                                                                  |
 | Encrypted                   | Boolean           | Indicates whether the connection will be encrypted. The default value is `false`.                                                             |
@@ -304,7 +305,7 @@ Construction of authorized private and presence channels subscriber
 
 Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 {
-    Authorizer = new HttpAuthorizer("http://localhost:8888/auth/Jane"),
+    ChannelAuthorizer = new HttpChannelAuthorizer("http://localhost:8888/auth/Jane"),
     Cluster = Config.Cluster,
     Encrypted = true,
 });
@@ -317,19 +318,22 @@ Specifying a client timeout
 
 Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 {
-    Authorizer = new HttpAuthorizer("http://localhost:8888/auth/Jane"),
+    ChannelAuthorizer = new HttpChannelAuthorizer("http://localhost:8888/auth/Jane"),
     Cluster = Config.Cluster,
     Encrypted = true,
     ClientTimeout = TimeSpan.FromSeconds(20),
 });
 
 ```
+
 ## Connecting
 
 ### Connection States
+
 You can access the current connection state using `Pusher.State` and bind to state changes using `Pusher.ConnectionStateChanged`.
 
 Possible States:
+
 * Uninitialized: Initial state; no event is emitted in this state.
 * Connecting: The channel client is attempting to connect.
 * Connected: The channel connection is open and authenticated with your app. Channel subscriptions can now be made.
@@ -378,10 +382,13 @@ catch(Exception error)
     // Handle error
 }
 ```
+
 ### Auto reconnect
+
 After entering a state of `Connected`, auto reconnect is enabled. If the connection is dropped the channel client will attempt to re-establish the connection.
 
  Here is a possible scenario played out after a connection failure.
+
 * Connection dropped
 * State transition: `Connected -> Disconnected`
 * State transition: `Disconnected -> WaitingToReconnect`
@@ -406,6 +413,7 @@ await pusher.DisconnectAsync().ConfigureAwait(false);
 Assert.AreEqual(ConnectionState.Disconnected, pusher.State);
 
 ```
+
 ### Connected and Disconnected delegates
 
 The Pusher client has delegates for `Connected` and `Disconnected` events.
@@ -418,7 +426,7 @@ Sample code:
 
 ```cs
 pusher = new Pusher("YOUR_APP_KEY", new PusherOptions(){
-    Authorizer = new HttpAuthorizer("YOUR_ENDPOINT")
+    ChannelAuthorizer = new HttpChannelAuthorizer("YOUR_ENDPOINT")
 });
 
 pusher.Connected += OnConnected;
@@ -459,11 +467,13 @@ await pusher.DisconnectAsync().ConfigureAwait(false);
 ## Subscribing
 
 Three types of channels are supported
+
 * Public channels: can be subscribed to by anyone who knows their name.
 * Private channels: are private in that you control access to who can subscribe to the channel.
 * Presence channels: are extensions to private channels and let you add user information on a subscription, and let other members of the channel know who is online.
 
 There are two modes for creating channel subscriptions
+
 * Pre-connecting: setup all subscriptions first and then connect using `Pusher.ConnectAsync`. This is a purely asynchronous model. The subscriptions are created asynchronously after connecting. Error detection needs to be done via the error delegate `Pusher.Error`.
 * Post-connecting: setup all subscriptions after connecting using `Pusher.ConnectAsync`. This is a partly synchronous model. The subscriptions are created synchronously. If the method call fails; for example, the user is not authorized, an exception will be thrown. You will also receive an error via the delegate `Pusher.Error`.
 
@@ -556,13 +566,14 @@ catch (Exception)
 }
 
 ```
+
 ### Private channels
 
 The name of a private channel needs to start with `private-`.
 
-It's possible to subscribe to [private channels](https://pusher.com/docs/channels/using_channels/private-channels) that provide a mechanism for [authenticating channel subscriptions](https://pusher.com/docs/channels/server_api/authenticating-users). In order to do this you need to provide an `IAuthorizer` when creating the `Pusher` instance.
+It's possible to subscribe to [private channels](https://pusher.com/docs/channels/using_channels/private-channels) that provide a mechanism for [authorizing channel subscriptions](https://pusher.com/docs/channels/server_api/authorizing-users). In order to do this you need to provide an `IChannelAuthorizer` when creating the `Pusher` instance.
 
-The library provides an `HttpAuthorizer` implementation of `IAuthorizer` which makes an HTTP `POST` request to an authenticating endpoint. However, you can implement your own authentication mechanism if required.
+The library provides an `HttpChannelAuthorizer` implementation of `IChannelAuthorizer` which makes an HTTP `POST` request to an authorization endpoint. However, you can implement your own authorization mechanism if required.
 
 Setting up a private channel subscription before connecting
 
@@ -571,7 +582,7 @@ Setting up a private channel subscription before connecting
 // Create client
 Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 {
-    Authorizer = new FakeAuthoriser(),
+    ChannelAuthorizer = new FakeChannelAuthoriser(),
     Cluster = Config.Cluster,
 });
 pusher.Error += ErrorHandler;
@@ -592,7 +603,7 @@ Setting up a private channel subscription after connecting
 // Create client
 Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 {
-    Authorizer = new FakeAuthoriser(),
+    ChannelAuthorizer = new FakeChannelAuthoriser(),
     Cluster = Config.Cluster,
 });
 pusher.Error += ErrorHandler;
@@ -623,7 +634,7 @@ Similar to Private channels, you can also subscribe to a
 [private encrypted channel](https://pusher.com/docs/channels/using_channels/encrypted-channels).
 This library now fully supports end-to-end encryption. This means that only you and your connected clients will be able to read your messages. Pusher cannot decrypt them.
 
-Like the private channel, you must provide your own authentication endpoint,
+Like the private channel, you must provide your own authorization endpoint,
 with your own encryption master key. There is a
 [demonstration endpoint in the repo to look at using Nancy](https://github.com/pusher/pusher-websocket-dotnet/blob/master/AuthHost/AuthModule.cs).
 
@@ -633,7 +644,7 @@ for example:
 ```cs
 Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 {
-    Authorizer = new HttpAuthorizer("http://localhost:8888/auth/joe"),
+    ChannelAuthorizer = new HttpChannelAuthorizer("http://localhost:8888/auth/joe"),
     Cluster = "eu",
     Encrypted = true,
 });
@@ -685,7 +696,7 @@ Setting up a presence channel subscription before connecting
 // Create client
 Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 {
-    Authorizer = new FakeAuthoriser(),
+    ChannelAuthorizer = new FakeChannelAuthoriser(),
     Cluster = Config.Cluster,
 });
 pusher.Error += ErrorHandler;
@@ -733,7 +744,7 @@ Setting up a presence channel subscription after connecting
 // Create client
 Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 {
-    Authorizer = new FakeAuthoriser(),
+    ChannelAuthorizer = new FakeChannelAuthoriser(),
     Cluster = Config.Cluster,
 });
 pusher.Error += ErrorHandler;
@@ -785,22 +796,22 @@ catch (Exception)
 
 ```
 
-### HttpAuthorizer
+### HttpChannelAuthorizer
 
-The implementation of the `HttpAuthorizer` class which provides the default implementation of an 
-`IAuthorizer` has been modified to support the setting of an authentication header.
+The implementation of the `HttpChannelAuthorizer` class which provides the default implementation of an 
+`IChannelAuthorizer` has been modified to support the setting of an authorization header.
 
-Here is an example of how to set the bearer token in an authentication header:
+Here is an example of how to set the bearer token in an authorization header:
 
 ```cs
-var authorizer = new HttpAuthorizer("https:/some.authorizer.com/auth")
+var channelAuthorizer = new HttpChannelAuthorizer("https:/some.authorizer.com/auth")
 {
      AuthenticationHeader = new AuthenticationHeaderValue("Authorization", "Bearer noo6xaeN3cohYoozai4ar8doang7ai1elaeTh1di"),
 };
-var authToken = await authorizer.Authorize("private-test", "1234.9876");
+var authToken = await channelAuthorizer.Authorize("private-test", "1234.9876");
 ```
 
-If you require setting other headers you can override the `PreAuthorize` method on the `HttpAuthorizer` class.
+If you require setting other headers you can override the `PreAuthorize` method on the `HttpChannelAuthorizer` class.
 
 ```cs
 public override void PreAuthorize(HttpClient httpClient)
@@ -814,6 +825,7 @@ public override void PreAuthorize(HttpClient httpClient)
 ### Subscribed delegate
 
 The `Subscribed` delegate is invoked when a channel is subscribed to. There are two different ways to specify a Subscribed event handler:
+
 * Add an event handler using the `Pusher.Subscribed` delegate property. This event handler can be used to detect all channel subscriptions.
 * Provide an event handler as an input parameter to the `SubscribeAsync` or `SubscribePresenceAsync` methods. This event handler is channel specific.
 
@@ -852,7 +864,7 @@ void SubscribedHandler(object sender, Channel channel)
 // Create client
 Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 {
-    Authorizer = new FakeAuthoriser(),
+    ChannelAuthorizer = new FakeChannelAuthoriser(),
     Cluster = Config.Cluster,
 });
 pusher.Error += ErrorHandler;
@@ -904,7 +916,7 @@ void PrivateChannelSubscribed(object sender)
 // Create client
 Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 {
-    Authorizer = new FakeAuthoriser(),
+    ChannelAuthorizer = new FakeChannelAuthoriser(),
     Cluster = Config.Cluster,
 });
 pusher.Error += ErrorHandler;
@@ -976,7 +988,7 @@ These are bound to a specific channel, and mean that you can reuse event names i
 // Create client
 Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 {
-    Authorizer = new FakeAuthoriser(),
+    ChannelAuthorizer = new FakeChannelAuthoriser(),
     Cluster = Config.Cluster,
 });
 pusher.Error += ErrorHandler;
@@ -1015,7 +1027,7 @@ You can attach behavior to these events regardless of the channel the event is b
 // Create client
 Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 {
-    Authorizer = new FakeAuthoriser(),
+    ChannelAuthorizer = new FakeChannelAuthoriser(),
     Cluster = Config.Cluster,
 });
 pusher.Error += ErrorHandler;
@@ -1043,14 +1055,14 @@ pusher.UnbindAll();
 
 ## Triggering events
 
-Once a [private](https://pusher.com/docs/channels/using_channels/private-channels) or [presence](https://pusher.com/docs/channels/using_channels/presence-channels) subscription has been authorized (see [authenticating users](https://pusher.com/docs/channels/server_api/authenticating-users)) and the subscription has succeeded, it is possible to trigger events on those channels.
+Once a [private](https://pusher.com/docs/channels/using_channels/private-channels) or [presence](https://pusher.com/docs/channels/using_channels/presence-channels) subscription has been authorized (see [authorizing users](https://pusher.com/docs/channels/server_api/authorizing-users)) and the subscription has succeeded, it is possible to trigger events on those channels.
 
 ```cs
 
 // Create client
 Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 {
-    Authorizer = new FakeAuthoriser(),
+    ChannelAuthorizer = new FakeChannelAuthoriser(),
     Cluster = Config.Cluster,
 });
 pusher.Error += ErrorHandler;

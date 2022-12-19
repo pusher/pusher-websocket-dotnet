@@ -42,6 +42,16 @@
         ConnectionNotAuthorizedWithinTimeout = 4009,
 
         /// <summary>
+        /// An error was caught when attempting to authenticate the user. For example; a 404 Not Found HTTP error was raised by the UserAuthenticator.
+        /// </summary>
+        UserAuthenticationError = 4010,
+
+        /// <summary>
+        /// A timeout error was caught when attempting to authenticate the user.
+        /// </summary>
+        UserAuthenticationTimeout = 4011,
+
+        /// <summary>
         /// The client has exceeded its rate limit.
         /// </summary>
         ClientOverRateLimit = 4301,
@@ -112,12 +122,12 @@
         TriggerEventPrivateEncryptedChannelError = 5105,
 
         /// <summary>
-        /// The presence or private channel has not had its Authorizer set.
+        /// The presence or private channel has not had its ChannelAuthorizer set.
         /// </summary>
         ChannelAuthorizerNotSet = 7500,
 
         /// <summary>
-        /// An error was caught when attempting to authorize a presence or private channel. For example; a 404 Not Found HTTP error was raised by the Authorizer.
+        /// An error was caught when attempting to authorize a presence or private channel. For example; a 404 Not Found HTTP error was raised by the ChannelAuthorizer.
         /// </summary>
         ChannelAuthorizationError = 7501,
 
@@ -127,7 +137,7 @@
         ChannelAuthorizationTimeout = 7502,
 
         /// <summary>
-        /// The presence or private channel is unauthorized. Received a 403 Forbidden HTTP error from the Authorizer.
+        /// The presence or private channel is unauthorized. Received a 403 Forbidden HTTP error from the ChannelAuthorizer.
         /// </summary>
         ChannelUnauthorized = 7503,
 

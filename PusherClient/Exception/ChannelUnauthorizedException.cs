@@ -1,7 +1,7 @@
 ﻿namespace PusherClient
 {
     /// <summary>
-    /// This exception is raised when calling <c>Authorize</c> or <c>AuthorizeAsync</c> on <see cref="HttpAuthorizer"/> and access to the channel is forbidden (403).
+    /// This exception is raised when calling <c>Authorize</c> or <c>AuthorizeAsync</c> on <see cref="HttpChannelAuthorizer"/> and access to the channel is forbidden (403).
     /// </summary>
     public class ChannelUnauthorizedException : ChannelAuthorizationFailureException
     {
