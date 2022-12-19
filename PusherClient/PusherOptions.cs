@@ -23,6 +23,9 @@ namespace PusherClient
         /// </summary>
         public bool Encrypted { get; set; }
 
+        [Obsolete("This interface has been deprecated. Please use IChannelAuthorizer")]
+        public IAuthorizer Authorizer { get; set; } = null;
+
         /// <summary>
         /// Gets or set the <see cref="IChannelAuthorizer"/> to use.
         /// </summary>

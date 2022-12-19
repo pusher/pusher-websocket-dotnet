@@ -101,7 +101,7 @@ AutoResetEvent doneEvent = new AutoResetEvent(false);
 // Create Pusher client ready to subscribe to public, private and presence channels
 Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 {
-    Authorizer = new FakeChannelAuthoriser(),
+    ChannelAuthorizer = new FakeChannelAuthoriser(),
     Cluster = Config.Cluster,
     Encrypted = true,
 });
@@ -804,11 +804,11 @@ The implementation of the `HttpChannelAuthorizer` class which provides the defau
 Here is an example of how to set the bearer token in an authorization header:
 
 ```cs
-var authorizer = new HttpChannelAuthorizer("https:/some.authorizer.com/auth")
+var channelAuthorizer = new HttpChannelAuthorizer("https:/some.authorizer.com/auth")
 {
      AuthenticationHeader = new AuthenticationHeaderValue("Authorization", "Bearer noo6xaeN3cohYoozai4ar8doang7ai1elaeTh1di"),
 };
-var authToken = await authorizer.Authorize("private-test", "1234.9876");
+var authToken = await channelAuthorizer.Authorize("private-test", "1234.9876");
 ```
 
 If you require setting other headers you can override the `PreAuthorize` method on the `HttpChannelAuthorizer` class.
