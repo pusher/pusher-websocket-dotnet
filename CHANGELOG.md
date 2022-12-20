@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.2.1
+* [CHANGED] Update dependency Newtonsoft.Json 13.0.2
+
 ## 2.2.0
 * [Added] Support for subscription_count handler
 
