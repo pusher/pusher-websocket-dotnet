@@ -12,7 +12,7 @@ namespace PusherClient
     /// <summary>
     /// The Pusher Client object
     /// </summary>
-    public class Pusher : EventEmitter, IPusher, ITriggerChannels
+    public class Pusher : EventEmitter, IPusher, ITriggerChannels, IUser
     {
         /// <summary>
         /// Fires when a connection has been established with the Pusher Server
@@ -45,6 +45,8 @@ namespace PusherClient
         private readonly string _applicationKey;
 
         private IConnection _connection;
+
+        private IUser user;
 
         /// <summary>
         /// Gets the Socket ID
@@ -85,10 +87,12 @@ namespace PusherClient
 
             Options = options ?? new PusherOptions();
             ((IPusher)this).PusherOptions = Options;
+            user = new User(_connection, Options.UserAuthenticator)
             SetEventEmitterErrorHandler(InvokeErrorHandler);
         }
 
         PusherOptions IPusher.PusherOptions { get; set; }
+        
 
         void IPusher.ChangeConnectionState(ConnectionState state)
         {
@@ -487,6 +491,25 @@ namespace PusherClient
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Gets the user associated with this Pusher connection.
+        /// </summary>
+        /// <returns>The <see cref="IUser"/> associated with this Pusher connection..</returns>
+        public IUser user() {
+            return user;
+        }
+
+        /// <summary>
+        /// Signs in on the Pusher connection as the current user.
+        /// </summary>
+        /// <exception cref="NoHttpUserAuthenticatorHasBeenSet">If no HttpUserAuthenticator has been set.</exception>
+        public void signin() {
+            if (Options.HttpUserAuthenticator() == null) {
+                throw new NoHttpUserAuthenticatorHasBeenSet();
+            }
+            user.signin();
         }
 
         /// <summary>

@@ -1,0 +1,16 @@
+namespace PusherClient
+{
+    /// <summary>
+    /// This exception is raised when calling <c>signin()</c> on <see cref="User"/>.
+    /// </summary>
+    public class NoHttpUserAuthenticatorHasBeenSet : PusherException
+    {
+        /// <summary>
+        /// Creates a new instance of a <see cref="NoHttpUserAuthenticatorHasBeenSet"/> class.
+        /// </summary>
+        public NoHttpUserAuthenticatorHasBeenSet()
+            : base("Cannot sign in because no HttpUserAuthenticator has been set.")
+        {
+        }
+    }
+}
