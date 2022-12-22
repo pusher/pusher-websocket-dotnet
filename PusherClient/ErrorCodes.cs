@@ -170,5 +170,16 @@
         /// An error was caught when emitting an event to the Pusher.Subscribed or Channel.Subscribed event handlers.
         /// </summary>
         SubscribedEventHandlerError = 7606,
+
+        /// <summary>
+        /// An error was caught when emitting an event to the Pusher.Subscribed or Channel.Subscribed event handlers.
+        /// </summary>
+        UserAuthenticationError = 8000,
+
+        /// <summary>
+        /// An error was caught when emitting an event to the Pusher.Subscribed or Channel.Subscribed event handlers.
+        /// </summary>
+        UserAuthenticationTimeout = 8001,
+
     }
 }

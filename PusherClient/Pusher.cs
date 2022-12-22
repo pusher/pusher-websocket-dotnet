@@ -40,6 +40,8 @@ namespace PusherClient
         public event SubscribedEventHandler Subscribed;
         public event SubscriptionCountHandler CountHandler;
 
+        public IUserFacade User;
+
         private static string Version { get; } = typeof(Pusher).GetTypeInfo().Assembly.GetName().Version.ToString(3);
 
         private readonly string _applicationKey;
@@ -86,6 +88,13 @@ namespace PusherClient
             Options = options ?? new PusherOptions();
             ((IPusher)this).PusherOptions = Options;
             SetEventEmitterErrorHandler(InvokeErrorHandler);
+
+            // TODO _connection is not initialized yet. This is a bug.
+            // The best way to go is to pospone accessing the connection when it is actually needed.
+            // This requires accessing the conneciton via the pusher object.
+            // either by getting the connection from the pusher object or implementing some proxy functions on the pusher objects for the needed functionality from the connection.
+            // FYI: the needed functionality is SocketID and SendAsync().
+            User = new UserFacade(_connection, this);
         }
 
         PusherOptions IPusher.PusherOptions { get; set; }

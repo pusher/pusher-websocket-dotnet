@@ -15,6 +15,11 @@
         public const string CHANNEL_MEMBER_ADDED = "pusher_internal:member_added";
         public const string CHANNEL_MEMBER_REMOVED = "pusher_internal:member_removed";
 
+        public const string PUSHER_SIGNIN = "pusher:signin";
+        public const string PUSHER_SIGNIN_SUCCESS = "pusher:signin_success";
+
+        public const string USER_CHANNEL_PREFIX = "#server-to-user-";
+        
         public const string INSECURE_SCHEMA = "ws://";
         public const string SECURE_SCHEMA = "wss://";
 

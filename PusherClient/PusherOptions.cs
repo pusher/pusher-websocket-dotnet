@@ -44,6 +44,11 @@ namespace PusherClient
         public IChannelAuthorizer ChannelAuthorizer { get; set; } = null;
 
         /// <summary>
+        /// Gets or set the <see cref="IUserAuthenticator"/> to use.
+        /// </summary>
+        public IUserAuthenticator UserAuthenticator { get; set; } = null;
+
+        /// <summary>
         /// Gets or sets the cluster to use for the host.
         /// </summary>
         public string Cluster

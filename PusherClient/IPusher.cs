@@ -1,4 +1,6 @@
-﻿namespace PusherClient
+﻿using System.Threading.Tasks;
+
+namespace PusherClient
 {
     internal interface IPusher
     {
@@ -14,5 +16,8 @@
         IEventBinder GetEventBinder(string eventBinderKey);
         IEventBinder GetChannelEventBinder(string eventBinderKey, string channelName);
         byte[] GetSharedSecret(string channelName);
+
+        Task<Channel> SubscribeAsync(string channelName, SubscriptionEventHandler subscribedEventHandler = null);
+
     }
 }
