@@ -24,9 +24,24 @@ namespace PusherClient
         public bool Encrypted { get; set; }
 
         /// <summary>
+        /// DEPRECATED: Use <see cref="ChannelAuthorizer"/> instead.
         /// Gets or set the <see cref="IAuthorizer"/> to use.
         /// </summary>
-        public IAuthorizer Authorizer { get; set; } = null;
+        public IAuthorizer Authorizer { 
+            get
+            {
+                return (IAuthorizer) ChannelAuthorizer;
+            }
+            set
+            {
+                ChannelAuthorizer = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or set the <see cref="IChannelAuthorizer"/> to use.
+        /// </summary>
+        public IChannelAuthorizer ChannelAuthorizer { get; set; } = null;
 
         /// <summary>
         /// Gets or sets the cluster to use for the host.

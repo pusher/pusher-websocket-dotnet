@@ -642,7 +642,7 @@ namespace PusherClient
                 if (channel.ChannelType != ChannelTypes.Public)
                 {
                     string jsonAuth;
-                    if (Options.Authorizer is IAuthorizerAsync asyncAuthorizer)
+                    if (Options.ChannelAuthorizer is IChannelAuthorizerAsync asyncAuthorizer)
                     {
                         if (!asyncAuthorizer.Timeout.HasValue)
                         {
@@ -654,7 +654,7 @@ namespace PusherClient
                     }
                     else
                     {
-                        jsonAuth = Options.Authorizer.Authorize(channelName, _connection.SocketId);
+                        jsonAuth = Options.ChannelAuthorizer.Authorize(channelName, _connection.SocketId);
                     }
 
                     message = CreateAuthorizedChannelSubscribeMessage(channel, jsonAuth);
@@ -781,9 +781,9 @@ namespace PusherClient
 
         private void AuthEndpointCheck(string channelName)
         {
-            if (Options.Authorizer == null)
+            if (Options.ChannelAuthorizer == null)
             {
-                string errorMsg = $"An Authorizer needs to be provided when subscribing to the private or presence channel '{channelName}'.";
+                string errorMsg = $"A ChannelAuthorizer needs to be provided when subscribing to the private or presence channel '{channelName}'.";
                 ChannelException pusherException = new ChannelException(errorMsg, ErrorCodes.ChannelAuthorizerNotSet, channelName: channelName, socketId: SocketID);
                 RaiseError(pusherException);
                 throw pusherException;
