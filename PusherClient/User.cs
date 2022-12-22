@@ -6,10 +6,11 @@ using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using PusherClient;
 
 namespace PusherClient
 {
-     public class User : IUser
+     internal class User : IUser
      {
           /*
           private static class UserConnectionStateChangedEventHandler: ConnectionStateChangedEventHandler {
@@ -45,6 +46,9 @@ namespace PusherClient
                this.connection = connection;
                this.userAuthenticator = userAuthenticator;
                this.signinRequested = false;
+
+               // TODO assign serverToUserChannel 
+               // after sign in works so we need to subscribe to it
 
                pusher.BindAll(GeneralListener);
           }
