@@ -1,17 +1,21 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net45</TargetFrameworks>
+    <TargetFrameworks>net60</TargetFrameworks>
     <IsPackable>false</IsPackable>
     <OutputType>Exe</OutputType>
     <Authors>Pusher</Authors>
     <Company>Pusher.com</Company>
     <Product>PusherClient</Product>
-    <Copyright>Copyright © Pusher 2021</Copyright>
+    <Copyright>Copyright © Pusher 2022</Copyright>
     <Description>An Example App for user with Pusher Client</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PusherClient\PusherClient.csproj" />
   </ItemGroup>
 
   <ItemGroup>

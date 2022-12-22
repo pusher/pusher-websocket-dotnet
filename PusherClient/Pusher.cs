@@ -87,7 +87,7 @@ namespace PusherClient
 
             Options = options ?? new PusherOptions();
             ((IPusher)this).PusherOptions = Options;
-            user = new User(_connection, Options.UserAuthenticator)
+            user = new User(_connection, Options.UserAuthenticator);
             SetEventEmitterErrorHandler(InvokeErrorHandler);
         }
 
@@ -497,7 +497,7 @@ namespace PusherClient
         /// Gets the user associated with this Pusher connection.
         /// </summary>
         /// <returns>The <see cref="IUser"/> associated with this Pusher connection..</returns>
-        public IUser user() {
+        public IUser User() {
             return user;
         }
 
@@ -509,7 +509,7 @@ namespace PusherClient
             if (Options.HttpUserAuthenticator() == null) {
                 throw new NoHttpUserAuthenticatorHasBeenSet();
             }
-            user.signin();
+            user.Signin();
         }
 
         /// <summary>

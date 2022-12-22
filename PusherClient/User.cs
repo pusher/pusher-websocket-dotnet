@@ -11,6 +11,7 @@ namespace PusherClient
 {
      public class User : IUser
      {
+          /*
           private static class UserConnectionStateChangedEventHandler: ConnectionStateChangedEventHandler {
                private User user;
 
@@ -21,21 +22,22 @@ namespace PusherClient
                public override void ChangeConnectionState(ConnectionState state){
                     switch (connection._pusher.State) {
                          case ConnectionState.Connected:
-                              user.attemptSignin();
+                              user.AttemptSignin();
                               break;
                          case ConnectionState.Connecting:
-                              user.disconnect();
+                              user.Disconnect();
                               break;
                          case ConnectionState.Disconnected:
-                              user.disconnect();
+                              user.Disconnect();
                               break;
                     }
                }
           }
+          */
 
           private IConnection connection;
           private IUserAuthenticator userAuthenticator;
-          private boolean signinRequested;
+          private bool signinRequested;
           private Channel serverToUserChannel;
           private String userId;
 
@@ -48,22 +50,22 @@ namespace PusherClient
           }
 
 
-          void GeneralListener(string eventName, PusherEvent eventData)
+          void GeneralListener(string eventName, PusherEvent e)
           {
                if (eventName == Constants.PUSHER_SIGNIN_SUCCESS)
                {
-                    onSigninSuccess(event);
+                    OnSigninSuccess(e);
                }
           }
 
-          public void signin() {
+          public void Signin() {
                if (signinRequested || userId != null) {
                     return;
                }
                     signinRequested = true;
                try 
                {        
-                    attemptSignin();
+                    AttemptSignin();
                }  
                catch (Exception e)
                {
@@ -72,7 +74,7 @@ namespace PusherClient
 
           }
 
-          private void attemptSignin(){
+          private void AttemptSignin(){
                if (!signinRequested || userId != null) {
                     return;
                }
@@ -86,11 +88,11 @@ namespace PusherClient
                connection.SendAsync(authenticationResponseToSigninMessage(authenticationResponse));
           }
 
-          private static String authenticationResponseToSigninMessage(AuthenticationResponse authenticationResponse) {
+          private static String AuthenticationResponseToSigninMessage(AuthenticationResponse authenticationResponse) {
                return DefaultSerializer.Default.Serialize(new SigninMessage(authenticationResponse.getAuth(), authenticationResponse.getUserData()));
           }
 
-          private AuthenticationResponse getAuthenticationResponse() throws AuthenticationFailureException {
+          private AuthenticationResponse GetAuthenticationResponse() throws AuthenticationFailureException {
                String response = userAuthenticator.Authenticate(connection.SocketId);
                try {
                     AuthenticationResponse authenticationResponse = Serialize(response, AuthenticationResponse.class);
@@ -105,20 +107,21 @@ namespace PusherClient
                }
           }
 
-          private void onSigninSuccess(PusherEvent event) {
+          private void OnSigninSuccess(PusherEvent e) {
+               String userId = null;
                try {
-                    JToken jToken = JToken.Parse(event);
+                    JToken jToken = JToken.Parse(e);
                     JObject jObject = JObject.Parse(jToken.ToString());
-                    userData = jObject.SelectToken("user_data");
-                    id = jObject.SelectToken("id");
+                    JToken userData = jObject.SelectToken("user_data");
+                    JToken id = jObject.SelectToken("id");
                     if (id.Type == JTokenType.String)
                      {
                           userId = id.Value<string>();
                      }
 
                } catch (Exception error) {
-                    errorMsg = "Failed parsing user data after signin"
-                    throw new PusherException(errorMsg, error)
+                    String errorMsg = "Failed parsing user data after signin";
+                    throw new PusherException(errorMsg, error);
                }
 
                if (userId == null) {
@@ -128,7 +131,7 @@ namespace PusherClient
                connection._pusher.Subscribe($"#server-to-user-'{userId}'", null);
           }
 
-          private void disconnect() {
+          private void Disconnect() {
                if (serverToUserChannel.IsSubscribed) {
                     serverToUserChannel.Unsubscribe();
                }
