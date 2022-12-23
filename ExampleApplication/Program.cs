@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -144,7 +144,7 @@ namespace ExampleApplication
 
 
                 _pusher.User.Bind(OnUserEvent);
-                _pusher.User.Bind("blah", OnBlahUserEvent);
+                _pusher.User.Bind("test_event", OnBlahUserEvent);
 
                 TimeSpan timeoutPeriod = TimeSpan.FromSeconds(10);
                 _pusher.User.SigninAsync().WaitAsync(timeoutPeriod).ConfigureAwait(false);
@@ -172,16 +172,15 @@ namespace ExampleApplication
 
         // Pusher Initiation / Connection
 
-        static void OnBlahUserEvent(UserEvent eventData)
+        static void OnBlahUserEvent(UserEvent userEvent)
         {
-            Console.WriteLine($"{Environment.NewLine} {eventData}");
+            Console.WriteLine($"{Environment.NewLine} OnBlahUserEvent {userEvent}");
             // TraceMessage(sender, $"{Environment.NewLine}{eventName} {eventData.Data}");
         }
 
-        static void OnUserEvent(string eventName, UserEvent eventData)
+        static void OnUserEvent(string eventName, UserEvent userEvent)
         {
-            Console.WriteLine($"{Environment.NewLine}{eventName} {eventData}");
-            // TraceMessage(sender, $"{Environment.NewLine}{eventName} {eventData.Data}");
+            Console.WriteLine($"{Environment.NewLine}{eventName} {userEvent}");
         }
 
         static void ChannelEvent(string eventName, PusherEvent eventData)

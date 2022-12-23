@@ -4,19 +4,16 @@ namespace PusherClient
 {
     public class UserEvent
     {
-        private readonly Dictionary<string, object> _eventData;
         private readonly string _rawData;
 
-        public UserEvent(Dictionary<string, object> eventData, string rawData)
+        public UserEvent(string rawData)
         {
-            _eventData = eventData;
             _rawData = rawData;
         }
 
-        public object GetProperty(string key)
+        public string Data()
         {
-            _eventData.TryGetValue(key, out var value);
-            return value;
+            return _rawData;
         }
 
 

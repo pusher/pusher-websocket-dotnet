@@ -115,17 +115,11 @@ namespace PusherClient
 
                 // Subscribe to the user channel
                 _userChannel = await _pusher.SubscribeAsync(Constants.USER_CHANNEL_PREFIX + user.id);
-
-                // TODO Binding to a channel event doesn't work in this way:
-                // _userChannel.Bind((string eventName, PusherEvent pusherEvent) =>
-                // {
-                //     // TODO The interface of the user events is not determined yet.
-                //     EmitEvent(eventName, new UserEvent(null, pusherEvent.Data));
-                // });
+                _userChannel.BindAll(OnUserChannelEvent);
             }
             finally
             {
-                // Call any error handler to report the error
+                // TODO Call any error handler to report the error
 
                 _signinResultRecieved.Release();
                 _signinResultRecieved = null;
@@ -186,8 +180,11 @@ namespace PusherClient
             return DefaultSerializer.Default.Serialize(new PusherSigninEvent(data));
         }
 
+        private void OnUserChannelEvent(string eventName, PusherEvent pusherEvent)
+        {
+            EmitEvent(eventName, new UserEvent(pusherEvent.Data));
+        }
 
-        // public WatchlistFacade Watchlist();
 
     }
 }
