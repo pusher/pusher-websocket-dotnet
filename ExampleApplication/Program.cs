@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -145,6 +145,10 @@ namespace ExampleApplication
 
                 _pusher.User.Bind(OnUserEvent);
                 _pusher.User.Bind("test_event", OnBlahUserEvent);
+                
+                _pusher.User.Watchlist.Bind("online", OnWatchlistOnlineEvent);
+                _pusher.User.Watchlist.Bind("offline", OnWatchlistOfflineEvent);
+                _pusher.User.Watchlist.Bind(OnWatchlistEvent);
 
                 TimeSpan timeoutPeriod = TimeSpan.FromSeconds(10);
                 _pusher.User.SigninAsync().WaitAsync(timeoutPeriod).ConfigureAwait(false);
@@ -182,6 +186,24 @@ namespace ExampleApplication
         {
             Console.WriteLine($"{Environment.NewLine}{eventName} {userEvent}");
         }
+
+        static void OnWatchlistEvent(string eventName, WatchlistEvent watchlistEvent)
+        {
+            Console.WriteLine($"{Environment.NewLine} OnWatchlistEvent {eventName} {watchlistEvent.Name}");
+            foreach (var id in watchlistEvent.UserIDs)
+            {
+                Console.WriteLine($"{Environment.NewLine} OnWatchlistEvent {eventName} {watchlistEvent.Name} {id}");
+            }
+        }
+        static void OnWatchlistOnlineEvent(WatchlistEvent watchlistEvent)
+        {
+            Console.WriteLine($"{Environment.NewLine} OnWatchlistOnlineEvent {watchlistEvent}");
+        }
+        static void OnWatchlistOfflineEvent(WatchlistEvent watchlistEvent)
+        {
+            Console.WriteLine($"{Environment.NewLine} OnWatchlistOfflineEvent {watchlistEvent}");
+        }
+
 
         static void ChannelEvent(string eventName, PusherEvent eventData)
         {

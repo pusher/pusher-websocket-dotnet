@@ -4,8 +4,7 @@ Readme:
 
 Implementation:
 - Signin on reconnection
-- Bind to user events
-- Watchlist interface + Bind to watchlist events
+
 
 Later:
 - There is a weird implementation regarding IAuthorizerAsync and IAuthorizer

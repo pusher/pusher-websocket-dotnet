@@ -5,8 +5,7 @@ namespace PusherClient
     public interface IUserFacade : IEventBinder<UserEvent>
     {
         Task SigninAsync();
-
-        // public WatchlistFacade Watchlist();
+        IWatchlistFacade Watchlist { get; }
 
     }
 }

@@ -96,7 +96,7 @@ namespace PusherClient
             // FYI: the needed functionality is SocketID and SendAsync().
             UserFacade user = new UserFacade(() => {return _connection;}, this);
             ConnectionStateChanged += user.OnConnectionStateChanged;
-            BindAll(user.OnEvent);
+            BindAll(user.OnPusherEvent);
             User = user;
         }
 

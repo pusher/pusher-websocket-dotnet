@@ -24,6 +24,15 @@ namespace PusherClient
 
         private SemaphoreSlim _connectedLock = new SemaphoreSlim(0, 1);
 
+
+        public IWatchlistFacade Watchlist { 
+            get {
+                return _watchlistFacade;
+            }
+        }
+
+        private WatchlistFacade _watchlistFacade = new WatchlistFacade();
+
         public UserFacade(Func<IConnection> getConnection, IPusher pusher)
         {
             _getConnection = getConnection;
@@ -63,10 +72,11 @@ namespace PusherClient
             }
         }
 
-        internal void OnEvent(string eventName, PusherEvent pusherEvent) {
+        internal void OnPusherEvent(string eventName, PusherEvent pusherEvent) {
             if (eventName == Constants.PUSHER_SIGNIN_SUCCESS) {
                 _signinResultRecieved?.Release();
             }
+            _watchlistFacade.OnPusherEvent(eventName, pusherEvent);
         }
 
         private async Task SinginProcess() {
