@@ -94,7 +94,10 @@ namespace PusherClient
             // This requires accessing the conneciton via the pusher object.
             // either by getting the connection from the pusher object or implementing some proxy functions on the pusher objects for the needed functionality from the connection.
             // FYI: the needed functionality is SocketID and SendAsync().
-            User = new UserFacade(_connection, this);
+            UserFacade user = new UserFacade(() => {return _connection;}, this);
+            ConnectionStateChanged += user.OnConnectionStateChanged;
+            BindAll(user.OnEvent);
+            User = user;
         }
 
         PusherOptions IPusher.PusherOptions { get; set; }

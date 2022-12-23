@@ -146,8 +146,8 @@ namespace ExampleApplication
                 _pusher.User.Bind(OnUserEvent);
                 _pusher.User.Bind("blah", OnBlahUserEvent);
 
-                
-                _pusher.User.SigninAsync().Wait();
+                TimeSpan timeoutPeriod = TimeSpan.FromSeconds(10);
+                _pusher.User.SigninAsync().WaitAsync(timeoutPeriod).ConfigureAwait(false);
             };
 
             await _pusher.ConnectAsync().ConfigureAwait(false);

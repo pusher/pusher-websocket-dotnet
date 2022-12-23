@@ -9,7 +9,7 @@ namespace PusherClient
 {
     internal class UserFacade : EventEmitter<UserEvent>, IUserFacade
     {
-        private IConnection _connection;
+        Func<IConnection> _getConnection;
         private IPusher _pusher;
 
         // _signinLock protects the _isSignedIn flag and the _userChannel field.
@@ -21,24 +21,13 @@ namespace PusherClient
         // When the signin success event is received, the semaphore is released.
         private SemaphoreSlim _signinResultRecieved;
 
-        public UserFacade(IConnection connection, IPusher pusher)
+
+        private SemaphoreSlim _connectedLock = new SemaphoreSlim(0, 1);
+
+        public UserFacade(Func<IConnection> getConnection, IPusher pusher)
         {
-            _connection = connection;
+            _getConnection = getConnection;
             _pusher = pusher;
-
-            // TODO Binding to pusher events doesn't work the following code.
-            // This will probably require changes to IPusher to allow for binding to events.
-            // _pusher.GetEventBinder(nameof(PusherEventEmitter)).Bind(Constants.PUSHER_SIGNIN_SUCCESS, (PusherEvent pusherEvent) =>
-            // {
-            //     _signinResultRecieved?.Release();
-            // });
-
-            // _pusher.GetEventBinder(nameof(PusherEventEmitter)).Bind(Constants.ERROR, (PusherEvent pusherEvent) =>
-            // {
-            //     // Check if this error is related to signin.
-            //     // _signinResultRecieved?.Release();
-                
-            // });
         }
 
         public async Task SigninAsync() {
@@ -66,15 +55,33 @@ namespace PusherClient
             }
         }
 
+        internal void OnConnectionStateChanged(object sender, ConnectionState state)
+        {
+            if (state == ConnectionState.Connected)
+            {
+                _connectedLock.Release();
+            }
+        }
+
+        internal void OnEvent(string eventName, PusherEvent pusherEvent) {
+            if (eventName == Constants.PUSHER_SIGNIN_SUCCESS) {
+                _signinResultRecieved?.Release();
+            }
+        }
+
         private async Task SinginProcess() {
             _signinResultRecieved = new SemaphoreSlim(0, 1);
 
             try {
-                Console.WriteLine($"{_connection} Cluster {_pusher.PusherOptions.Cluster}, {_pusher.PusherOptions.UserAuthenticator}");
-
+                TimeSpan timeoutPeriod = _pusher.PusherOptions.InnerClientTimeout;
 
                 // Wait for the connection to be connected.
-                await _connection.ConnectAsync().ConfigureAwait(false);
+                if (!await _connectedLock.WaitAsync(timeoutPeriod).ConfigureAwait(false))
+                {
+                    throw new OperationTimeoutException(timeoutPeriod, $"{Constants.PUSHER_SIGNIN_SUCCESS}");
+                }
+                IConnection connection = _getConnection();
+                string socketId = connection.SocketId;
 
                 string jsonAuth;
                 if (_pusher.PusherOptions.UserAuthenticator is IUserAuthenticatorAsync asyncAuthenticator)
@@ -85,23 +92,20 @@ namespace PusherClient
                         asyncAuthenticator.Timeout = _pusher.PusherOptions.InnerClientTimeout;
                     }
 
-                    string socketId = _connection.SocketId;
-
                     jsonAuth = await asyncAuthenticator.AuthenticateAsync(socketId).ConfigureAwait(false);
                 }
                 else
                 {
-                    jsonAuth = _pusher.PusherOptions.UserAuthenticator.Authenticate(_connection.SocketId);
+                    jsonAuth = _pusher.PusherOptions.UserAuthenticator.Authenticate(connection.SocketId);
                 }
 
-                // TODO parse the jsonAuth and get the user id
-                string userId = "TODO123";
+                UserAuthResponse authResponse = ParseAuthMessage(jsonAuth);
+                User user = ParseUser(authResponse.userData);
 
                 // Send signin event on the connection
-                string message = CreateSigninMessage(jsonAuth);
-                await _connection.SendAsync(message).ConfigureAwait(false);
+                string message = CreateSigninMessage(authResponse);
+                await connection.SendAsync(message).ConfigureAwait(false);
 
-                TimeSpan timeoutPeriod = _pusher.PusherOptions.InnerClientTimeout;
                 if (!await _signinResultRecieved.WaitAsync(timeoutPeriod).ConfigureAwait(false))
                 {
                     throw new OperationTimeoutException(timeoutPeriod, $"{Constants.PUSHER_SIGNIN_SUCCESS}");
@@ -110,7 +114,7 @@ namespace PusherClient
                 _isSignedIn = true;
 
                 // Subscribe to the user channel
-                _userChannel = await _pusher.SubscribeAsync(Constants.USER_CHANNEL_PREFIX + userId);
+                _userChannel = await _pusher.SubscribeAsync(Constants.USER_CHANNEL_PREFIX + user.id);
 
                 // TODO Binding to a channel event doesn't work in this way:
                 // _userChannel.Bind((string eventName, PusherEvent pusherEvent) =>
@@ -128,28 +132,57 @@ namespace PusherClient
             }
         }
 
-        private string CreateSigninMessage(string jsonAuth)
+        struct UserAuthResponse {
+            internal string auth;
+            internal string userData;
+        };
+        
+        struct User {
+            internal string id;
+        };
+
+        private UserAuthResponse ParseAuthMessage(string jsonAuth)
         {
-            string auth = null;
-            string userData = null;
+            UserAuthResponse authResponse = new UserAuthResponse();
             JObject jObject = JObject.Parse(jsonAuth);
             JToken jToken = jObject.SelectToken("auth");
             if (jToken != null)
             {
                 if (jToken.Type == JTokenType.String)
                 {
-                    auth = jToken.Value<string>();
+                    authResponse.auth = jToken.Value<string>();
                 }
             }
 
             jToken = jObject.SelectToken("user_data");
             if (jToken != null && jToken.Type == JTokenType.String)
             {
-                userData = jToken.Value<string>();
+                authResponse.userData = jToken.Value<string>();
             }
 
+            return authResponse;
+        }
 
-            PusherSigninEventData data = new PusherSigninEventData(auth, userData);
+        private User ParseUser(string jsonAuth)
+        {
+            User user = new User();
+            JObject jObject = JObject.Parse(jsonAuth);
+            JToken jToken = jObject.SelectToken("id");
+            if (jToken != null)
+            {
+                if (jToken.Type == JTokenType.String)
+                {
+                    user.id = jToken.Value<string>();
+                }
+            }
+
+            return user;
+        }
+
+
+        private string CreateSigninMessage(UserAuthResponse authResponse)
+        {
+            PusherSigninEventData data = new PusherSigninEventData(authResponse.auth, authResponse.userData);
             return DefaultSerializer.Default.Serialize(new PusherSigninEvent(data));
         }
 
