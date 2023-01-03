@@ -74,7 +74,7 @@ namespace PusherClient
             TaskCompletionSource<object> promise = null;
             await _CriticalSection(() => {
                 promise = _signinDonePromise;
-            });
+            }).ConfigureAwait(false);
             await promise.Task;
         }
 
@@ -93,7 +93,7 @@ namespace PusherClient
                 {
                     _isConnected = false;
                 }
-            });
+            }).ConfigureAwait(false);
 
             if (!previousIsConnected && _isConnected) {
                 await _Signin();
@@ -121,7 +121,7 @@ namespace PusherClient
                         _signinDonePromise.TrySetException(error);
                     }
                 }
-            });
+            }).ConfigureAwait(false);
         }
 
         private async Task _Signin() {
@@ -130,7 +130,7 @@ namespace PusherClient
                 if (!_isSinginRequested) {
                     shouldReturn = true;
                 }
-            });
+            }).ConfigureAwait(false);
             if (shouldReturn) {
                 return;
             }
@@ -164,7 +164,7 @@ namespace PusherClient
 
                 // Either there is no promise or the promise is already completed. We need to create a new one.
                 _signinDonePromise = new TaskCompletionSource<object>();
-            });
+            }).ConfigureAwait(false);
         }
 
 

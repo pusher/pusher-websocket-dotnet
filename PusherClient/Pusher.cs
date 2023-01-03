@@ -120,9 +120,6 @@ namespace PusherClient
                         }
                     }
 
-                    SubscribeExistingChannels();
-                    UnsubscribeBacklog();
-
                     if (ConnectionStateChanged != null)
                     {
                         try
@@ -134,6 +131,9 @@ namespace PusherClient
                             InvokeErrorHandler(new ConnectionStateChangedEventHandlerException(state, error));
                         }
                     }
+
+                    SubscribeExistingChannels();
+                    UnsubscribeBacklog();
                 });
             }
             else if (state == ConnectionState.Disconnected)
@@ -653,6 +653,10 @@ namespace PusherClient
                 string message;
                 if (channel.ChannelType != ChannelTypes.Public)
                 {
+                    if (channel.ChannelType == ChannelTypes.Presence) {                
+                        await User.SigninDoneAsync().ConfigureAwait(false);
+                    }
+
                     string jsonAuth;
                     if (Options.ChannelAuthorizer is IChannelAuthorizerAsync asyncAuthorizer)
                     {
