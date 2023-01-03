@@ -9,29 +9,42 @@ namespace PusherClient
 {
     internal class UserFacade : EventEmitter<UserEvent>, IUserFacade
     {
-        Func<IConnection> _getConnection;
-        private IPusher _pusher;
-
-        // _signinLock protects the _isSignedIn flag and the _userChannel field.
-        private SemaphoreSlim _signinLock = new SemaphoreSlim(1);
-        private bool _isSignedIn = false;
-        private Channel _userChannel;
-
-        // _signinResultRecieved is initialized during the signin process in order to wait for the siginin success event.
-        // When the signin success event is received, the semaphore is released.
-        private SemaphoreSlim _signinResultRecieved;
-
-
-        private SemaphoreSlim _connectedLock = new SemaphoreSlim(0, 1);
-
-
         public IWatchlistFacade Watchlist { 
             get {
                 return _watchlistFacade;
             }
         }
-
         private WatchlistFacade _watchlistFacade = new WatchlistFacade();
+
+        Func<IConnection> _getConnection;
+        private IPusher _pusher;
+        private Channel _userChannel;
+        private User user = null;
+
+        /// protected by _stateLock
+        private SemaphoreSlim _stateLock = new SemaphoreSlim(1);
+        private bool _isSinginRequested = false;
+        private bool _isConnected = false;
+        private TaskCompletionSource<object> _signinDonePromise = null;
+        /// protected by _stateLock
+
+        private async Task _CriticalSection(Action action) {
+            try
+            {
+                TimeSpan timeoutPeriod = _pusher.PusherOptions.ClientTimeout;
+                if (!await _stateLock.WaitAsync(timeoutPeriod).ConfigureAwait(false))
+                {
+                    throw new OperationTimeoutException(timeoutPeriod, $"{Constants.PUSHER_SIGNIN}");
+                }
+
+                action();
+            }
+            finally
+            {
+                _stateLock.Release();
+            }
+        }
+
 
         public UserFacade(Func<IConnection> getConnection, IPusher pusher)
         {
@@ -39,60 +52,173 @@ namespace PusherClient
             _pusher = pusher;
         }
 
-        public async Task SigninAsync() {
-            try
-            {
-                TimeSpan timeoutPeriod = _pusher.PusherOptions.ClientTimeout;
-                if (!await _signinLock.WaitAsync(timeoutPeriod).ConfigureAwait(false))
+        // This method records that Signin is requested on this connection.
+        // And starts it if it wasn't started before.
+        public async void Signin() {
+            bool shouldReturn = false;
+            await _CriticalSection(() => {
+                if (_isSinginRequested) {
+                    shouldReturn = true;
+                    return;
+                }
+                _isSinginRequested = true;
+            });
+            if (shouldReturn) {
+                return;
+            }
+
+            _Signin();
+        }
+
+        public async Task SigninDoneAsync() {
+            TaskCompletionSource<object> promise = null;
+            await _CriticalSection(() => {
+                promise = _signinDonePromise;
+            });
+            await promise.Task;
+        }
+
+
+        internal async void OnConnectionStateChanged(object sender, ConnectionState state) {
+            bool previousIsConnected = false;
+            await _CriticalSection(() => {
+                previousIsConnected = _isConnected;
+
+                if (state == ConnectionState.Connected)
                 {
-                    throw new OperationTimeoutException(timeoutPeriod, $"{Constants.PUSHER_SIGNIN}");
+                    _isConnected = true;
                 }
 
-                if (!_isSignedIn)
+                if (state != ConnectionState.Connected)
                 {
-                    await SinginProcess().ConfigureAwait(false);
+                    _isConnected = false;
                 }
+            });
+
+            if (!previousIsConnected && _isConnected) {
+                await _Signin();
             }
-            catch (Exception error)
-            {
-                // TODO handle error
-                throw;
-            }
-            finally
-            {
-                _signinLock.Release();
+
+            if (previousIsConnected && !_isConnected) {
+                await _Cleanup();
+                await _NewSigninPromiseIfNeeded();
             }
         }
 
-        internal void OnConnectionStateChanged(object sender, ConnectionState state)
-        {
-            if (state == ConnectionState.Connected)
-            {
-                _connectedLock.Release();
-            }
+        private async Task _Cleanup(Exception error = null) {
+            await _CriticalSection(() => {
+                if(_userChannel != null) {
+                    _userChannel.UnbindAll();
+                    _userChannel.Unsubscribe();
+                    _userChannel = null;
+                }
+                // TODO _watchlistFacade.Cleanup();
+
+                if(_isSinginRequested) {
+                    if(error == null) {
+                        _signinDonePromise.TrySetResult(null);
+                    } else {
+                        _signinDonePromise.TrySetException(error);
+                    }
+                }
+            });
         }
+
+        private async Task _Signin() {
+            bool shouldReturn = false;
+            await _CriticalSection(() => {
+                if (!_isSinginRequested) {
+                    shouldReturn = true;
+                }
+            });
+            if (shouldReturn) {
+                return;
+            }
+
+            await this._NewSigninPromiseIfNeeded();
+
+            await _CriticalSection(() => {
+                if(!_isConnected) {
+                    shouldReturn = true;
+                }
+            });
+            if (shouldReturn) {
+                return;
+            }
+
+            // The current code doesn't prevent SinginProcess from being called twice in parallel.
+            SinginProcess();
+        }
+
+
+        private async Task _NewSigninPromiseIfNeeded() {
+            await _CriticalSection(() => {
+                if (!_isSinginRequested) {
+                    return;
+                }
+
+                // If there is a promise and it is not resolved, return without creating a new one.
+                if (_signinDonePromise != null && !_signinDonePromise.Task.IsCompleted) {
+                    return;
+                }
+
+                // Either there is no promise or the promise is already completed. We need to create a new one.
+                _signinDonePromise = new TaskCompletionSource<object>();
+            });
+        }
+
 
         internal void OnPusherEvent(string eventName, PusherEvent pusherEvent) {
             if (eventName == Constants.PUSHER_SIGNIN_SUCCESS) {
-                _signinResultRecieved?.Release();
+                _OnSigninSuccess(pusherEvent);
             }
             _watchlistFacade.OnPusherEvent(eventName, pusherEvent);
         }
 
-        private async Task SinginProcess() {
-            _signinResultRecieved = new SemaphoreSlim(0, 1);
-
+        private void _OnSigninSuccess(PusherEvent pusherEvent) {
+            // Try to parse event
             try {
-                TimeSpan timeoutPeriod = _pusher.PusherOptions.InnerClientTimeout;
-
-                // Wait for the connection to be connected.
-                if (!await _connectedLock.WaitAsync(timeoutPeriod).ConfigureAwait(false))
+                String data = pusherEvent.Data;
+                String userData = null;
+                JObject jObject = JObject.Parse(data);
+                JToken jToken = jObject.SelectToken("user_data");
+                if (jToken != null)
                 {
-                    throw new OperationTimeoutException(timeoutPeriod, $"{Constants.PUSHER_SIGNIN_SUCCESS}");
+                    if (jToken.Type == JTokenType.String)
+                    {
+                        userData = jToken.Value<string>();
+                    }
                 }
+
+                if (userData == null)
+                {
+                    throw new Exception("user_data is null");
+                }
+
+                user = ParseUser(userData);
+            } catch (Exception error) {
+                Console.WriteLine($"{Environment.NewLine} error parsing user {error}");
+                this._Cleanup(error);
+                return;
+            }
+                    
+            // TODO Check if user_data contains an id, string, and not empty.
+            // Otherwise, report error.
+
+            _signinDonePromise.TrySetResult(null);
+            _SubscribeToUserChannel();
+        }
+
+        private async void _SubscribeToUserChannel() {
+            // TODO check if something else is needed to subscribe to user channel
+            _userChannel = await _pusher.SubscribeAsync(Constants.USER_CHANNEL_PREFIX + user.id);
+            _userChannel.BindAll(OnUserChannelEvent);
+        }
+
+        private async Task SinginProcess() {
+            try {
                 IConnection connection = _getConnection();
                 string socketId = connection.SocketId;
-
                 string jsonAuth;
                 if (_pusher.PusherOptions.UserAuthenticator is IUserAuthenticatorAsync asyncAuthenticator)
                 {
@@ -110,29 +236,13 @@ namespace PusherClient
                 }
 
                 UserAuthResponse authResponse = ParseAuthMessage(jsonAuth);
-                User user = ParseUser(authResponse.userData);
 
                 // Send signin event on the connection
                 string message = CreateSigninMessage(authResponse);
                 await connection.SendAsync(message).ConfigureAwait(false);
-
-                if (!await _signinResultRecieved.WaitAsync(timeoutPeriod).ConfigureAwait(false))
-                {
-                    throw new OperationTimeoutException(timeoutPeriod, $"{Constants.PUSHER_SIGNIN_SUCCESS}");
-                }
-
-                _isSignedIn = true;
-
-                // Subscribe to the user channel
-                _userChannel = await _pusher.SubscribeAsync(Constants.USER_CHANNEL_PREFIX + user.id);
-                _userChannel.BindAll(OnUserChannelEvent);
-            }
-            finally
-            {
-                // TODO Call any error handler to report the error
-
-                _signinResultRecieved.Release();
-                _signinResultRecieved = null;
+            } catch (Exception error) {
+                this._Cleanup(error);
+                return;
             }
         }
 
@@ -141,7 +251,7 @@ namespace PusherClient
             internal string userData;
         };
         
-        struct User {
+        class User {
             internal string id;
         };
 

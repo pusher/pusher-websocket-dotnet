@@ -53,6 +53,7 @@ namespace ExampleApplication
             });
             _pusher.ConnectionStateChanged += PusherConnectionStateChanged;
             _pusher.Error += PusherError;
+            _pusher.User.Signin();
 
             _pusher.Subscribed += (sender, channel) =>
             {
@@ -89,7 +90,7 @@ namespace ExampleApplication
             _pusher.Error += DecryptionErrorHandler;
             _pusher.BindAll(GeneralListener);
 
-            _pusher.Connected += (sender) =>
+            _pusher.Connected += async (sender) =>
             {
                 /*
                  * Setting up subscriptions here is handy if your App has the following setting - 
@@ -150,11 +151,36 @@ namespace ExampleApplication
                 _pusher.User.Watchlist.Bind("offline", OnWatchlistOfflineEvent);
                 _pusher.User.Watchlist.Bind(OnWatchlistEvent);
 
-                TimeSpan timeoutPeriod = TimeSpan.FromSeconds(10);
-                _pusher.User.SigninAsync().WaitAsync(timeoutPeriod).ConfigureAwait(false);
+                _pusher.User.Signin();
+                Console.WriteLine($"{Environment.NewLine} After waiting await SigninAsync()");
+
+                await _pusher.User.SigninDoneAsync();
+                Console.WriteLine($"{Environment.NewLine} After SigninDoneAsync() 2");
+            };
+            
+            _pusher.Connected += async (sender) =>
+            {
+                _pusher.User.Signin();
+                Console.WriteLine($"{Environment.NewLine} After waiting await SigninAsync() 2");
+
+                await _pusher.User.SigninDoneAsync();
+                Console.WriteLine($"{Environment.NewLine} After SigninDoneAsync() 2");
             };
 
             await _pusher.ConnectAsync().ConfigureAwait(false);
+
+            await Task.Delay(10000).ConfigureAwait(false);
+
+            Console.WriteLine($"{Environment.NewLine} Disconnecting");
+            await _pusher.DisconnectAsync().ConfigureAwait(false);
+            Console.WriteLine($"{Environment.NewLine} Disconnected");
+
+            await Task.Delay(2000).ConfigureAwait(false);
+
+            
+            Console.WriteLine($"{Environment.NewLine} Connecting");
+            await _pusher.ConnectAsync().ConfigureAwait(false);
+
         }
 
         static void ListMembers()
