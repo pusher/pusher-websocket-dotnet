@@ -1,5 +1,5 @@
 {
-  "image": "mcr.microsoft.com/dotnet/framework/sdk:4.8.1",
+  "image": "mcr.microsoft.com/vscode/devcontainers/dotnet:3.1",
   "features": {
   }
 }
