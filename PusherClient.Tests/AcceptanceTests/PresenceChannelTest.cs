@@ -92,7 +92,7 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             Assert.IsNotNull(caughtException);
-            StringAssert.Contains("An Authorizer needs to be provided when subscribing to the private or presence channel", caughtException.Message);
+            StringAssert.Contains("A ChannelAuthorizer needs to be provided when subscribing to the private or presence channel", caughtException.Message);
         }
 
         #endregion
@@ -168,7 +168,7 @@ namespace PusherClient.Tests.AcceptanceTests
 
             // Assert
             Assert.IsNotNull(caughtException);
-            StringAssert.Contains("An Authorizer needs to be provided when subscribing to the private or presence channel", caughtException.Message);
+            StringAssert.Contains("A ChannelAuthorizer needs to be provided when subscribing to the private or presence channel", caughtException.Message);
         }
 
         #endregion

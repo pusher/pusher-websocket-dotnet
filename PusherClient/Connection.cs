@@ -203,12 +203,23 @@ namespace PusherClient
             }
         }
 
-        private void ProcessPusherEvent(string eventName, string messageData)
+        private void ProcessPusherEvent(string eventName, string rawJson, Dictionary<string, object> message)
         {
+            string messageData = string.Empty;
+            if (message.ContainsKey("data"))
+            {
+                messageData = (string)message["data"];
+            }
+            
             switch (eventName)
             {
                 case Constants.CONNECTION_ESTABLISHED:
                     ParseConnectionEstablished(messageData);
+                    break;
+                    
+                case Constants.PUSHER_SIGNIN_SUCCESS:
+                case Constants.PUSHER_WATCHLIST_EVENT:
+                    EmitEvent(eventName, rawJson, message);
                     break;
             }
         }
@@ -311,7 +322,7 @@ namespace PusherClient
                         }
                         else
                         {
-                            ProcessPusherEvent(eventName, messageData);
+                            ProcessPusherEvent(eventName, rawJson, message);
                         }
                     }
                 }

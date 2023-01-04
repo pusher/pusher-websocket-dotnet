@@ -53,6 +53,8 @@ jobs:
       - name: Prepare package
         run: |
           sed -i 's/<Version>[^<]*<\/Version>/<Version>${{ env.VERSION }}<\/Version>/' Root.Build.props
+          sed -i 's/<AssemblyVersion>[^<]*<\/AssemblyVersion>/<AssemblyVersion>${{ env.VERSION }}.0<\/AssemblyVersion>/' Root.Build.props
+          sed -i 's/<FileVersion>[^<]*<\/FileVersion>/<FileVersion>${{ env.VERSION }}.0<\/FileVersion>/' Root.Build.props
       - name: Prepare CHANGELOG
         run: |
           echo "${{ github.event.pull_request.body }}" | csplit -s - "/##/"

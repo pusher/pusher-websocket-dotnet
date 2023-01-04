@@ -13,22 +13,19 @@ namespace ExampleApplication
     class Program
     {
         private static Pusher _pusher;
-        private static Channel _chatChannel;
+        private static Channel _publicChannel;
+        private static Channel _privateChannel;
+        private static Channel _privateEncryptedChannel;
+        
         private static GenericPresenceChannel<ChatMember> _presenceChannel;
-        private static string _name;
 
         static void Main()
         {
-            // Get the user's name
-            Console.WriteLine("What is your name?");
-            _name = Console.ReadLine();
-
             var connectResult = Task.Run(() => InitPusher());
             Task.WaitAll(connectResult);
 
-            // Read input in loop
+            // Read input in loop to keep the program running
             string line;
-
             do
             {
                 line = Console.ReadLine();
@@ -37,12 +34,71 @@ namespace ExampleApplication
                 {
                     break;
                 }
-
-                _chatChannel.Trigger("client-my-event", new ChatMessage(message: line, name: _name));
             } while (line != null);
 
             var disconnectResult = Task.Run(() => _pusher.DisconnectAsync());
             Task.WaitAll(disconnectResult);
+        }
+
+        private static async Task InitPusher()
+        {
+            _pusher = new Pusher(Config.AppKey, new PusherOptions
+            {
+                ChannelAuthorizer = new HttpChannelAuthorizer("http://127.0.0.1:9000/pusher/auth"),
+                UserAuthenticator = new HttpUserAuthenticator("http://127.0.0.1:9000/pusher/auth-user"),
+                Cluster = Config.Cluster,
+                Encrypted = Config.Encrypted,
+                TraceLogger = new TraceLogger(),
+            });
+            _pusher.ConnectionStateChanged += PusherConnectionStateChanged;
+            _pusher.Error += PusherError;
+            _pusher.Subscribed += Subscribed;
+            _pusher.CountHandler += CountHandler;
+            _pusher.Connected += Connected;
+            _pusher.BindAll(GeneralListener);
+
+            _pusher.User.Signin();
+            _pusher.User.Bind(OnUserEvent);
+            _pusher.User.Bind("test_event", OnBlahUserEvent);
+            _pusher.User.Watchlist.Bind("online", OnWatchlistOnlineEvent);
+            _pusher.User.Watchlist.Bind("offline", OnWatchlistOfflineEvent);
+            _pusher.User.Watchlist.Bind(OnWatchlistEvent);
+
+            try
+            {
+                _publicChannel = await _pusher.SubscribeAsync("my-channel");
+                _publicChannel.BindAll(ChannelEvent);
+
+                _privateChannel = await _pusher.SubscribeAsync("private-my-channel");
+                _privateChannel.BindAll(ChannelEvent);
+
+                _presenceChannel = await _pusher.SubscribePresenceAsync<ChatMember>("presence-my-channel");
+                _presenceChannel.BindAll(ChannelEvent);
+                _presenceChannel.MemberAdded += PresenceChannel_MemberAdded;
+                _presenceChannel.MemberRemoved += PresenceChannel_MemberRemoved;
+                
+                _privateEncryptedChannel = await _pusher.SubscribeAsync("private-encrypted-my-channel");
+                _privateEncryptedChannel.BindAll(ChannelEvent);
+
+            }
+            catch (ChannelUnauthorizedException unauthorizedException)
+            {
+                Console.WriteLine($"Authorization failed for {unauthorizedException.ChannelName}. {unauthorizedException.Message}");
+            }
+
+            Console.WriteLine("All SubscribeAsync already called");
+
+            await _pusher.ConnectAsync().ConfigureAwait(false);
+
+            await _pusher.User.SigninDoneAsync();
+            
+            
+            await Task.Delay(10000).ConfigureAwait(false);
+            Console.WriteLine($"Test Disconnect & Connect");
+            await _pusher.DisconnectAsync().ConfigureAwait(false);
+            await Task.Delay(2000).ConfigureAwait(false);
+            await _pusher.ConnectAsync().ConfigureAwait(false);
+            await _pusher.User.SigninDoneAsync();
         }
 
         static void ListMembers()
@@ -63,126 +119,60 @@ namespace ExampleApplication
         }
 
         // Pusher Initiation / Connection
-        private static async Task InitPusher()
+
+        // Setup private encrypted channel
+        static void GeneralListener(string eventName, PusherEvent eventData)
         {
-            _pusher = new Pusher(Config.AppKey, new PusherOptions
-            {
-                Authorizer = new HttpAuthorizer("http://127.0.0.1:3030/pusher/auth" + HttpUtility.UrlEncode(_name)),
-                Cluster = Config.Cluster,
-                Encrypted = Config.Encrypted,
-                TraceLogger = new TraceLogger(),
-            });
-            _pusher.ConnectionStateChanged += PusherConnectionStateChanged;
-            _pusher.Error += PusherError;
+            Console.WriteLine($"{Environment.NewLine} GeneralListner {eventName} {eventData.Data}");
+        }
 
-            // Setup private channel
-            string privateChannelName = "private-channel";
-            _pusher.Subscribed += (sender, channel) =>
-            {
-                if (channel.Name == privateChannelName)
-                {
-                    string message = $"{Environment.NewLine}Hi {_name}! Type 'quit' to exit, otherwise type anything to chat!{Environment.NewLine}";
-                    Console.WriteLine(message);
-                }
-            };
+        static void Connected(object sender)
+        {
+            Console.WriteLine($"Connected");
+        }
+        
+        static void Subscribed(object sender, Channel channel)
+        {
+            Console.WriteLine($"Subscribed To Channel {channel.Name}");
+        }
+        
+        static void CountHandler(object sender, string data)
+        {
+            Console.WriteLine($"CountHandler {data}");
+        }
 
-            // Setup presence channel
-            string presenceChannelName = "presence-channel";
-            _pusher.Subscribed += (sender, channel) =>
-            {
-                if (channel.Name == presenceChannelName)
-                {
-                    ListMembers();
-                }
-            };
+        static void OnBlahUserEvent(UserEvent userEvent)
+        {
+            Console.WriteLine($"{Environment.NewLine} OnBlahUserEvent {userEvent}");
+        }
 
-            _pusher.CountHandler += (sender, data) => 
-            {
-                Console.WriteLine(data);
-            };
+        static void OnUserEvent(string eventName, UserEvent userEvent)
+        {
+            Console.WriteLine($"{Environment.NewLine} UserEvent {eventName} {userEvent}");
+        }
 
-            // Setup private encrypted channel
-            void GeneralListener(string eventName, PusherEvent eventData)
+        static void OnWatchlistEvent(string eventName, WatchlistEvent watchlistEvent)
+        {
+            Console.WriteLine($"{Environment.NewLine} OnWatchlistEvent {eventName} {watchlistEvent.Name}");
+            foreach (var id in watchlistEvent.UserIDs)
             {
-                if (eventName == "secret-event")
-                {
-                    ChatMessage data = JsonConvert.DeserializeObject<ChatMessage>(eventData.Data);
-                    Console.WriteLine($"{Environment.NewLine}[{data.Name}] {data.Message}");
-                }
+                Console.WriteLine($"{Environment.NewLine} OnWatchlistEvent {eventName} {watchlistEvent.Name} {id}");
             }
+        }
+        static void OnWatchlistOnlineEvent(WatchlistEvent watchlistEvent)
+        {
+            Console.WriteLine($"{Environment.NewLine} OnWatchlistOnlineEvent {watchlistEvent}");
+        }
+        static void OnWatchlistOfflineEvent(WatchlistEvent watchlistEvent)
+        {
+            Console.WriteLine($"{Environment.NewLine} OnWatchlistOfflineEvent {watchlistEvent}");
+        }
 
-            void DecryptionErrorHandler(object sender, PusherException error)
-            {
-                if (error is ChannelDecryptionException exception)
-                {
-                    string errorMsg = $"{Environment.NewLine}Decryption of message failed";
-                    errorMsg += $" for ('{exception.ChannelName}',";
-                    errorMsg += $" '{exception.EventName}', ";
-                    errorMsg += $" '{exception.SocketID}')";
-                    errorMsg += $" for reason:{Environment.NewLine}{error.Message}";
-                    Console.WriteLine(errorMsg);
-                }
-            }
 
-            _pusher.Error += DecryptionErrorHandler;
-            _pusher.BindAll(GeneralListener);
-
-            _pusher.Connected += (sender) =>
-            {
-                /*
-                 * Setting up subscriptions here is handy if your App has the following setting - 
-                 * "Enable authorized connections". See https://pusher.com/docs/channels/using_channels/authorized-connections.
-                 * If your auth server is not running it will attempt to reconnect approximately every 30 seconds in an attempt to authenticate.
-                 * Try running the ExampleApplication and entering your name without running the AuthHost. 
-                 * You will see it try to authenticate every 30 seconds.
-                 * Then run the AuthHost and see the ExampleApplication recover.
-                 * Try this experiment again with multiple ExampleApplication instances running.
-                 */
-
-                // Subscribe to private channel
-                try
-                {
-                    _chatChannel = _pusher.SubscribeAsync(privateChannelName).Result;
-                }
-                catch (ChannelUnauthorizedException unauthorizedException)
-                {
-                    // Handle the authorization failure - forbidden (403)
-                    Console.WriteLine($"Authorization failed for {unauthorizedException.ChannelName}. {unauthorizedException.Message}");
-                }
-
-                _chatChannel.Bind("client-my-event", (PusherEvent eventData) =>
-                {
-                    ChatMessage data = JsonConvert.DeserializeObject<ChatMessage>(eventData.Data);
-                    Console.WriteLine($"{Environment.NewLine}[{data.Name}] {data.Message}");
-                });
-
-                // Subscribe to presence channel
-                try
-                {
-                    _presenceChannel = (GenericPresenceChannel<ChatMember>)(_pusher.SubscribePresenceAsync<ChatMember>(presenceChannelName).Result);
-                }
-                catch (ChannelUnauthorizedException unauthorizedException)
-                {
-                    // Handle the authorization failure - forbidden (403)
-                    Console.WriteLine($"Authorization failed for {unauthorizedException.ChannelName}. {unauthorizedException.Message}");
-                }
-
-                _presenceChannel.MemberAdded += PresenceChannel_MemberAdded;
-                _presenceChannel.MemberRemoved += PresenceChannel_MemberRemoved;
-
-                // Subcribe to private encrypted channel
-                try
-                {
-                    _pusher.SubscribeAsync("private-encrypted-channel").Wait();
-                }
-                catch (ChannelUnauthorizedException unauthorizedException)
-                {
-                    // Handle the authorization failure - forbidden (403)
-                    Console.WriteLine($"Authorization failed for {unauthorizedException.ChannelName}. {unauthorizedException.Message}");
-                }
-            };
-
-            await _pusher.ConnectAsync().ConfigureAwait(false);
+        static void ChannelEvent(string eventName, PusherEvent eventData)
+        {
+            Console.WriteLine($"{Environment.NewLine}{eventName} {eventData.Data}");
+            // TraceMessage(sender, $"{Environment.NewLine}{eventName} {eventData.Data}");
         }
 
         static void PusherError(object sender, PusherException error)

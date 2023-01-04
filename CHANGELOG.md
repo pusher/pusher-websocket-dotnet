@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.3.0-beta
+* [Added] Introduce user features
+
 ## 2.2.1
 * [CHANGED] Update dependency Newtonsoft.Json 13.0.2
 

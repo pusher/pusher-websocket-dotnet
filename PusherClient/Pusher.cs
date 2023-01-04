@@ -40,6 +40,8 @@ namespace PusherClient
         public event SubscribedEventHandler Subscribed;
         public event SubscriptionCountHandler CountHandler;
 
+        public IUserFacade User;
+
         private static string Version { get; } = typeof(Pusher).GetTypeInfo().Assembly.GetName().Version.ToString(3);
 
         private readonly string _applicationKey;
@@ -86,6 +88,16 @@ namespace PusherClient
             Options = options ?? new PusherOptions();
             ((IPusher)this).PusherOptions = Options;
             SetEventEmitterErrorHandler(InvokeErrorHandler);
+
+            // TODO _connection is not initialized yet. This is a bug.
+            // The best way to go is to pospone accessing the connection when it is actually needed.
+            // This requires accessing the conneciton via the pusher object.
+            // either by getting the connection from the pusher object or implementing some proxy functions on the pusher objects for the needed functionality from the connection.
+            // FYI: the needed functionality is SocketID and SendAsync().
+            UserFacade user = new UserFacade(() => {return _connection;}, this);
+            ConnectionStateChanged += user.OnConnectionStateChanged;
+            BindAll(user.OnPusherEvent);
+            User = user;
         }
 
         PusherOptions IPusher.PusherOptions { get; set; }
@@ -108,9 +120,6 @@ namespace PusherClient
                         }
                     }
 
-                    SubscribeExistingChannels();
-                    UnsubscribeBacklog();
-
                     if (ConnectionStateChanged != null)
                     {
                         try
@@ -122,6 +131,9 @@ namespace PusherClient
                             InvokeErrorHandler(new ConnectionStateChangedEventHandlerException(state, error));
                         }
                     }
+
+                    SubscribeExistingChannels();
+                    UnsubscribeBacklog();
                 });
             }
             else if (state == ConnectionState.Disconnected)
@@ -641,8 +653,12 @@ namespace PusherClient
                 string message;
                 if (channel.ChannelType != ChannelTypes.Public)
                 {
+                    if (channel.ChannelType == ChannelTypes.Presence) {                
+                        await User.SigninDoneAsync().ConfigureAwait(false);
+                    }
+
                     string jsonAuth;
-                    if (Options.Authorizer is IAuthorizerAsync asyncAuthorizer)
+                    if (Options.ChannelAuthorizer is IChannelAuthorizerAsync asyncAuthorizer)
                     {
                         if (!asyncAuthorizer.Timeout.HasValue)
                         {
@@ -654,7 +670,7 @@ namespace PusherClient
                     }
                     else
                     {
-                        jsonAuth = Options.Authorizer.Authorize(channelName, _connection.SocketId);
+                        jsonAuth = Options.ChannelAuthorizer.Authorize(channelName, _connection.SocketId);
                     }
 
                     message = CreateAuthorizedChannelSubscribeMessage(channel, jsonAuth);
@@ -781,9 +797,9 @@ namespace PusherClient
 
         private void AuthEndpointCheck(string channelName)
         {
-            if (Options.Authorizer == null)
+            if (Options.ChannelAuthorizer == null)
             {
-                string errorMsg = $"An Authorizer needs to be provided when subscribing to the private or presence channel '{channelName}'.";
+                string errorMsg = $"A ChannelAuthorizer needs to be provided when subscribing to the private or presence channel '{channelName}'.";
                 ChannelException pusherException = new ChannelException(errorMsg, ErrorCodes.ChannelAuthorizerNotSet, channelName: channelName, socketId: SocketID);
                 RaiseError(pusherException);
                 throw pusherException;
