@@ -67,6 +67,8 @@ namespace PusherClient
                 return;
             }
 
+#pragma warning disable 4014
+            // We don't want to wait for Signin to complete.
             _Signin();
         }
 
@@ -150,7 +152,7 @@ namespace PusherClient
             }
 
             // The current code doesn't prevent SinginProcess from being called twice in parallel.
-            SinginProcess();
+            await SinginProcess();
         }
 
 
@@ -178,7 +180,7 @@ namespace PusherClient
             _watchlistFacade.OnPusherEvent(eventName, pusherEvent);
         }
 
-        private void _OnSigninSuccess(PusherEvent pusherEvent) {
+        private async void _OnSigninSuccess(PusherEvent pusherEvent) {
             // Try to parse event
             try {
                 String data = pusherEvent.Data;
@@ -201,7 +203,7 @@ namespace PusherClient
                 user = ParseUser(userData);
             } catch (Exception error) {
                 Console.WriteLine($"{Environment.NewLine} error parsing user {error}");
-                this._Cleanup(error);
+                await this._Cleanup(error);
                 return;
             }
                     
@@ -244,7 +246,7 @@ namespace PusherClient
                 string message = CreateSigninMessage(authResponse);
                 await connection.SendAsync(message).ConfigureAwait(false);
             } catch (Exception error) {
-                this._Cleanup(error);
+                await this._Cleanup(error);
                 return;
             }
         }
