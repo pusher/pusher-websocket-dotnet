@@ -66,19 +66,18 @@ namespace ExampleApplication
 
             try
             {
-                TimeSpan timeoutPeriod = TimeSpan.FromSeconds(10);
-                _publicChannel = await _pusher.SubscribeAsync("my-channel").WaitAsync(timeoutPeriod);
+                _publicChannel = await _pusher.SubscribeAsync("my-channel");
                 _publicChannel.BindAll(ChannelEvent);
 
-                _privateChannel = await _pusher.SubscribeAsync("private-my-channel").WaitAsync(timeoutPeriod);
+                _privateChannel = await _pusher.SubscribeAsync("private-my-channel");
                 _privateChannel.BindAll(ChannelEvent);
 
-                _presenceChannel = await _pusher.SubscribePresenceAsync<ChatMember>("presence-my-channel").WaitAsync(timeoutPeriod);
+                _presenceChannel = await _pusher.SubscribePresenceAsync<ChatMember>("presence-my-channel");
                 _presenceChannel.BindAll(ChannelEvent);
                 _presenceChannel.MemberAdded += PresenceChannel_MemberAdded;
                 _presenceChannel.MemberRemoved += PresenceChannel_MemberRemoved;
                 
-                _privateEncryptedChannel = await _pusher.SubscribeAsync("private-encrypted-my-channel").WaitAsync(timeoutPeriod);
+                _privateEncryptedChannel = await _pusher.SubscribeAsync("private-encrypted-my-channel");
                 _privateEncryptedChannel.BindAll(ChannelEvent);
 
             }

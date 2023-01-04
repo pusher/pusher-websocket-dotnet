@@ -13,10 +13,10 @@ namespace PusherClient
     /// </summary>
     public class HttpAuthorizer: HttpChannelAuthorizer, IAuthorizer, IAuthorizerAsync
     {
-        // /// <summary>
-        // /// ctor
-        // /// </summary>
-        // /// <param name="authEndpoint">The End point to contact</param>
+        /// <summary>
+        /// ctor
+        /// </summary>
+        /// <param name="authEndpoint">The End point to contact</param>
         public HttpAuthorizer(string authEndpoint) : base(authEndpoint)
         {
         }

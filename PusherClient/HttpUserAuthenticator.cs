@@ -34,13 +34,12 @@ namespace PusherClient
         public TimeSpan? Timeout { get; set; }
 
         /// <summary>
-        /// Perform the authorization of the channel.
+        /// Perform the authentication of a user.
         /// </summary>
         /// <param name="socketId">The socket ID to use.</param>
         /// <exception cref="ArgumentNullException">If <paramref name="channelName"/> is <c>null</c> or whitespace.</exception>
-        /// <exception cref="ChannelUnauthorizedException">If authorization fails.</exception>
-        /// <exception cref="ChannelAuthorizationFailureException">If an HTTP call to the authorization URL fails; that is, the HTTP status code is outside of the range 200-299.</exception>
-        /// <returns>The response received from the authorization endpoint.</returns>
+        /// <exception cref="UserAuthenticationFailureException">If authentication fails or if an HTTP call to the authentication URL fails; that is, the HTTP status code is outside of the range 200-299.</exception>
+        /// <returns>The response received from the authentication endpoint.</returns>
         public string Authenticate(string socketId)
         {
             string result;
@@ -57,13 +56,12 @@ namespace PusherClient
         }
 
         /// <summary>
-        /// Perform the authorization of the channel.
+        /// Perform the authentication of a user.
         /// </summary>
         /// <param name="socketId">The socket ID to use.</param>
         /// <exception cref="ArgumentNullException">If <paramref name="channelName"/> is <c>null</c> or whitespace.</exception>
-        /// <exception cref="ChannelUnauthorizedException">If authorization fails.</exception>
-        /// <exception cref="ChannelAuthorizationFailureException">If an HTTP call to the authorization URL fails; that is, the HTTP status code is outside of the range 200-299.</exception>
-        /// <returns>The response received from the authorization endpoint.</returns>
+        /// <exception cref="UserAuthenticationFailureException">If authentication fails or if an HTTP call to the authentication URL fails; that is, the HTTP status code is outside of the range 200-299.</exception>
+        /// <returns>The response received from the authentication endpoint.</returns>
         public async Task<string> AuthenticateAsync(string socketId)
         {
             Console.WriteLine("Authenticating...");

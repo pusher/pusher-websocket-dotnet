@@ -12,31 +12,31 @@ namespace PusherClient
         /// </summary>
         /// <param name="message">The exception message.</param>
         /// <param name="code">The Pusher error code.</param>
-        /// <param name="authorizationEndpoint">The authorization endpoint URL.</param>
-        /// <param name="socketId">The socket ID used in the authorization attempt.</param>
-        public UserAuthenticationFailureException(string message, ErrorCodes code, string authorizationEndpoint, string socketId)
+        /// <param name="authenticationEndpoint">The user authentication endpoint URL.</param>
+        /// <param name="socketId">The socket ID used in the user authentication attempt.</param>
+        public UserAuthenticationFailureException(string message, ErrorCodes code, string authenticationEndpoint, string socketId)
             : base(message, code)
         {
-            this.AuthorizationEndpoint = authorizationEndpoint;
+            this.AuthenticationEndpoint = authenticationEndpoint;
         }
 
         /// <summary>
-        /// Creates a new instance of a <see cref="ChannelAuthorizationFailureException"/> class.
+        /// Creates a new instance of a <see cref="UserAuthenticationFailureException"/> class.
         /// </summary>
         /// <param name="message">The exception message.</param>
         /// <param name="code">The Pusher error code.</param>
-        /// <param name="authorizationEndpoint">The authorization endpoint URL.</param>
-        /// <param name="socketId">The socket ID used in the authorization attempt.</param>
+        /// <param name="authenticationEndpoint">The user authentication endpoint URL.</param>
+        /// <param name="socketId">The socket ID used in the user authentication attempt.</param>
         /// <param name="innerException">The exception that caused the current exception.</param>
-        public UserAuthenticationFailureException(ErrorCodes code, string authorizationEndpoint, string socketId, Exception innerException)
+        public UserAuthenticationFailureException(ErrorCodes code, string authenticationEndpoint, string socketId, Exception innerException)
             : base($"Error authenticating user {Environment.NewLine}{innerException.Message}", code, innerException)
         {
-            this.AuthorizationEndpoint = authorizationEndpoint;
+            this.AuthenticationEndpoint = authenticationEndpoint;
         }
 
         /// <summary>
-        /// Gets or sets the authorization endpoint URL.
+        /// Gets or sets the authentication endpoint URL.
         /// </summary>
-        public string AuthorizationEndpoint { get; private set; }
+        public string AuthenticationEndpoint { get; private set; }
     }
 }

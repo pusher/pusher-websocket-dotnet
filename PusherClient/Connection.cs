@@ -216,9 +216,8 @@ namespace PusherClient
                 case Constants.CONNECTION_ESTABLISHED:
                     ParseConnectionEstablished(messageData);
                     break;
+                    
                 case Constants.PUSHER_SIGNIN_SUCCESS:
-                    EmitEvent(eventName, rawJson, message);
-                    break;
                 case Constants.PUSHER_WATCHLIST_EVENT:
                     EmitEvent(eventName, rawJson, message);
                     break;

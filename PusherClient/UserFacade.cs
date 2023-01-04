@@ -75,6 +75,9 @@ namespace PusherClient
             await _CriticalSection(() => {
                 promise = _signinDonePromise;
             }).ConfigureAwait(false);
+            if (promise == null) {
+                return;
+            }
             await promise.Task;
         }
 
