@@ -37,7 +37,6 @@ namespace PusherClient
         /// Perform the authentication of a user.
         /// </summary>
         /// <param name="socketId">The socket ID to use.</param>
-        /// <exception cref="ArgumentNullException">If <paramref name="channelName"/> is <c>null</c> or whitespace.</exception>
         /// <exception cref="UserAuthenticationFailureException">If authentication fails or if an HTTP call to the authentication URL fails; that is, the HTTP status code is outside of the range 200-299.</exception>
         /// <returns>The response received from the authentication endpoint.</returns>
         public string Authenticate(string socketId)
@@ -59,7 +58,6 @@ namespace PusherClient
         /// Perform the authentication of a user.
         /// </summary>
         /// <param name="socketId">The socket ID to use.</param>
-        /// <exception cref="ArgumentNullException">If <paramref name="channelName"/> is <c>null</c> or whitespace.</exception>
         /// <exception cref="UserAuthenticationFailureException">If authentication fails or if an HTTP call to the authentication URL fails; that is, the HTTP status code is outside of the range 200-299.</exception>
         /// <returns>The response received from the authentication endpoint.</returns>
         public async Task<string> AuthenticateAsync(string socketId)
