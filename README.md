@@ -795,7 +795,7 @@ Here is an example of how to set the bearer token in an authentication header:
 ```cs
 var authorizer = new HttpAuthorizer("https:/some.authorizer.com/auth")
 {
-     AuthenticationHeader = new AuthenticationHeaderValue("Authorization", "Bearer noo6xaeN3cohYoozai4ar8doang7ai1elaeTh1di"),
+     AuthenticationHeader = new AuthenticationHeaderValue("Bearer", "noo6xaeN3cohYoozai4ar8doang7ai1elaeTh1di"),
 };
 var authToken = await authorizer.Authorize("private-test", "1234.9876");
 ```
