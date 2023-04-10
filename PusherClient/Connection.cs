@@ -458,12 +458,16 @@ namespace PusherClient
 
         private void DisposeWebsocket()
         {
+            if (_websocket != null)
+            {
+                _websocket.MessageReceived -= WebsocketMessageReceived;
+                _websocket.Closed -= WebsocketAutoReconnect;
+                _websocket.Error -= WebsocketError;
+                _websocket.Dispose();
+                _websocket = null;
+            }
+
             _currentError = null;
-            _websocket.MessageReceived -= WebsocketMessageReceived;
-            _websocket.Closed -= WebsocketAutoReconnect;
-            _websocket.Error -= WebsocketError;
-            _websocket.Dispose();
-            _websocket = null;
             ChangeState(ConnectionState.Disconnected);
         }
 
