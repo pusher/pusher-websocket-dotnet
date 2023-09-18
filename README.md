@@ -1116,8 +1116,7 @@ void OnWatchlistOnlineEvent(WatchlistEvent watchlistEvent)
     {
         foreach (string userId in watchlistEvent.UserIDs)
         {
-            int x = Int32.Parse(userId);
-            Debug.Log($"UserID {x} ONLINE");
+            Debug.Log($"UserID {userId} ONLINE");
         }
     }
 
@@ -1125,8 +1124,7 @@ void OnWatchlistOfflineEvent(WatchlistEvent watchlistEvent)
     {
         foreach (string userId in watchlistEvent.UserIDs)
         {
-            int x = Int32.Parse(userId);
-            Debug.Log($"UserID {x} OFFLINE");
+            Debug.Log($"UserID {userId} OFFLINE");
         }
     }
 
