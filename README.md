@@ -958,14 +958,14 @@ Allows you to send events to a user based on user id or terminating a user’s c
 
 The library provides an `HttpUserAuthenticator` implementation of `IUserAuthenticator` which makes an HTTP `POST` request to an authenticating endpoint. However, you can implement your own authentication mechanism if required.
 
-Setting up a authenticated user
+Setting up an authenticated user
 
 ```cs
 
 // Create client
 Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
 {
-    UserAuthenticator = new HttpUserAuthenticator("https:/some.authenticator.com/auth")
+    UserAuthenticator = new HttpUserAuthenticator("https://some.authenticator.com/auth")
     Cluster = Config.Cluster,
 });
 pusher.Error += ErrorHandler;
@@ -981,8 +981,7 @@ await pusher.User.SigninDoneAsync();
 
 ### HttpUserAuthenticator
 
-The implementation of the `HttpUserAuthenticator` class which provides the default implementation of an 
-`IUserAuthenticator` has been modified to support the setting of an authentication header.
+The `HttpUserAuthenticator` class supports the setting of an authentication header.
 
 Here is an example of how to set the bearer token in an authentication header:
 
