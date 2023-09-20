@@ -48,6 +48,7 @@ For integrating **Pusher Channels** with **Unity** follow the instructions at <h
     - [Subscribed delegate](#subscribed-delegate)
     - [Unsubscribe](#unsubscribe)
   - [Subscription Count Handler](#subscription-count-handler)
+  - [User authentication](#user-authentication)
   - [Binding to events](#binding-to-events)
     - [Per-channel](#per-channel)
     - [Globally](#globally)
@@ -560,7 +561,7 @@ catch (Exception)
 
 The name of a private channel needs to start with `private-`.
 
-It's possible to subscribe to [private channels](https://pusher.com/docs/channels/using_channels/private-channels) that provide a mechanism for [authenticating channel subscriptions](https://pusher.com/docs/channels/server_api/authenticating-users). In order to do this you need to provide an `IAuthorizer` when creating the `Pusher` instance.
+It's possible to subscribe to [private channels](https://pusher.com/docs/channels/using_channels/private-channels) that provide a mechanism for [authorizing channel subscriptions](https://pusher.com/docs/channels/server_api/authorizing-users/). In order to do this you need to provide an `IAuthorizer` when creating the `Pusher` instance.
 
 The library provides an `HttpAuthorizer` implementation of `IAuthorizer` which makes an HTTP `POST` request to an authenticating endpoint. However, you can implement your own authentication mechanism if required.
 
@@ -939,12 +940,68 @@ await pusher.UnsubscribeAllAsync().ConfigureAwait(false);
 Add this handler to recieve subscription count events. Read more about it [here](https://pusher.com/docs/channels/using_channels/events/#pushersubscription_count-1165820117)
 
 ```cs
+
 void PusherCountEventHandler(object sender, string data) {
     var dataAsObj = JsonConvert.DeserializeObject<SubscriptionCountData>(data);
     Console.WriteLine(dataAsObj.subscriptionCount);
 }
 
 pusher.CountHandler += PusherCountEventHandler;
+
+```
+
+## User authentication
+
+Allows you to send events to a user based on user id or terminating a user’s connections immediately. Read more about it [here](https://pusher.com/docs/channels/using_channels/user-authentication/)
+
+### Signing in
+
+The library provides an `HttpUserAuthenticator` implementation of `IUserAuthenticator` which makes an HTTP `POST` request to an authenticating endpoint. However, you can implement your own authentication mechanism if required.
+
+Setting up an authenticated user
+
+```cs
+
+// Create client
+Pusher pusher = new Pusher(Config.AppKey, new PusherOptions
+{
+    UserAuthenticator = new HttpUserAuthenticator("https://some.authenticator.com/auth")
+    Cluster = Config.Cluster,
+});
+pusher.Error += ErrorHandler;
+
+// Sign in
+pusher.User.Signin();
+
+// Connect
+await pusher.ConnectAsync().ConfigureAwait(false);
+await pusher.User.SigninDoneAsync();
+
+```
+
+### HttpUserAuthenticator
+
+The `HttpUserAuthenticator` class supports the setting of an authentication header.
+
+Here is an example of how to set the bearer token in an authentication header:
+
+```cs
+var authorizer = new HttpUserAuthenticator("https:/some.authenticator.com/auth")
+{
+     AuthenticationHeader = new AuthenticationHeaderValue("Authorization", "Bearer noo6xaeN3cohYoozai4ar8doang7ai1elaeTh1di"),
+};
+var authToken = await authorizer.Authenticate("test-user", "1234.9876");
+```
+
+If you require setting other headers you can override the `PreRequest` method on the `HttpUserAuthenticator` class.
+
+```cs
+public override void PreRequest(HttpClient httpClient)
+{
+    base.PreRequest(httpClient);
+
+    // Add headers or other settings to the httpClient before authorizing.
+}
 ```
 
 ## Binding to events
@@ -1038,6 +1095,46 @@ pusher.Unbind(GlobalListener);
 
 // Unbind all event listeners associated with the Pusher client
 pusher.UnbindAll();
+
+```
+
+### Watchlist
+
+If you have signed in as an [authenticated user](#user-authentication), you can bind to [watchlist events](https://pusher.com/docs/channels/using_channels/watchlist-events/).
+
+```cs
+
+pusher.User.Watchlist.Bind("online", OnWatchlistOnlineEvent);
+pusher.User.Watchlist.Bind("offline", OnWatchlistOfflineEvent);
+
+```
+
+```cs
+
+void OnWatchlistOnlineEvent(WatchlistEvent watchlistEvent)
+    {
+        foreach (string userId in watchlistEvent.UserIDs)
+        {
+            Debug.Log($"UserID {userId} ONLINE");
+        }
+    }
+
+void OnWatchlistOfflineEvent(WatchlistEvent watchlistEvent)
+    {
+        foreach (string userId in watchlistEvent.UserIDs)
+        {
+            Debug.Log($"UserID {userId} OFFLINE");
+        }
+    }
+
+//Bind to all watchlist events
+static void OnWatchlistEvent(string eventName, WatchlistEvent watchlistEvent)
+{
+    foreach (var id in watchlistEvent.UserIDs)
+    {
+        Debug.Log($"{Environment.NewLine} OnWatchlistEvent {eventName} {watchlistEvent.Name} {id}");
+    }
+}
 
 ```
 
