@@ -312,7 +312,7 @@ namespace PusherClient
             {
                 // Prevent multiple concurrent connections
                 TimeSpan timeoutPeriod = Options.ClientTimeout;
-                if (!await _connectLock.WaitAsync(timeoutPeriod).ConfigureAwait(false))
+                if(!await _connectLock.WaitAsync(timeoutPeriod))
                 {
                     throw new OperationTimeoutException(timeoutPeriod, Constants.CONNECTION_ESTABLISHED);
                 }
@@ -329,7 +329,7 @@ namespace PusherClient
 
                     _connection = new Connection(this, url);
                     _disconnectLock = new SemaphoreSlim(1);
-                    await _connection.ConnectAsync().ConfigureAwait(false);
+                    await _connection.ConnectAsync();
                 }
                 finally
                 {
@@ -339,7 +339,6 @@ namespace PusherClient
             catch (Exception e)
             {
                 HandleOperationException(ErrorCodes.ConnectError, $"{nameof(Pusher)}.{nameof(Pusher.ConnectAsync)}", e);
-                throw;
             }
         }
 
@@ -366,7 +365,7 @@ namespace PusherClient
             try
             {
                 TimeSpan timeoutPeriod = Options.ClientTimeout;
-                if (!await _disconnectLock.WaitAsync(timeoutPeriod).ConfigureAwait(false))
+                if(!await _disconnectLock.WaitAsync(timeoutPeriod))
                 {
                     throw new OperationTimeoutException(timeoutPeriod, $"{nameof(Pusher)}.{nameof(Pusher.DisconnectAsync)}");
                 }
@@ -379,7 +378,7 @@ namespace PusherClient
                         {
                             _connectLock = new SemaphoreSlim(1);
                             MarkChannelsAsUnsubscribed();
-                            await _connection.DisconnectAsync().ConfigureAwait(false);
+                            await _connection.DisconnectAsync();
                         }
                     }
                 }
@@ -391,7 +390,6 @@ namespace PusherClient
             catch (Exception e)
             {
                 HandleOperationException(ErrorCodes.DisconnectError, $"{nameof(Pusher)}.{nameof(Pusher.DisconnectAsync)}", e);
-                throw;
             }
         }
 
@@ -426,7 +424,7 @@ namespace PusherClient
                 }
             }
 
-            return await SubscribeAsync(channelName, channel, subscribedEventHandler).ConfigureAwait(false);
+            return await SubscribeAsync(channelName, channel, subscribedEventHandler);
         }
 
         /// <summary>
@@ -485,7 +483,7 @@ namespace PusherClient
                 }
                 else
                 {
-                    result = (await SubscribeAsync(channelName, presenceChannel, subscribedEventHandler).ConfigureAwait(false)) as GenericPresenceChannel<MemberT>;
+                    result = (await SubscribeAsync(channelName, presenceChannel, subscribedEventHandler)) as GenericPresenceChannel<MemberT>;
                 }
             }
             else
@@ -494,7 +492,7 @@ namespace PusherClient
                 result = new GenericPresenceChannel<MemberT>(channelName, this);
                 if (Channels.TryAdd(channelName, result))
                 {
-                    result = (await SubscribeAsync(channelName, result, subscribedEventHandler).ConfigureAwait(false)) as GenericPresenceChannel<MemberT>;
+                    result = (await SubscribeAsync(channelName, result, subscribedEventHandler)) as GenericPresenceChannel<MemberT>;
                 }
             }
 
@@ -551,7 +549,7 @@ namespace PusherClient
                 }
                 else
                 {
-                    await SendUnsubscribeAsync(channel).ConfigureAwait(false);
+                    await SendUnsubscribeAsync(channel);
                 }
             }
         }
@@ -571,7 +569,7 @@ namespace PusherClient
                 {
                     try
                     {
-                        await UnsubscribeAsync(channel.Name).ConfigureAwait(false);
+                        await UnsubscribeAsync(channel.Name);
                     }
                     catch (Exception exception)
                     {
@@ -600,7 +598,7 @@ namespace PusherClient
                 {
 
                     TimeSpan timeoutPeriod = Options.ClientTimeout;
-                    if (!await channel._subscribeLock.WaitAsync(timeoutPeriod).ConfigureAwait(false))
+                    if(!await channel._subscribeLock.WaitAsync(timeoutPeriod))
                     {
                         throw new OperationTimeoutException(timeoutPeriod, $"{Constants.CHANNEL_SUBSCRIPTION_SUCCEEDED} on {channelName}");
                     }
@@ -609,14 +607,13 @@ namespace PusherClient
                     {
                         if (Channels.ContainsKey(channelName))
                         {
-                            await SubscribeChannelAsync(channel).ConfigureAwait(false);
+                            await SubscribeChannelAsync(channel);
                         }
                     }
                 }
                 catch (Exception error)
                 {
                     HandleSubscribeChannelError(channel, error);
-                    throw;
                 }
                 finally
                 {
@@ -653,8 +650,9 @@ namespace PusherClient
                 string message;
                 if (channel.ChannelType != ChannelTypes.Public)
                 {
-                    if (channel.ChannelType == ChannelTypes.Presence) {                
-                        await User.SigninDoneAsync().ConfigureAwait(false);
+                    if(channel.ChannelType == ChannelTypes.Presence)
+                    {
+                        await User.SigninDoneAsync();
                     }
 
                     string jsonAuth;
@@ -666,7 +664,7 @@ namespace PusherClient
                             asyncAuthorizer.Timeout = Options.InnerClientTimeout;
                         }
 
-                        jsonAuth = await asyncAuthorizer.AuthorizeAsync(channelName, _connection.SocketId).ConfigureAwait(false);
+                        jsonAuth = await asyncAuthorizer.AuthorizeAsync(channelName, _connection.SocketId);
                     }
                     else
                     {
@@ -680,10 +678,10 @@ namespace PusherClient
                     message = CreateChannelSubscribeMessage(channelName);
                 }
 
-                await _connection.SendAsync(message).ConfigureAwait(false);
+                await _connection.SendAsync(message);
 
                 TimeSpan timeoutPeriod = Options.InnerClientTimeout;
-                if (!await channel._subscribeCompleted.WaitAsync(timeoutPeriod).ConfigureAwait(false))
+                if(!await channel._subscribeCompleted.WaitAsync(timeoutPeriod))
                 {
                     throw new OperationTimeoutException(timeoutPeriod, $"{Constants.CHANNEL_SUBSCRIPTION_SUCCEEDED} on {channelName}");
                 }
@@ -850,7 +848,7 @@ namespace PusherClient
         {
             ValidateTriggerInput(channelName, eventName);
             string message = DefaultSerializer.Default.Serialize(new PusherChannelEvent(eventName, obj, channelName));
-            await _connection.SendAsync(message).ConfigureAwait(false);
+            await _connection.SendAsync(message);
         }
 
         async Task ITriggerChannels.ChannelUnsubscribeAsync(string channelName)
@@ -926,13 +924,12 @@ namespace PusherClient
                     {
                         if (channel.IsSubscribed)
                         {
-                            await _connection.SendAsync(DefaultSerializer.Default.Serialize(new PusherChannelUnsubscribeEvent(channel.Name))).ConfigureAwait(false);
+                            await _connection.SendAsync(DefaultSerializer.Default.Serialize(new PusherChannelUnsubscribeEvent(channel.Name)));
                         }
                     }
                     catch (Exception e)
                     {
                         HandleOperationException(ErrorCodes.SubscriptionError, $"{nameof(Pusher)}.{nameof(Pusher.UnsubscribeAsync)}", e);
-                        throw;
                     }
                     finally
                     {
