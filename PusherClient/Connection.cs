@@ -88,6 +88,8 @@ namespace PusherClient
 
         public async Task DisconnectAsync()
         {
+            try
+            {
             if (_websocket != null)
             {
                 if (State != ConnectionState.Disconnected)
@@ -101,10 +103,28 @@ namespace PusherClient
 
                     await Task.Run(() =>
                     {
+                            try
+                            {
                         _websocket.Close();
-                    }).ConfigureAwait(false);
+                            }
+                            catch(Exception e)
+                            {
+                                if(_pusher.PusherOptions.TraceLogger != null)
+                                {
+                                    _pusher.PusherOptions.TraceLogger.TraceError($"Websocket close exception: {e.Message}");
+                                }
+                            }
 
+                        });
                     DisposeWebsocket();
+                    }
+                }
+            }
+            catch(Exception e)
+            {
+                if(_pusher.PusherOptions.TraceLogger != null)
+                {
+                    _pusher.PusherOptions.TraceLogger.TraceError($"DisconnectAsync exception: {e.Message}");
                 }
             }
         }
