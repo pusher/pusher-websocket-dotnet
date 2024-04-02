@@ -71,7 +71,11 @@ namespace PusherClient
 
                 if (_currentError != null)
                 {
-                    throw _currentError;
+                    if(_pusher.PusherOptions.TraceLogger != null)
+                    {
+                        _pusher.PusherOptions.TraceLogger.TraceError($"Websocket ConnectAsync exception: {_currentError.Message}");
+                    }
+                    _currentError = null;
                 }
             }
             finally
@@ -489,12 +493,19 @@ namespace PusherClient
 
         private void RecreateWebSocket()
         {
-            DisposeWebsocket();
-            _websocket = new WebSocket(_url)
+            try
             {
-                EnableAutoSendPing = true,
-                AutoSendPingInterval = 1
-            };
+                DisposeWebsocket();
+                _websocket = new WebSocket(_url)
+                {
+                    EnableAutoSendPing = true,
+                    AutoSendPingInterval = 1
+                };
+            }
+            catch(Exception e)
+            {
+                RaiseError(new OperationException(ErrorCodes.ReconnectError, nameof(WebsocketAutoReconnect), e));
+            }
         }
 
         private void ParseError(JToken jToken)
