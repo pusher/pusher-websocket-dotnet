@@ -50,11 +50,7 @@ namespace PusherClient
 
                 ChangeState(ConnectionState.Connecting);
 
-                _websocket = new WebSocket(_url)
-                {
-                    EnableAutoSendPing = true,
-                    AutoSendPingInterval = 1
-                };
+                CreateNewWebSocket();
 
                 await Task.Run(() =>
                 {
@@ -467,14 +463,29 @@ namespace PusherClient
             ChangeState(ConnectionState.Disconnected);
         }
 
-        private void RecreateWebSocket()
+        private void CreateNewWebSocket()
         {
-            DisposeWebsocket();
-            _websocket = new WebSocket(_url)
+            _websocket = new WebSocket(_url,
+                                        "",                     //string subProtocol = "",
+                                        null,                   //List<KeyValuePair<string, string>> cookies = null,
+                                        null,                   //List<KeyValuePair<string, string>> customHeaderItems = null,
+                                        "",                     //string userAgent = "",
+                                        "",                     //string origin = "",
+                                        WebSocketVersion.None,  // WebSocketVersion version = WebSocketVersion.None,
+                                        null,                   // EndPoint httpConnectProxy = null,
+                                        _pusher.PusherOptions.EnabledSslProtocols,
+                                        0)                      // int receiveBufferSize = 0)
             {
                 EnableAutoSendPing = true,
                 AutoSendPingInterval = 1
             };
+        }
+
+
+        private void RecreateWebSocket()
+        {
+            DisposeWebsocket();
+            CreateNewWebSocket();
         }
 
         private void ParseError(JToken jToken)

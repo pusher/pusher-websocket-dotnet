@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Security.Authentication;
 
 namespace PusherClient
 {
@@ -103,6 +104,12 @@ namespace PusherClient
         /// Gets or sets the timeout period to wait for an asynchrounous operation to complete. The default value is 30 seconds.
         /// </summary>
         public TimeSpan ClientTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+
+        /// <summary>
+        /// Gets or sets the ssl security protocol to communicate. The default value is SslProtocols.None.
+        /// </summary>
+        public SslProtocols EnabledSslProtocols { get; set; } = SslProtocols.None;
 
         /// <summary>
         /// Gets or sets the <see cref="ITraceLogger"/> to use for tracing debug messages.
