@@ -9,6 +9,8 @@ Register at [pusher.com/channels](https://pusher.com/channels) and use the appli
 
 More general documentation can be found on the [Official Channels Documentation](https://pusher.com/docs/channels).
 
+For reporting issues, bugs, and feature requests, please feel free to open a pull request or open an issue. If you do not receive a timely response, feel free to check our [support portal](https://docs.bird.com/pusher).
+
 For integrating **Pusher Channels** with **Unity** follow the instructions at <https://github.com/pusher/pusher-websocket-unity>
 
 ## Supported platforms
