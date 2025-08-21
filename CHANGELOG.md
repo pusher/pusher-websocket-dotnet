@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.3.1
+* [Changed] Force TLS 1.2
+
 ## 2.3.0-beta
 * [Added] Introduce user features
 
@@ -21,7 +24,7 @@
 * [FIXED] Filter on event name in event emitter.
 
 ## 2.0.0
-* [FIXED] Infinite loop when failing to connect for the first time. 
+* [FIXED] Infinite loop when failing to connect for the first time.
 * [FIXED] Bug: GenericPresenceChannel<T>'s AddMember and RemoveMember events were not being emitted.
 * [FIXED] Change MemberRemovedEventHandler to MemberRemovedEventHandler<T>.
 * [FIXED] Introduce new ChannelUnauthorizedException class.
