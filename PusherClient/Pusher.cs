@@ -75,7 +75,7 @@ namespace PusherClient
 
         static Pusher()
         {
-            #if NETSTANDARD2_0 || NET472 || NETSTANDARD1_3
+            #if NET45 || NET472 || NETSTANDARD2_0
             try
             {
                 System.Net.ServicePointManager.SecurityProtocol |=
