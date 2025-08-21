@@ -73,6 +73,26 @@ namespace PusherClient
         private SemaphoreSlim _connectLock = new SemaphoreSlim(1);
         private SemaphoreSlim _disconnectLock = new SemaphoreSlim(1);
 
+        static Pusher()
+        {
+            #if NETSTANDARD2_0 || NET472 || NETSTANDARD1_3
+            try
+            {
+                System.Net.ServicePointManager.SecurityProtocol |=
+                    System.Net.SecurityProtocolType.Tls12;
+            }
+            catch
+            {
+                try
+                {
+                    System.Net.ServicePointManager.SecurityProtocol =
+                        (System.Net.SecurityProtocolType)3072; // TLS 1.2
+                }
+                catch { }
+            }
+            #endif
+        }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Pusher" /> class.
         /// </summary>
