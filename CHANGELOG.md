@@ -1,5 +1,7 @@
 # Changelog
 
+## 2.3.1
+* [CHANGED] Fixes TLS support by forcing TLS 1.2
 
 ## 2.3.0-beta
 * [Added] Introduce user features
