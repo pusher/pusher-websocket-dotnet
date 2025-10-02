@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Nancy;
+using Newtonsoft.Json;
 using PusherClient;
 using PusherClient.Tests.Utilities;
 using PusherServer;
@@ -59,6 +60,50 @@ namespace AuthHost
                 }
 
                 return authData;
+            };
+
+            // Add routes that ExampleApplication expects
+            Post["/pusher/auth"] = _ =>
+            {
+                Console.WriteLine($"Processing auth request for '{Request.Form.channel_name}' channel, for socket ID '{Request.Form.socket_id}'");
+
+                string channelName = Request.Form.channel_name;
+                string socketId = Request.Form.socket_id;
+
+                string authData = null;
+
+                if (Channel.GetChannelType(channelName) == ChannelTypes.Presence)
+                {
+                    var channelData = new PresenceChannelData
+                    {
+                        user_id = socketId,
+                        user_info = new { Name = "DefaultUser" }
+                    };
+
+                    authData = provider.Authenticate(channelName, socketId, channelData).ToJson();
+                }
+                else
+                {
+                    authData = provider.Authenticate(channelName, socketId).ToJson();
+                }
+
+                return authData;
+            };
+
+            Post["/pusher/auth-user"] = _ =>
+            {
+                Console.WriteLine($"Processing user auth request for socket ID '{Request.Form.socket_id}'");
+
+                string socketId = Request.Form.socket_id;
+
+                // For user authentication, return a simple user auth response
+                var userAuthResponse = new
+                {
+                    auth = $"{PusherApplicationKey}:{socketId}",
+                    user_data = JsonConvert.SerializeObject(new { id = socketId, name = "DefaultUser" })
+                };
+
+                return JsonConvert.SerializeObject(userAuthResponse);
             };
         }
 

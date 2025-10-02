@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Security.Authentication;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -50,7 +51,8 @@ namespace PusherClient
 
                 ChangeState(ConnectionState.Connecting);
 
-                _websocket = new WebSocket(_url)
+                _websocket = new WebSocket(_url, "", null, null, "",
+                    "", WebSocketVersion.None, null, SslProtocols.Tls12)
                 {
                     EnableAutoSendPing = true,
                     AutoSendPingInterval = 1
@@ -210,13 +212,13 @@ namespace PusherClient
             {
                 messageData = (string)message["data"];
             }
-            
+
             switch (eventName)
             {
                 case Constants.CONNECTION_ESTABLISHED:
                     ParseConnectionEstablished(messageData);
                     break;
-                    
+
                 case Constants.PUSHER_SIGNIN_SUCCESS:
                 case Constants.PUSHER_WATCHLIST_EVENT:
                     EmitEvent(eventName, rawJson, message);
@@ -244,7 +246,7 @@ namespace PusherClient
                 case Constants.CHANNEL_MEMBER_REMOVED:
                     _pusher.RemoveMember(channelName, messageData);
                     break;
-                
+
                 case Constants.CHANNEL_SUBSCRIPTION_COUNT:
                     _pusher.SubscriberCount(channelName, messageData);
                     break;
@@ -292,7 +294,7 @@ namespace PusherClient
                          *    "event": "pusher:connection_established",
                          *    "data": "{\"socket_id\":\"131160.155806628\"}"
                          *  }
-                         *  
+                         *
                          *  {
                          *    "event": "pusher_internal:subscription_succeeded",
                          *    "data": "{\"presence\":{\"count\":1,\"ids\":[\"131160.155806628\"],\"hash\":{\"131160.155806628\":{\"name\":\"user-1\"}}}}",
@@ -470,7 +472,8 @@ namespace PusherClient
         private void RecreateWebSocket()
         {
             DisposeWebsocket();
-            _websocket = new WebSocket(_url)
+            _websocket = new WebSocket(_url, "", null, null, "",
+    "", WebSocketVersion.None, null, SslProtocols.Tls12)
             {
                 EnableAutoSendPing = true,
                 AutoSendPingInterval = 1

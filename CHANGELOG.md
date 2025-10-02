@@ -1,5 +1,8 @@
 # Changelog
 
+## 
+* [CHANGED] Force TLS 1.2 by default.
+
 ## 2.3.0-beta
 * [Added] Introduce user features
 
